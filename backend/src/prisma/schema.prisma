@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int        @id @default(autoincrement())
+  email     String     @unique
+  name      String
+  password  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  AuditLog  AuditLog[]
+  Accounts  Account[]
+  Budget    Budget[]
+}
+
+enum AccountType {
+  CASH
+  SAVINGS
+  CREDIT
+  CHECKING
+}
+
+model Account {
+  id                   Int                    @id @default(autoincrement())
+  name                 String
+  balance              Float
+  type                 AccountType
+  userId               Int
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  Transactions         Transaction[]
+  User                 User                   @relation(fields: [userId], references: [id])
+  RecurringTransaction RecurringTransaction[]
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model Transaction {
+  id          Int             @id @default(autoincrement())
+  amount      Float
+  description String
+  date        DateTime
+  categoryId  Int
+  type        TransactionType
+  accountId   Int
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  Account     Account         @relation(fields: [accountId], references: [id])
+  Category    Category        @relation(fields: [categoryId], references: [id])
+}
+
+model Category {
+  id                   Int                    @id @default(autoincrement())
+  name                 String
+  type                 TransactionType
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  Budget               Budget[]
+  Transactions         Transaction[]
+  RecurringTransaction RecurringTransaction[]
+}
+
+model Budget {
+  id         Int      @id @default(autoincrement())
+  amount     Float
+  categoryId Int
+  userId     Int
+  startDate  DateTime
+  endDate    DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  Category   Category @relation(fields: [categoryId], references: [id])
+  User       User     @relation(fields: [userId], references: [id])
+}
+
+enum ActionType {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  action     ActionType
+  entityType String
+  entityId   Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  User       User     @relation(fields: [userId], references: [id])
+  userId     Int
+}
+
+enum Fequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model RecurringTransaction {
+  id          Int             @id @default(autoincrement())
+  amount      Float
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  categoryId  Int
+  type        TransactionType
+  frequency   Fequency
+  accountId   Int
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  Account     Account         @relation(fields: [accountId], references: [id])
+  Category    Category        @relation(fields: [categoryId], references: [id])
+}
