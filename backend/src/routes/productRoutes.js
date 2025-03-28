@@ -1,17 +1,16 @@
 import express from 'express';
 import { getAllProducts, getProductByIdentifier, createProduct } from '../controllers/productController.js';
-// import { protect, admin } from '../middleware/authMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js'; // Import middleware
+import { Role } from '@prisma/client'; // Import Role enum from generated client
 
 const router = express.Router();
 
 router.route('/')
   .get(getAllProducts)
-  // .post(protect, admin, createProduct); // Add protection later
-  .post(createProduct); // TEMPORARY: Allow creating without auth
+  .post(protect, authorize(Role.ADMIN), createProduct); // Protect and authorize ADMIN
 
-router.route('/:identifier') // Use :identifier to accept slug or ID
+router.route('/:identifier')
     .get(getProductByIdentifier);
-
-// Add PUT and DELETE for /:id later
+ // Add PUT/DELETE with protection later
 
 export default router;

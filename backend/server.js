@@ -1,59 +1,57 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import cors from 'cors'; // Import cors
+import cors from 'cors';
+// import cookieParser from 'cookie-parser'; // Install and uncomment if using cookies later
 
 // Import Routes
 import categoryRoutes from './src/routes/categoryRoutes.js';
 import productRoutes from './src/routes/productRoutes.js';
-// Import other routes as you create them (auth, cart, order)
+import authRoutes from './src/routes/authRoutes.js'; // Import auth routes
+// Import other routes
+import orderRoutes from './src/routes/orderRoutes.js'; // Import order routes
 
 // Import Middleware
 import errorHandler from './src/middleware/errorHandler.js';
-// Import prisma client (optional here, already imported in controllers)
-// import prisma from './src/config/db.js';
+import ApiError from './src/utils/apiError.js'; // Import ApiError for root level errors if needed
 
-// Load environment variables
-dotenv.config(); // Looks for .env file in the root directory
-
-// Initialize Express app
+dotenv.config();
 const app = express();
 
 // --- Middleware ---
-// Enable CORS - Configure properly for production later!
-app.use(cors({
-    // origin: 'http://localhost:5173', // Allow your frontend origin in dev
-    // credentials: true // If you need to send cookies
-}));
-
-// Body parser middleware to accept JSON
+app.use(cors({ /* Configure CORS properly */ }));
 app.use(express.json());
-// Body parser middleware to accept URL encoded data
 app.use(express.urlencoded({ extended: true }));
+// app.use(cookieParser()); // Uncomment if using cookies later
 
 // --- API Routes ---
-// Mount routers
-app.get('/api/v1', (req, res) => res.send('SuriAddis API Running')); // Simple health check
+app.get('/api/v1', (req, res) => res.send('SuriAddis API Running'));
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/products', productRoutes);
-// Mount other routers here later
+app.use('/api/v1/auth', authRoutes); // Mount auth routes
+app.use('/api/v1/orders', orderRoutes); // Mount order routes
+// Mount other routers
 
-// --- Error Handling Middleware ---
-// Should be *after* all routes
+// --- Handle Not Found Routes ---
+ app.all('*', (req, res, next) => {
+     next(new ApiError(`Can't find ${req.originalUrl} on this server!`, 404));
+ });
+
+
+// --- Global Error Handling Middleware --- (Must be last)
 app.use(errorHandler);
 
 
 // --- Start Server ---
-const PORT = process.env.PORT || 5000; // Use PORT from .env or default to 5000
-
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
 
-// Optional: Graceful shutdown on Prisma disconnect/errors (more advanced)
-// process.on('SIGTERM', async () => {
-//   console.log('SIGTERM signal received: closing HTTP server')
-//   await prisma.$disconnect()
-//   server.close(() => {
-//     console.log('HTTP server closed')
-//   })
-// })
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    console.error('UNHANDLED REJECTION! 💥 Shutting down...');
+    console.error(err.name, err.message);
+    // Close server & exit process
+    // In production, might use a process manager like PM2 to restart
+    process.exit(1); // Exit immediately (can be debated, maybe close server first)
+});

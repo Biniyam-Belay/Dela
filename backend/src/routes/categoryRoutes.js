@@ -1,14 +1,13 @@
 import express from 'express';
 import { getAllCategories, createCategory } from '../controllers/categoryController.js';
-// Import protection middleware later for admin routes
-// import { protect, admin } from '../middleware/authMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js'; // Import middleware
+import { Role } from '@prisma/client'; // Import Role enum
 
 const router = express.Router();
 
 router.route('/')
   .get(getAllCategories)
-  // .post(protect, admin, createCategory); // Add protection later
-  .post(createCategory); // TEMPORARY: Allow creating without auth for now
+  .post(protect, authorize(Role.ADMIN), createCategory); // Protect and authorize ADMIN
 
 // Add routes for /:id (get single, update, delete) later
 
