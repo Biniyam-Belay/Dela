@@ -1,41 +1,59 @@
 import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
-import morgan from 'morgan';
-import { register, login, getUsers, deleteUser } from './src/controllers/userController.js';
-import { authMiddleware } from './src/middleware/authMiddleware.js';
-import { createAccount, deleteAccount, getAccounts, updateAccount } from './src/controllers/accountController.js';
-import { createTransaction, deleteTransaction, getTransactions, updateTransaction } from './src/controllers/transactionController.js';
+import cors from 'cors'; // Import cors
 
-dotenv.config();
+// Import Routes
+import categoryRoutes from './src/routes/categoryRoutes.js';
+import productRoutes from './src/routes/productRoutes.js';
+// Import other routes as you create them (auth, cart, order)
 
+// Import Middleware
+import errorHandler from './src/middleware/errorHandler.js';
+// Import prisma client (optional here, already imported in controllers)
+// import prisma from './src/config/db.js';
+
+// Load environment variables
+dotenv.config(); // Looks for .env file in the root directory
+
+// Initialize Express app
 const app = express();
 
-app.use(cors());
+// --- Middleware ---
+// Enable CORS - Configure properly for production later!
+app.use(cors({
+    // origin: 'http://localhost:5173', // Allow your frontend origin in dev
+    // credentials: true // If you need to send cookies
+}));
+
+// Body parser middleware to accept JSON
 app.use(express.json());
-app.use(morgan('dev'));
+// Body parser middleware to accept URL encoded data
+app.use(express.urlencoded({ extended: true }));
 
-app.get('/', (req, res) => {
-    res.send('inance management API is running....');
-})
+// --- API Routes ---
+// Mount routers
+app.get('/api/v1', (req, res) => res.send('SuriAddis API Running')); // Simple health check
+app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/products', productRoutes);
+// Mount other routers here later
 
-app.get('/accounts', authMiddleware, getAccounts);
-app.post('/accounts', authMiddleware, createAccount);
-app.put('/accounts/:id', authMiddleware, updateAccount);
-app.delete('/accounts/:id', authMiddleware, deleteAccount);
-
-app.get('/transactions', authMiddleware, getTransactions);
-app.post('/transactions', authMiddleware, createTransaction);
-app.put('/transactions/:id', authMiddleware, updateTransaction);
-app.delete('/transactions/:id', authMiddleware, deleteTransaction);
-
-app.get('/users', getUsers);
-app.post('/register', register);
-app.post('/login', login);
-app.delete('/users/:id', deleteUser);
+// --- Error Handling Middleware ---
+// Should be *after* all routes
+app.use(errorHandler);
 
 
-const PORT = process.env.PORT || 5000;
+// --- Start Server ---
+const PORT = process.env.PORT || 5000; // Use PORT from .env or default to 5000
+
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-})
+  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+});
+
+// Optional: Graceful shutdown on Prisma disconnect/errors (more advanced)
+// process.on('SIGTERM', async () => {
+//   console.log('SIGTERM signal received: closing HTTP server')
+//   await prisma.$disconnect()
+//   server.close(() => {
+//     console.log('HTTP server closed')
+//   })
+// })
