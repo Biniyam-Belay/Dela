@@ -1,43 +1,62 @@
+// backend/server.js
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-// import cookieParser from 'cookie-parser'; // Install and uncomment if using cookies later
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Import Routes
+// Import Routes (paths relative to server.js)
 import categoryRoutes from './src/routes/categoryRoutes.js';
 import productRoutes from './src/routes/productRoutes.js';
-import authRoutes from './src/routes/authRoutes.js'; // Import auth routes
-// Import other routes
-import orderRoutes from './src/routes/orderRoutes.js'; // Import order routes
+import authRoutes from './src/routes/authRoutes.js';
+import orderRoutes from './src/routes/orderRoutes.js';
+import adminProductRoutes from './src/routes/adminProductRoutes.js';
+import adminCategoryRoutes from './src/routes/adminCategoryRoutes.js';
 
-// Import Middleware
+// Import Middleware (paths relative to server.js)
 import errorHandler from './src/middleware/errorHandler.js';
-import ApiError from './src/utils/apiError.js'; // Import ApiError for root level errors if needed
+import ApiError from './src/utils/apiError.js'; // Correct path if ApiError is in utils
 
-dotenv.config();
+dotenv.config(); // Loads .env from the current directory (backend/)
 const app = express();
 
-// --- Middleware ---
+// --- ES Module specifics for __dirname ---
+const __filename = fileURLToPath(import.meta.url); // Full path to server.js
+const __dirname = path.dirname(__filename);       // Directory of server.js (e.g., /path/to/backend/)
+
+// projectRoot is simply __dirname in this case, as server.js is at the root level we care about
+const projectRoot = __dirname;
+// Alternatively, if you prefer consistency with the previous calculation style:
+// const projectRoot = path.resolve(__dirname); // Resolves to the absolute path of backend/
+
+// --- Core Middleware ---
 app.use(cors({ /* Configure CORS properly */ }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// app.use(cookieParser()); // Uncomment if using cookies later
+
+// --- Static Folder ---
+// Serve files from the 'public' directory located directly inside the project root (__dirname)
+const publicDirectoryPath = path.join(projectRoot, 'public');
+app.use(express.static(publicDirectoryPath));
+console.log(`Serving static files from: ${publicDirectoryPath}`); // Log path for verification
 
 // --- API Routes ---
 app.get('/api/v1', (req, res) => res.send('SuriAddis API Running'));
+// Public/User Routes
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/products', productRoutes);
-app.use('/api/v1/auth', authRoutes); // Mount auth routes
-app.use('/api/v1/orders', orderRoutes); // Mount order routes
-// Mount other routers
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/orders', orderRoutes);
+// Admin Routes
+app.use('/api/v1/admin/products', adminProductRoutes);
+app.use('/api/v1/admin/categories', adminCategoryRoutes);
 
-// --- Handle Not Found Routes ---
- app.all('*', (req, res, next) => {
-     next(new ApiError(`Can't find ${req.originalUrl} on this server!`, 404));
+// --- Handle Not Found API Routes ---
+ app.all('/api/*', (req, res, next) => {
+     next(new ApiError(`API route not found: ${req.originalUrl}`, 404));
  });
 
-
-// --- Global Error Handling Middleware --- (Must be last)
+// --- Global Error Handling Middleware --- (Must be last app.use before listen)
 app.use(errorHandler);
 
 
@@ -51,7 +70,5 @@ app.listen(PORT, () => {
 process.on('unhandledRejection', (err) => {
     console.error('UNHANDLED REJECTION! 💥 Shutting down...');
     console.error(err.name, err.message);
-    // Close server & exit process
-    // In production, might use a process manager like PM2 to restart
-    process.exit(1); // Exit immediately (can be debated, maybe close server first)
+    process.exit(1);
 });

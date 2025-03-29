@@ -1,196 +1,178 @@
-// frontend/src/pages/HomePage.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchProducts, fetchCategories } from '../services/productApi';
+import { fetchProducts } from '../services/productApi';
 import ProductCard from '../components/ui/ProductCard';
-import SkeletonCard from '../components/ui/SkeletonCard'; // Import Product Skeleton
-import CategorySkeletonCard from '../components/ui/CategorySkeletonCard'; // Import Category Skeleton
+import SkeletonCard from '../components/ui/SkeletonCard';
 import ErrorMessage from '../components/common/ErrorMessage';
-import { FaCheckCircle, FaShippingFast, FaHeadset } from 'react-icons/fa'; // Import Icons
+import { FiArrowRight, FiTruck, FiRefreshCw, FiShield, FiStar } from "react-icons/fi";
 
-// --- Stylish Hero Section ---
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
+// --- Hero Section (Ultra Modern) ---
 const HeroSection = () => (
-  <div className="relative bg-gradient-to-r from-gray-700 via-gray-900 to-black text-white pt-32 pb-24 md:pt-48 md:pb-40 px-4 text-center rounded-b-lg shadow-2xl overflow-hidden mb-16 md:mb-24">
-     {/* Optional: Subtle Background Image */}
-     {/* <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: 'url(/path/to/your/hero-pattern.png)' }}></div> */}
-
-     {/* Content */}
-    <div className="relative z-10">
-      <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 animate-pulse-slow"> {/* Animated Gradient Text */}
-        Welcome to SuriAddis
-      </h1>
-      <p className="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
-        Explore curated collections and discover products you'll love. High quality, delivered fast.
-      </p>
-      <Link
-        to="/products"
-        className="inline-block bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold text-lg py-3 px-10 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
-      >
-        Start Shopping
-      </Link>
+  <section className="relative h-screen max-h-[1000px] flex items-center overflow-hidden bg-black">
+    {/* Background with parallax effect would be ideal */}
+    <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
+      <img
+        src="/images/hero-3.jpg"
+        alt="Luxury fashion collection"
+        className="w-full h-full object-cover object-center"
+        loading="eager"
+      />
     </div>
-  </div>
-);
 
-// --- Visual Category Card ---
-const CategoryCard = ({ category }) => (
-    <Link
-        to={`/products?category=${category.slug}`}
-        className="group relative block border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 h-40 md:h-48" // Fixed height
-    >
-        {/* Background Image (Replace with actual category images) */}
-        <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-110"
-            style={{ backgroundImage: `url(/placeholder-category-${category.id % 3 + 1}.jpg)` }} // Placeholder image logic
-        ></div>
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-60 transition-opacity duration-300"></div>
-        {/* Category Name */}
-        <div className="relative z-10 flex items-center justify-center h-full">
-            <h3 className="text-xl md:text-2xl font-semibold text-white text-center p-2">{category.name}</h3>
+    <div className="container mx-auto px-6 relative z-10">
+      <div className="max-w-2xl">
+        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-light text-white mb-6 leading-tight">
+          Redefine Your <span className="font-medium">Wardrobe</span>
+        </h1>
+        <p className="text-lg lg:text-xl text-neutral-300 mb-10 font-light">
+          Curated essentials that elevate your everyday style.
+        </p>
+        <div className="flex gap-4">
+          <Link
+            to="/products"
+            className="px-8 py-3 bg-white text-black font-medium hover:bg-neutral-100 transition-all duration-300 hover:scale-105"
+          >
+            Shop Now
+          </Link>
+          <Link
+            to="/new-arrivals"
+            className="px-8 py-3 border border-white text-white hover:bg-white/10 transition-all duration-300 hover:scale-105"
+          >
+            New Arrivals
+          </Link>
         </div>
-    </Link>
+      </div>
+    </div>
+  </section>
 );
 
+// --- Trending Products Section ---
+const TrendingProducts = ({ products, loading, error }) => {
+  if (error) return <ErrorMessage message={error} />;
+  
+  return (
+    <section className="container mx-auto px-6 py-24">
+      <div className="flex justify-between items-end mb-16">
+        <div>
+          <h2 className="text-3xl font-light text-neutral-800">Trending Now</h2>
+          <p className="text-neutral-500 mt-2">This season's most loved pieces</p>
+        </div>
+        <Link to="/trending" className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors">
+          View all <FiArrowRight />
+        </Link>
+      </div>
 
-// --- Value Proposition Card ---
-const ValuePropCard = ({ icon, title, description }) => (
-    <div className="bg-white p-6 rounded-lg shadow-md text-center transition-transform duration-300 hover:-translate-y-2">
-        <div className="text-4xl text-blue-600 mb-4 inline-block">{icon}</div>
-        <h3 className="text-xl font-semibold text-gray-800 mb-2">{title}</h3>
-        <p className="text-gray-600">{description}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+          : products.length > 0
+            ? products.slice(0, 4).map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))
+            : <p className="col-span-full text-center text-neutral-500">No trending products available</p>}
+      </div>
+    </section>
+  );
+};
+
+// --- New Arrivals Section ---
+const NewArrivals = ({ products, loading, error }) => {
+  if (error) return <ErrorMessage message={error} />;
+  
+  return (
+    <section className="bg-neutral-50 py-24">
+      <div className="container mx-auto px-6">
+        <div className="flex justify-between items-end mb-16">
+          <div>
+            <h2 className="text-3xl font-light text-neutral-800">New Arrivals</h2>
+            <p className="text-neutral-500 mt-2">Fresh styles just for you</p>
+          </div>
+          <Link to="/new-arrivals" className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors">
+            View all <FiArrowRight />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+            : products.length > 0
+              ? products.slice(4, 8).map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))
+              : <p className="col-span-full text-center text-neutral-500">No new arrivals</p>}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// --- Brand Highlights ---
+const BrandHighlights = () => (
+  <section className="container mx-auto px-6 py-16">
+    <h2 className="text-3xl font-light text-center text-neutral-800 mb-16">Our Promise</h2>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+      <div className="text-center">
+        <div className="flex justify-center mb-6">
+          <div className="p-4 rounded-full bg-neutral-100 text-neutral-700">
+            <FiStar size={24} />
+          </div>
+        </div>
+        <h3 className="text-lg font-light text-neutral-800 mb-3">Premium Quality</h3>
+        <p className="text-neutral-500">Only the finest materials and craftsmanship</p>
+      </div>
+      <div className="text-center">
+        <div className="flex justify-center mb-6">
+          <div className="p-4 rounded-full bg-neutral-100 text-neutral-700">
+            <FiTruck size={24} />
+          </div>
+        </div>
+        <h3 className="text-lg font-light text-neutral-800 mb-3">Fast Shipping</h3>
+        <p className="text-neutral-500">Delivered to your door in 2-3 days</p>
+      </div>
+      <div className="text-center">
+        <div className="flex justify-center mb-6">
+          <div className="p-4 rounded-full bg-neutral-100 text-neutral-700">
+            <FiRefreshCw size={24} />
+          </div>
+        </div>
+        <h3 className="text-lg font-light text-neutral-800 mb-3">Easy Returns</h3>
+        <p className="text-neutral-500">30-day hassle-free returns</p>
+      </div>
     </div>
+  </section>
 );
 
 // --- Main HomePage Component ---
 const HomePage = () => {
-  const [featuredProducts, setFeaturedProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
-  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const loadHomePageData = async () => {
-      // Reset states on new load attempt
-      setLoadingProducts(true);
-      setLoadingCategories(true);
-      setError(null);
-
+    const loadProducts = async () => {
       try {
-        // Fetch in parallel for speed
-        const [productResponse, categoryResponse] = await Promise.allSettled([
-          fetchProducts({ limit: 4, page: 1 }), // Fetch 4 featured products
-          fetchCategories()                     // Fetch all categories
-        ]);
-
-        if (productResponse.status === 'fulfilled') {
-          setFeaturedProducts(productResponse.value.data);
-        } else {
-          console.error("Error fetching products:", productResponse.reason);
-          // Set partial error or handle as needed
-          setError(prev => prev ? `${prev} Failed to load products.` : 'Failed to load products.');
-        }
-
-        if (categoryResponse.status === 'fulfilled') {
-          setCategories(categoryResponse.value.data);
-        } else {
-          console.error("Error fetching categories:", categoryResponse.reason);
-           setError(prev => prev ? `${prev} Failed to load categories.` : 'Failed to load categories.');
-        }
-
-      } catch (err) { // Catch unexpected errors during Promise.allSettled or setup
-        console.error("Homepage fetch error:", err);
-        setError('An unexpected error occurred while loading data.');
+        const response = await fetchProducts({ limit: 8, page: 1 });
+        setProducts(response.data || []);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setError("Could not load products");
       } finally {
-        // Ensure loading state is always turned off
-        setLoadingProducts(false);
-        setLoadingCategories(false);
+        setLoading(false);
       }
     };
-
-    loadHomePageData();
-  }, []); // Runs once on component mount
+    loadProducts();
+  }, []);
 
   return (
-    <div className="space-y-16 md:space-y-24 mb-16 md:mb-24"> {/* Increased spacing */}
-      {/* 1. Hero Section */}
+    <div className="bg-white">
       <HeroSection />
-
-      {/* Container for main content */}
-      <div className="container mx-auto px-4 space-y-16 md:space-y-24">
-
-        {/* 2. Featured Products Section */}
-        <section>
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-10 md:mb-12 text-gray-800 tracking-tight">
-            Featured Products
-          </h2>
-           {error && <ErrorMessage message={error.includes('products') || error.includes('unexpected') ? 'Could not load featured products.' : null} />}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-            {loadingProducts
-              ? Array.from({ length: 4 }).map((_, index) => <SkeletonCard key={index} />) // Show 4 skeletons while loading
-              : featuredProducts.length > 0
-                ? featuredProducts.map((product) => <ProductCard key={product.id} product={product} />)
-                : !error && <p className="col-span-full text-center text-gray-500">No featured products available right now.</p> // Show message only if no error occurred related to products
-             }
-          </div>
-           {!loadingProducts && featuredProducts.length > 0 && (
-             <div className="text-center mt-10 md:mt-12">
-                 <Link
-                     to="/products"
-                     className="text-blue-600 hover:text-blue-800 font-semibold transition duration-300 inline-flex items-center group"
-                 >
-                     View All Products
-                     <span className="ml-2 transition-transform duration-300 group-hover:translate-x-1">→</span>
-                 </Link>
-             </div>
-           )}
-        </section>
-
-        {/* 3. Categories Section */}
-        <section>
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-10 md:mb-12 text-gray-800 tracking-tight">
-            Shop by Category
-          </h2>
-           {error && <ErrorMessage message={error.includes('categories') || error.includes('unexpected') ? 'Could not load categories.' : null} />}
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {loadingCategories
-                 ? Array.from({ length: categories.length > 0 ? categories.length : 4 }).map((_, index) => <CategorySkeletonCard key={index} />) // Use fetched category count if available for skeleton count, else default
-                 : categories.length > 0
-                    ? categories.map((category) => <CategoryCard key={category.id} category={category} />)
-                    : !error && <p className="col-span-full text-center text-gray-500">No categories found.</p> // Show message only if no error related to categories occurred
-              }
-          </div>
-        </section>
-
-        {/* 4. Value Propositions Section */}
-        <section className="bg-gradient-to-r from-gray-50 to-blue-50 py-16 md:py-20 rounded-lg shadow-inner">
-            <div className="container mx-auto px-4">
-                <h2 className="text-3xl md:text-4xl font-bold text-center mb-10 md:mb-12 text-gray-800 tracking-tight">Why Choose Us?</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
-                    <ValuePropCard
-                        icon={<FaCheckCircle />}
-                        title="Quality Assured"
-                        description="We source and verify the best products, ensuring top quality."
-                    />
-                    <ValuePropCard
-                        icon={<FaShippingFast />}
-                        title="Fast & Reliable Shipping"
-                        description="Get your orders delivered quickly to your doorstep."
-                    />
-                    <ValuePropCard
-                        icon={<FaHeadset />}
-                        title="Exceptional Support"
-                        description="Our dedicated team is here to help you every step of the way."
-                    />
-                </div>
-            </div>
-        </section>
-
-      </div> {/* End main content container */}
-    </div> // End overall page wrapper
+      <TrendingProducts products={products} loading={loading} error={error} />
+      <NewArrivals products={products} loading={loading} error={error} />
+      <BrandHighlights />
+    </div>
   );
 };
 
