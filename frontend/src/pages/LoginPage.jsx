@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/authContext.jsx'
+import { useAuth } from '../contexts/authContext.jsx';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import Spinner from '../components/common/Spinner';
 import ErrorMessage from '../components/common/ErrorMessage';
+import { FiLogIn, FiMail, FiLock, FiArrowLeft } from 'react-icons/fi';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -11,90 +12,170 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect if already logged in
   useEffect(() => {
-      if (isAuthenticated) {
-          // Redirect to intended page or dashboard/profile
-          const from = location.state?.from?.pathname || '/'; // Redirect back or to home
-          navigate(from, { replace: true });
-      }
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    }
   }, [isAuthenticated, navigate, location.state]);
 
-  // Clear errors when component mounts or unmounts
   useEffect(() => {
-     return () => {
-        clearError();
-     };
+    return () => clearError();
   }, [clearError]);
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    clearError(); // Clear previous errors
-    const success = await login(email, password);
-    // Navigation is handled by the useEffect hook checking isAuthenticated
+    clearError();
+    await login(email, password);
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-200px)] bg-gray-50 py-12 px-4 sm:px-6 lg:px-8"> {/* Adjust min-height as needed */}
-      <div className="max-w-md w-full space-y-8 p-10 bg-white shadow-xl rounded-lg">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && <ErrorMessage message={error} />}
-          <input type="hidden" name="remember" defaultValue="true" />
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="email-address" className="sr-only">Email address</label>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">Password</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full mx-auto">
+        {/* Back Button */}
+        <button 
+          onClick={() => navigate(-1)}
+          className="flex items-center text-gray-600 hover:text-black mb-6 transition-colors"
+        >
+          <FiArrowLeft className="mr-2" />
+          Back
+        </button>
+
+        {/* Login Card */}
+        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-light text-gray-900 mb-2">Welcome back</h1>
+            <p className="text-gray-600">
+              Don't have an account?{' '}
+              <Link 
+                to="/register" 
+                className="text-black hover:underline font-medium"
+              >
+                Sign up
+              </Link>
+            </p>
           </div>
 
-          {/* Optional: Remember me / Forgot password */}
-          {/* <div className="flex items-center justify-between"> ... </div> */}
+          {error && <ErrorMessage message={error} className="mb-6" />}
 
-          <div>
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Email Field */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiMail className="text-gray-400" />
+                </div>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black focus:border-black"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiLock className="text-gray-400" />
+                </div>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black focus:border-black"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 border-gray-300 rounded text-black focus:ring-black"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                  Remember me
+                </label>
+              </div>
+              <div className="text-sm">
+                <Link 
+                  to="/forgot-password" 
+                  className="text-gray-600 hover:text-black hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className={`w-full flex justify-center items-center py-3 px-4 rounded-lg text-white font-medium ${
+                isLoading ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'
+              } transition-colors`}
             >
-              {isLoading ? <Spinner /> : 'Sign in'}
+              {isLoading ? (
+                <Spinner size="sm" />
+              ) : (
+                <>
+                  <FiLogIn className="mr-2" />
+                  Sign In
+                </>
+              )}
             </button>
+          </form>
+
+          {/* Social Login Options */}
+          <div className="mt-8">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Google
+              </button>
+              <button
+                type="button"
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Facebook
+              </button>
+            </div>
           </div>
-        </form>
-         <div className="text-sm text-center">
-             <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
-                 Don't have an account? Register
-             </Link>
-         </div>
+        </div>
       </div>
     </div>
   );

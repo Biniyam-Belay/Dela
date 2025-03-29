@@ -1,14 +1,13 @@
+// backend/src/routes/categoryRoutes.js
 import express from 'express';
-import { getAllCategories, createCategory } from '../controllers/categoryController.js';
-import { protect, authorize } from '../middleware/authMiddleware.js'; // Import middleware
-import { Role } from '@prisma/client'; // Import Role enum
+// Remove createCategory import
+import { getAllCategories } from '../controllers/categoryController.js';
+// No need for protect/authorize here
 
 const router = express.Router();
 
 router.route('/')
-  .get(getAllCategories)
-  .post(protect, authorize(Role.ADMIN), createCategory); // Protect and authorize ADMIN
-
-// Add routes for /:id (get single, update, delete) later
+  .get(getAllCategories); // Only keep GET for public viewing
+  // REMOVED .post(createCategory);
 
 export default router;

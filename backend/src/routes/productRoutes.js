@@ -1,16 +1,16 @@
+// backend/src/routes/productRoutes.js
 import express from 'express';
-import { getAllProducts, getProductByIdentifier, createProduct } from '../controllers/productController.js';
-import { protect, authorize } from '../middleware/authMiddleware.js'; // Import middleware
-import { Role } from '@prisma/client'; // Import Role enum from generated client
+// Remove createProduct import if no longer needed here
+import { getAllProducts, getProductByIdentifier } from '../controllers/productController.js';
+// No need for protect/authorize here unless specific public routes need it
 
 const router = express.Router();
 
 router.route('/')
-  .get(getAllProducts)
-  .post(protect, authorize(Role.ADMIN), createProduct); // Protect and authorize ADMIN
+  .get(getAllProducts);
+  // REMOVED .post(createProduct); - Handled by admin routes now
 
 router.route('/:identifier')
     .get(getProductByIdentifier);
- // Add PUT/DELETE with protection later
 
 export default router;

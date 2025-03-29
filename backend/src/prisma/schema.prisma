@@ -19,14 +19,14 @@ model User {
   id        String   @id @default(cuid()) // Using CUIDs for IDs is often a good practice
   email     String   @unique
   name      String? // Optional name
-  password  String   // Will store the hashed password
+  password  String // Will store the hashed password
   role      Role     @default(USER) // User roles (USER or ADMIN)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   addresses Address[] // User can have multiple addresses
-  orders    Order[]   // User can have multiple orders
-  cart      Cart?     // User has one cart (one-to-one)
+  orders    Order[] // User can have multiple orders
+  cart      Cart? // User has one cart (one-to-one)
 
   @@map("users") // Explicitly map to 'users' table (optional but good practice)
 }
@@ -67,21 +67,30 @@ model Category {
 }
 
 model Product {
-  id            String       @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String
-  slug          String       @unique // URL-friendly slug for product pages
+  slug          String    @unique // URL-friendly slug for product pages
   description   String
-  price         Decimal      @db.Decimal(10, 2) // Use Decimal for currency (10 total digits, 2 after decimal)
-  stockQuantity Int          @default(0)
-  images        String[]     // Store an array of image URLs/paths
-  categoryId    String?      // Optional: Product might not belong to a category initially
-  category      Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull) // Link to category, SetNull if category deleted
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  price         Decimal   @db.Decimal(10, 2) // Use Decimal for currency (10 total digits, 2 after decimal)
+  stockQuantity Int       @default(0)
+  images        String[] // Store an array of image URLs/paths
+  categoryId    String? // Optional: Product might not belong to a category initially
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull) // Link to category, SetNull if category deleted
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  orderItems    OrderItem[] // Product can be in multiple order items
-  cartItems     CartItem[]  // Product can be in multiple cart items
+  rating         Float?   @default(0) // Average rating (e.g., 4.5)
+  reviewCount    Int?     @default(0) // Number of reviews
+  originalPrice  Decimal? @db.Decimal(10, 2) // Price before discount
+  sellerName     String? // Or link to a Seller model if complex
+  sellerLocation String?
+  unitsSold      Int?     @default(0)
+  isActive      Boolean  @default(true) // Soft delete or inactive products
 
+  orderItems OrderItem[] // Product can be in multiple order items
+  cartItems  CartItem[] // Product can be in multiple cart items
+
+  @@index([isActive]) // Index for active products
   // Add indexes for common filtering/searching
   @@index([categoryId])
   @@index([name]) // If searching by name often
@@ -122,12 +131,12 @@ model Order {
   user            User        @relation(fields: [userId], references: [id], onDelete: Restrict) // Link to user (Restrict: prevent deleting user if they have orders)
   status          OrderStatus @default(PENDING)
   totalAmount     Decimal     @db.Decimal(10, 2)
-  shippingAddress Json        // Store shipping address snapshot at time of order
-  billingAddress  Json?       // Optional, could be same as shipping
+  shippingAddress Json // Store shipping address snapshot at time of order
+  billingAddress  Json? // Optional, could be same as shipping
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  items           OrderItem[] // Order contains multiple items
+  items OrderItem[] // Order contains multiple items
 
   // Index for fetching user orders or filtering by status
   @@index([userId])
@@ -136,24 +145,24 @@ model Order {
 }
 
 enum OrderStatus {
-  PENDING     // Order placed, awaiting payment confirmation or processing
-  PROCESSING  // Payment received, order is being processed
-  SHIPPED     // Order has been shipped
-  DELIVERED   // Order has been delivered
-  CANCELLED   // Order was cancelled
-  FAILED      // Payment failed or other issue
+  PENDING // Order placed, awaiting payment confirmation or processing
+  PROCESSING // Payment received, order is being processed
+  SHIPPED // Order has been shipped
+  DELIVERED // Order has been delivered
+  CANCELLED // Order was cancelled
+  FAILED // Payment failed or other issue
 }
 
 model OrderItem {
-  id             String   @id @default(cuid())
-  orderId        String
-  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade) // Link to order
-  productId      String
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Restrict) // Link to product (Restrict: prevent deleting product if it's in orders)
-  quantity       Int
+  id              String   @id @default(cuid())
+  orderId         String
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade) // Link to order
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Restrict) // Link to product (Restrict: prevent deleting product if it's in orders)
+  quantity        Int
   priceAtPurchase Decimal  @db.Decimal(10, 2) // Store the price *at the time of purchase*
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([orderId])
   @@index([productId])
