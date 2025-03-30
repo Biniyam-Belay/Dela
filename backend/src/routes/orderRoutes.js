@@ -6,7 +6,8 @@ import {
     updateOrderToPaid // Placeholder
 } from '../controllers/orderController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
-import { Role } from '@prisma/client'; // Import Role enum
+import pkg from '@prisma/client'; // Import Role enum
+const { Role } = pkg;
 
 const router = express.Router();
 
