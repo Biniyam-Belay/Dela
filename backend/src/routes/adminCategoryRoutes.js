@@ -7,7 +7,8 @@ import {
     deleteCategoryAdmin
 } from '../controllers/adminCategoryController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
-import { Role } from '@prisma/client';
+import pkg from '@prisma/client'; // Import Role enum
+const { Role } = pkg;
 
 const router = express.Router();
 

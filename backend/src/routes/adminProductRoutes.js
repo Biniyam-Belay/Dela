@@ -8,7 +8,8 @@ import {
 } from '../controllers/adminProductController.js'; // Controller for admin product actions
 import { protect, authorize } from '../middleware/authMiddleware.js'; // Auth middleware
 import { uploadProductImages } from '../middleware/uploadMiddleware.js'; // Image upload middleware
-import { Role } from '@prisma/client'; // Role enum for authorization
+import pkg from '@prisma/client'; // Import Role enum
+const { Role } = pkg;
 
 const router = express.Router();
 
