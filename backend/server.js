@@ -26,9 +26,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 🔥 REMOVE static serving if frontend is deployed separately
-// const publicDirectoryPath = path.join(__dirname, 'public');
-// app.use(express.static(publicDirectoryPath));
-// console.log(`Serving static files from: ${publicDirectoryPath}`);
+const publicDirectoryPath = path.join(__dirname, 'public');
+app.use(express.static(publicDirectoryPath));
+console.log(`Serving static files from: ${publicDirectoryPath}`);
 
 // API Routes
 app.get('/api/v1', (req, res) => res.send('SuriAddis API Running'));
