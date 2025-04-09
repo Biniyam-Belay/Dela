@@ -1,11 +1,10 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Define the datasource (your PostgreSQL connection)
-// Make sure the DATABASE_URL is set in your .env file
+// Ensure the datasource uses the Supabase database connection string
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL") // Update DATABASE_URL to point to Supabase
 }
 
 // Define the Prisma Client generator
