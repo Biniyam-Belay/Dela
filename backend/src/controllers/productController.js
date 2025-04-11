@@ -7,6 +7,9 @@ import { Prisma } from '@prisma/client'; // Import Prisma types if needed for ad
 // @route   GET /api/v1/products
 // @access  Public
 const getAllProducts = asyncHandler(async (req, res) => {
+    console.log('--- getAllProducts Request ---');
+    console.log('Query Params:', req.query);
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10; // Default 10 items per page
     const skip = (page - 1) * limit;
@@ -17,48 +20,75 @@ const getAllProducts = asyncHandler(async (req, res) => {
 
     // Add filtering conditions
     if (category) {
-        // Find category by slug or ID (assuming slug for now)
-        const categoryObj = await prisma.category.findUnique({ where: { slug: category } });
-        if (categoryObj) {
-            where.categoryId = categoryObj.id;
-        } else {
-            // Handle case where category slug is invalid - return no products?
-             return res.status(200).json({ success: true, count: 0, totalPages: 0, currentPage: page, data: [] });
+        try {
+            console.log(`Filtering by category slug: ${category}`);
+            // Find category by slug or ID (assuming slug for now)
+            const categoryObj = await prisma.category.findUnique({ where: { slug: category } });
+            if (categoryObj) {
+                where.categoryId = categoryObj.id;
+                console.log(`Found category ID: ${categoryObj.id}`);
+            } else {
+                console.log(`Category slug '${category}' not found. Returning empty results.`);
+                // Handle case where category slug is invalid - return no products?
+                 return res.status(200).json({ success: true, count: 0, totalPages: 0, currentPage: page, data: [] });
+            }
+        } catch (catError) {
+            console.error(`Error finding category by slug '${category}':`, catError);
+            // Decide how to handle category lookup error - maybe return 500 or empty list?
+            // For now, let it propagate via asyncHandler
+            throw new Error(`Failed to lookup category: ${category}`);
         }
     }
 
     if (search) {
+        console.log(`Searching for term: ${search}`);
         where.OR = [ // Search in name or description
             { name: { contains: search, mode: 'insensitive' } }, // 'insensitive' for case-insensitivity
             { description: { contains: search, mode: 'insensitive' } }
         ];
     }
 
-    // Get total count for pagination calculation
-    const totalProducts = await prisma.product.count({ where });
-    const totalPages = Math.ceil(totalProducts / limit);
+    console.log('Constructed WHERE clause:', JSON.stringify(where, null, 2));
 
-    const products = await prisma.product.findMany({
-        where,
-        skip: skip,
-        take: limit,
-        orderBy: {
-            createdAt: 'desc', // Default sort by newest
-        },
-        include: { // Optional: Include category info if needed on listing page
-           category: {
-             select: { name: true, slug: true } // Only select needed fields
-           }
-        }
-    });
+    try {
+        // Get total count for pagination calculation
+        console.log('Counting total products with WHERE clause...');
+        const totalProducts = await prisma.product.count({ where });
+        console.log(`Total products found: ${totalProducts}`);
+        const totalPages = Math.ceil(totalProducts / limit);
 
-    res.status(200).json({
-        success: true,
-        count: products.length,
-        totalPages,
-        currentPage: page,
-        data: products,
-    });
+        console.log(`Fetching products: Page ${page}, Limit ${limit}, Skip ${skip}`);
+        const products = await prisma.product.findMany({
+            where,
+            skip: skip,
+            take: limit,
+            orderBy: {
+                createdAt: 'desc', // Default sort by newest
+            },
+            include: { // Optional: Include category info if needed on listing page
+               category: {
+                 select: { name: true, slug: true } // Only select needed fields
+               }
+            }
+            // Add other includes or selects as needed
+        });
+        console.log(`Fetched ${products.length} products for this page.`);
+
+        res.status(200).json({
+            success: true,
+            count: products.length,
+            totalPages,
+            currentPage: page,
+            data: products,
+        });
+    } catch (dbError) {
+        console.error('--- Database Error in getAllProducts ---');
+        console.error('WHERE clause used:', JSON.stringify(where, null, 2));
+        console.error('Pagination:', { page, limit, skip });
+        console.error('Error:', dbError);
+        // Let asyncHandler forward the error to the global error handler
+        throw dbError;
+    }
 });
 
 // @desc    Get single product by slug or ID
