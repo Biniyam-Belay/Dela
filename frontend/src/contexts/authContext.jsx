@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
     if (token && !isTokenExpired(token)) {
       setLoading(true);
       try {
-        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-user-profile', {
+        const response = await fetch(import.meta.env.VITE_SUPABASE_GET_USER_PROFILE_URL, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

@@ -3,7 +3,7 @@ import apiClient from './apiClient';
 // Create a new order
 export const createOrderApi = async (orderData) => {
     try {
-        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/create-order', {
+        const response = await fetch(import.meta.env.VITE_SUPABASE_CREATE_ORDER_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -28,7 +28,7 @@ export const createOrderApi = async (orderData) => {
 // Fetch user's orders (Add this for the profile page later)
 export const fetchMyOrdersApi = async () => {
     try {
-        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-my-orders', {
+        const response = await fetch(import.meta.env.VITE_SUPABASE_GET_MY_ORDERS_URL, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -53,7 +53,7 @@ export const fetchMyOrdersApi = async () => {
 // Fetch a single order by ID (Add this for order detail page later)
 export const fetchOrderByIdApi = async (orderId) => {
     try {
-        const response = await fetch(`https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-order-detail?id=${orderId}`, {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_GET_ORDER_DETAIL_URL}?id=${orderId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
