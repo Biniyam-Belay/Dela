@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 
 // Create the context
 const CartContext = createContext(null);
@@ -34,30 +35,48 @@ export const CartProvider = ({ children }) => {
 
   // --- Cart Actions ---
 
-  const addItem = useCallback((productToAdd, quantity = 1) => {
-    setCartItems(prevItems => {
-      const existingItem = prevItems.find(item => item.product.id === productToAdd.id);
+  const addItem = useCallback(async (productToAdd, quantity = 1) => {
+    try {
+      // 1. Call add-to-cart Supabase function
+      const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/add-to-cart', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify({ productId: productToAdd.id, quantity })
+      });
 
-      if (existingItem) {
-        // Update quantity, respecting stock limit (if needed - basic implementation here)
-        const newQuantity = existingItem.quantity + quantity;
-        // Optional: Check against productToAdd.stockQuantity if available
-        // const cappedQuantity = Math.min(newQuantity, productToAdd.stockQuantity);
-
-        return prevItems.map(item =>
-          item.product.id === productToAdd.id
-            ? { ...item, quantity: newQuantity /* or cappedQuantity */ }
-            : item
-        );
-      } else {
-        // Add new item
-        // Optional: Check against productToAdd.stockQuantity
-        // const cappedQuantity = Math.min(quantity, productToAdd.stockQuantity);
-        return [...prevItems, { product: productToAdd, quantity: quantity /* or cappedQuantity */ }];
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-    });
-    // Add feedback later (e.g., toast notification)
-    console.log(`Added ${quantity} of ${productToAdd.name} to cart`);
+
+      const data = await response.json();
+
+      // 2. Update local cart
+      setCartItems(prevItems => {
+        const existingItem = prevItems.find(item => item.product.id === productToAdd.id);
+
+        if (existingItem) {
+          // Update quantity
+          const newQuantity = existingItem.quantity + quantity;
+          return prevItems.map(item =>
+            item.product.id === productToAdd.id
+              ? { ...item, quantity: newQuantity }
+              : item
+          );
+        } else {
+          // Add new item
+          return [...prevItems, { product: productToAdd, quantity: quantity }];
+        }
+      });
+
+      console.log(`Added ${quantity} of ${productToAdd.name} to cart`);
+    } catch (error) {
+      console.error("Error adding item to cart:", error);
+      // Handle error (e.g., display error message to user)
+    }
   }, []);
 
 

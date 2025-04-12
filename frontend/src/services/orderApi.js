@@ -2,14 +2,25 @@ import apiClient from './apiClient';
 
 // Create a new order
 export const createOrderApi = async (orderData) => {
-    // orderData should include { orderItems: [{ productId, quantity }], shippingAddress: {...} }
     try {
-        const response = await apiClient.post('/orders', orderData);
-        // Backend sends { success: true, message: '...', data: order }
-        return response.data;
+        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/create-order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            },
+            body: JSON.stringify(orderData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
     } catch (error) {
-        console.error("Error creating order:", error.response?.data || error.message);
-        // Re-throw the specific error structure from the backend if possible
+        console.error("Order API - Error creating order:", error.response?.data || error.message);
         throw error.response?.data || new Error('Failed to create order');
     }
 };
@@ -17,21 +28,47 @@ export const createOrderApi = async (orderData) => {
 // Fetch user's orders (Add this for the profile page later)
 export const fetchMyOrdersApi = async () => {
     try {
-        const response = await apiClient.get('/orders/myorders');
+        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-my-orders', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
         // Backend sends { success: true, count: num, data: orders[] }
-        return response.data;
+        return data;
     } catch (error) {
         console.error("Error fetching orders:", error.response?.data || error.message);
         throw error.response?.data || new Error('Failed to fetch orders');
     }
 };
 
- // Fetch a single order by ID (Add this for order detail page later)
+// Fetch a single order by ID (Add this for order detail page later)
 export const fetchOrderByIdApi = async (orderId) => {
     try {
-        const response = await apiClient.get(`/orders/${orderId}`);
+        const response = await fetch(`https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-order-detail?id=${orderId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
         // Backend sends { success: true, data: order }
-        return response.data;
+        return data;
     } catch (error) {
          console.error(`Error fetching order ${orderId}:`, error.response?.data || error.message);
          throw error.response?.data || new Error(`Failed to fetch order ${orderId}`);
