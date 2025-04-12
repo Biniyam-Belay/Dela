@@ -44,15 +44,8 @@ export const AuthProvider = ({ children }) => {
     if (token && !isTokenExpired(token)) {
       setLoading(true);
       try {
-        const response = await fetch(import.meta.env.VITE_SUPABASE_GET_USER_PROFILE_URL, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          },
-        });
-        const data = await response.json();
-        setUser(data); // Assuming Supabase function returns user data
+        const response = await apiClient.get('/auth/me');
+        setUser(response.data.data); // Assuming backend returns { success: true, data: user }
         setError(null);
       } catch (err) {
         console.error("Failed to fetch user:", err);

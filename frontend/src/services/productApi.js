@@ -52,7 +52,7 @@ export const fetchProductByIdentifier = async (identifier) => {
 export const fetchCategories = async () => {
   try {
     // Replace apiClient call with direct fetch to the Supabase Edge Function
-    const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-public-categories', {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-public-categories`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
