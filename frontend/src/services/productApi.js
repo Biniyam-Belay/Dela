@@ -4,7 +4,7 @@ import apiClient from './apiClient';
 export const fetchProducts = async (params = {}) => {
   try {
     // Construct the URL for the Supabase Edge Function
-    const functionUrl = new URL('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-public-products');
+    const functionUrl = new URL(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-public-products`);
 
     // Append query parameters from the params object
     Object.keys(params).forEach(key => {
