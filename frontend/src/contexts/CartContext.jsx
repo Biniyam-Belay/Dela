@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../utils/supabaseClient.js';
 
 // Create the context
 const CartContext = createContext(null);

@@ -1,5 +1,5 @@
 import apiClient from './apiClient'; // Assumes apiClient includes auth token
-import { supabase } from '../utils/supabaseClient'; // Assuming you have a supabaseClient configured
+import { supabase } from '../utils/supabaseClient.js'; // Assuming you have a supabaseClient configured
 
 // --- Admin Product API Functions ---
 
