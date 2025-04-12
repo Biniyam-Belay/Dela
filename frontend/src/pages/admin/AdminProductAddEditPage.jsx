@@ -20,25 +20,11 @@ const productSchema = z.object({
   stockQuantity: z.coerce.number({ invalid_type_error: 'Stock must be a whole number' })
     .int('Stock must be a whole number')
     .min(0, 'Stock cannot be negative'),
-  categoryId: z.string().optional().nullable().or(z.literal('')),
-  isActive: z.boolean().default(true),
-  originalPrice: z.coerce.number({ invalid_type_error: 'Original Price must be a number' })
-    .positive('Original Price must be positive')
-    .optional()
-    .nullable()
-    .or(z.literal('')),
-  rating: z.coerce.number({ invalid_type_error: 'Rating must be a number' })
-    .min(0)
-    .max(5)
-    .optional()
-    .nullable()
-    .or(z.literal('')),
-  reviewCount: z.coerce.number({ invalid_type_error: 'Review Count must be a whole number' })
-    .int()
-    .min(0)
-    .optional()
-    .nullable()
-    .or(z.literal('')),
+  categoryId: z.string().optional().nullable(),
+  isActive: z.boolean().optional(),
+  rating: z.coerce.number().min(0).max(5).optional().nullable().or(z.literal('')),
+  reviewCount: z.coerce.number().int().min(0).optional().nullable().or(z.literal('')),
+  originalPrice: z.coerce.number().positive().optional().nullable().or(z.literal('')),
   sellerName: z.string().max(100).optional().nullable(),
   sellerLocation: z.string().max(100).optional().nullable(),
   unitsSold: z.coerce.number({ invalid_type_error: 'Units Sold must be a whole number' })
@@ -87,48 +73,65 @@ const AdminProductAddEditPage = () => {
     },
   });
 
-  // Fetch categories and product data
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setError(null);
       try {
-        // Load categories
         const categoriesResponse = await fetchAdminCategories();
         setCategories(categoriesResponse.data || []);
 
-        // Load product if in edit mode
-        if (isEditMode && productId) {
+        if (isEditMode) {
           const productResponse = await fetchAdminProductById(productId);
-          const product = productResponse.data;
+          const productData = productResponse.data;
+          if (productData) {
+            reset({
+              name: productData.name || '',
+              description: productData.description || '',
+              price: productData.price || 0,
+              stockQuantity: productData.stock_quantity || 0,
+              categoryId: productData.category_id || '',
+              isActive: productData.is_active !== undefined ? productData.is_active : true,
+              rating: productData.rating || '',
+              reviewCount: productData.review_count || '',
+              originalPrice: productData.original_price || '',
+              sellerName: productData.seller_name || '',
+              sellerLocation: productData.seller_location || '',
+              unitsSold: productData.units_sold || '',
+            });
+            setExistingImages(productData.images || []);
+            setImagePreviews(productData.images?.map(img => `${backendUrl}${img}`) || []);
+          } else {
+            throw new Error('Product not found');
+          }
+        } else {
           reset({
-            name: product.name || '',
-            description: product.description || '',
-            price: product.price ? String(product.price) : '',
-            stockQuantity: product.stockQuantity !== null ? String(product.stockQuantity) : '',
-            categoryId: product.categoryId || '',
-            isActive: product.isActive !== undefined ? product.isActive : true,
-            originalPrice: product.originalPrice ? String(product.originalPrice) : '',
-            rating: product.rating !== null ? String(product.rating) : '',
-            reviewCount: product.reviewCount !== null ? String(product.reviewCount) : '',
-            sellerName: product.sellerName || '',
-            sellerLocation: product.sellerLocation || '',
-            unitsSold: product.unitsSold !== null ? String(product.unitsSold) : '',
+            name: '',
+            description: '',
+            price: '',
+            stockQuantity: 0,
+            categoryId: '',
+            isActive: true,
+            rating: '',
+            reviewCount: '',
+            originalPrice: '',
+            sellerName: '',
+            sellerLocation: '',
+            unitsSold: '',
           });
-          setExistingImages(product.images || []);
+          setExistingImages([]);
+          setImagePreviews([]);
         }
       } catch (err) {
-        setError(err.error || err.message || 'Failed to load data.');
+        setError(err.message || 'Failed to load data');
+        console.error("Error loading data:", err);
       } finally {
         setLoading(false);
       }
     };
 
     loadData();
-
-    return () => {
-      imagePreviews.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [isEditMode, productId, reset]);
+  }, [productId, isEditMode, reset, backendUrl]);
 
   const handleImageChange = (e) => {
     if (e.target.files) {
@@ -155,18 +158,30 @@ const AdminProductAddEditPage = () => {
   const onSubmit = async (data) => {
     setError(null);
     const formData = new FormData();
-    
-    // Append all form data
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && value !== '') {
-        formData.append(key, value);
-      }
-    });
 
-    // Append images
-    formData.append('existingImages', JSON.stringify(existingImages));
+    formData.append('name', data.name);
+    formData.append('description', data.description);
+    formData.append('price', data.price);
+    formData.append('stockQuantity', data.stockQuantity);
+    if (data.categoryId) formData.append('categoryId', data.categoryId);
+    formData.append('isActive', data.isActive);
+
+    if (data.rating) formData.append('rating', data.rating);
+    if (data.reviewCount) formData.append('reviewCount', data.reviewCount);
+    if (data.originalPrice) formData.append('originalPrice', data.originalPrice);
+    if (data.sellerName) formData.append('sellerName', data.sellerName);
+    if (data.sellerLocation) formData.append('sellerLocation', data.sellerLocation);
+    if (data.unitsSold) formData.append('unitsSold', data.unitsSold);
+
+    const imagesToDelete = existingImages.filter(img => !imagePreviews.includes(`${backendUrl}${img}`));
+    if (imagesToDelete.length > 0) {
+      formData.append('imagesToDelete', JSON.stringify(imagesToDelete));
+    }
+    const keptExistingImages = existingImages.filter(img => imagePreviews.includes(`${backendUrl}${img}`));
+    formData.append('images', JSON.stringify(keptExistingImages));
+
     newImageFiles.forEach((file) => {
-      formData.append('images', file);
+      formData.append('newImages', file);
     });
 
     try {
@@ -177,7 +192,8 @@ const AdminProductAddEditPage = () => {
       }
       navigate('/admin/products');
     } catch (err) {
-      setError(err.error || err.message || `Failed to ${isEditMode ? 'update' : 'create'} product.`);
+      setError(err.response?.data?.error || err.message || `Failed to ${isEditMode ? 'update' : 'create'} product.`);
+      console.error("Submit error:", err.response?.data || err);
     }
   };
 
@@ -192,7 +208,6 @@ const AdminProductAddEditPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8 py-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
@@ -213,19 +228,15 @@ const AdminProductAddEditPage = () => {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && <ErrorMessage message={error} className="mb-6" />}
 
-        {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-gray-100">
-            {/* Basic Information */}
             <div className="mb-8">
               <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
                 Basic Information
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Name */}
                 <div className="md:col-span-2">
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                     Product Name *
@@ -243,7 +254,6 @@ const AdminProductAddEditPage = () => {
                   )}
                 </div>
 
-                {/* Description */}
                 <div className="md:col-span-2">
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
                     Description *
@@ -261,7 +271,6 @@ const AdminProductAddEditPage = () => {
                   )}
                 </div>
 
-                {/* Category */}
                 <div>
                   <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700 mb-1">
                     Category
@@ -285,7 +294,6 @@ const AdminProductAddEditPage = () => {
                   )}
                 </div>
 
-                {/* Active Status */}
                 <div className="flex items-center">
                   <input
                     type="checkbox"
@@ -300,13 +308,11 @@ const AdminProductAddEditPage = () => {
               </div>
             </div>
 
-            {/* Pricing & Inventory */}
             <div className="mb-8">
               <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
                 Pricing & Inventory
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Price */}
                 <div>
                   <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
                     Price *
@@ -325,7 +331,6 @@ const AdminProductAddEditPage = () => {
                   )}
                 </div>
 
-                {/* Original Price */}
                 <div>
                   <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-700 mb-1">
                     Original Price
@@ -344,7 +349,6 @@ const AdminProductAddEditPage = () => {
                   )}
                 </div>
 
-                {/* Stock Quantity */}
                 <div>
                   <label htmlFor="stockQuantity" className="block text-sm font-medium text-gray-700 mb-1">
                     Stock Quantity *
@@ -363,7 +367,6 @@ const AdminProductAddEditPage = () => {
                   )}
                 </div>
 
-                {/* Units Sold */}
                 <div>
                   <label htmlFor="unitsSold" className="block text-sm font-medium text-gray-700 mb-1">
                     Units Sold
@@ -384,13 +387,11 @@ const AdminProductAddEditPage = () => {
               </div>
             </div>
 
-            {/* Additional Information */}
             <div className="mb-8">
               <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Additional Information
+                Optional Details
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Rating */}
                 <div>
                   <label htmlFor="rating" className="block text-sm font-medium text-gray-700 mb-1">
                     Rating (0-5)
@@ -398,8 +399,6 @@ const AdminProductAddEditPage = () => {
                   <input
                     type="number"
                     step="0.1"
-                    min="0"
-                    max="5"
                     id="rating"
                     {...register('rating')}
                     className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
@@ -411,7 +410,6 @@ const AdminProductAddEditPage = () => {
                   )}
                 </div>
 
-                {/* Review Count */}
                 <div>
                   <label htmlFor="reviewCount" className="block text-sm font-medium text-gray-700 mb-1">
                     Review Count
@@ -419,7 +417,6 @@ const AdminProductAddEditPage = () => {
                   <input
                     type="number"
                     step="1"
-                    min="0"
                     id="reviewCount"
                     {...register('reviewCount')}
                     className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
@@ -431,7 +428,6 @@ const AdminProductAddEditPage = () => {
                   )}
                 </div>
 
-                {/* Seller Name */}
                 <div>
                   <label htmlFor="sellerName" className="block text-sm font-medium text-gray-700 mb-1">
                     Seller Name
@@ -449,7 +445,6 @@ const AdminProductAddEditPage = () => {
                   )}
                 </div>
 
-                {/* Seller Location */}
                 <div>
                   <label htmlFor="sellerLocation" className="block text-sm font-medium text-gray-700 mb-1">
                     Seller Location
@@ -469,13 +464,11 @@ const AdminProductAddEditPage = () => {
               </div>
             </div>
 
-            {/* Images */}
             <div className="mb-8">
               <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
                 Product Images
               </h2>
               
-              {/* Existing Images */}
               {isEditMode && existingImages.length > 0 && (
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-gray-700 mb-3">Current Images</h3>
@@ -504,7 +497,6 @@ const AdminProductAddEditPage = () => {
                 </div>
               )}
 
-              {/* New Image Previews */}
               {imagePreviews.length > 0 && (
                 <div className="mb-6">
                   <h3 className="text-sm font-medium text-gray-700 mb-3">New Images to Upload</h3>
@@ -529,7 +521,6 @@ const AdminProductAddEditPage = () => {
                 </div>
               )}
 
-              {/* File Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {isEditMode ? 'Add More Images' : 'Upload Images'}
@@ -556,7 +547,6 @@ const AdminProductAddEditPage = () => {
               </div>
             </div>
 
-            {/* Form Actions */}
             <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
               <Link
                 to="/admin/products"

@@ -1,9 +1,10 @@
 // backend/prisma/seed.js
 
+import 'dotenv/config'; // Load .env file
 import { PrismaClient } from '@prisma/client';
 // Adjust the path based on your project structure (e.g., ../../src/utils if seed.js is in prisma/)
-import { hashPassword } from '../src/utils/passwordHelper.js';
-import generateSlug from '../src/utils/generateSlug.js';
+import { hashPassword } from '../utils/passwordHelper.js'
+import generateSlug from '../utils/generateSlug.js';
 
 const prisma = new PrismaClient();
 
