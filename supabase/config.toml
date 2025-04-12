@@ -1,0 +1,33 @@
+
+[functions.get-public-categories]
+enabled = true
+verify_jwt = true
+import_map = "./functions/get-public-categories/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/get-public-categories/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/get-public-categories/*.html" ]
+
+[functions.get-public-products]
+enabled = true
+verify_jwt = true
+import_map = "./functions/get-public-products/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/get-public-products/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/get-public-products/*.html" ]
+
+[functions.get-public-product-detail]
+enabled = true
+verify_jwt = true
+import_map = "./functions/get-public-product-detail/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/get-public-product-detail/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/get-public-product-detail/*.html" ]

@@ -44,15 +44,21 @@ export const AuthProvider = ({ children }) => {
     if (token && !isTokenExpired(token)) {
       setLoading(true);
       try {
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`; // Ensure header is set
-        const response = await apiClient.get('/auth/me');
-        setUser(response.data.data); // Assuming backend returns { success: true, data: user }
+        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-user-profile', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          },
+        });
+        const data = await response.json();
+        setUser(data); // Assuming Supabase function returns user data
         setError(null);
       } catch (err) {
         console.error("Failed to fetch user:", err);
         setUser(null);
         saveToken(null); // Clear invalid token
-        setError(err.response?.data?.error || 'Failed to verify session.');
+        setError(err.message || 'Failed to verify session.');
       } finally {
         setLoading(false);
       }
