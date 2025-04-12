@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '../utils/supabaseClient.js';
+import { supabase } from '../utils/supabaseClient'; // Adjust the import based on your project structure
 
 // Create the context
 const CartContext = createContext(null);
@@ -39,7 +39,7 @@ export const CartProvider = ({ children }) => {
   const addItem = useCallback(async (productToAdd, quantity = 1) => {
     try {
       // 1. Call add-to-cart Supabase function
-      const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/add-to-cart', {
+      const response = await fetch(import.meta.env.VITE_SUPABASE_ADD_TO_CART_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

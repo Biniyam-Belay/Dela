@@ -1,5 +1,5 @@
 import apiClient from './apiClient'; // Assumes apiClient includes auth token
-import { supabase } from '../utils/supabaseClient.js'; // Assuming you have a supabaseClient configured
+import { supabase } from '../utils/supabaseClient'; // Assuming you have a supabaseClient configured
 
 // --- Admin Product API Functions ---
 
@@ -7,7 +7,7 @@ import { supabase } from '../utils/supabaseClient.js'; // Assuming you have a su
 export const fetchAdminProducts = async (params = {}) => {
     try {
         // Params like { page: 1, limit: 10, search: 'term' }
-        const functionUrl = new URL('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-admin-products');
+        const functionUrl = new URL(import.meta.env.VITE_SUPABASE_GET_ADMIN_PRODUCTS_URL);
 
         // Append query parameters from the params object
         Object.keys(params).forEach(key => {
@@ -41,7 +41,7 @@ export const fetchAdminProducts = async (params = {}) => {
 // Fetch a single product by ID for editing
 export const fetchAdminProductById = async (productId) => {
     try {
-        const response = await fetch(`https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-admin-product-detail?id=${productId}`, {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_GET_ADMIN_PRODUCT_DETAIL_URL}?id=${productId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export const fetchAdminProductById = async (productId) => {
 // Delete a product by ID
 export const deleteAdminProduct = async (productId) => {
     try {
-        const response = await fetch(`https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/delete-admin-product?id=${productId}`, {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_DELETE_ADMIN_PRODUCT_URL}?id=${productId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -125,7 +125,7 @@ export const createAdminProduct = async (formData) => {
         };
 
         // 4. Call create-admin-product function
-        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/create-admin-product', {
+        const response = await fetch(import.meta.env.VITE_SUPABASE_CREATE_ADMIN_PRODUCT_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -185,7 +185,7 @@ export const updateAdminProduct = async (productId, formData) => {
         };
 
         // 4. Call update-admin-product function
-        const response = await fetch(`https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/update-admin-product?id=${productId}`, {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_UPDATE_ADMIN_PRODUCT_URL}?id=${productId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -214,7 +214,7 @@ export const updateAdminProduct = async (productId, formData) => {
 // Fetch all categories for admin view
 export const fetchAdminCategories = async () => {
     try {
-        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-admin-categories', {
+        const response = await fetch(import.meta.env.VITE_SUPABASE_GET_ADMIN_CATEGORIES_URL, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -239,7 +239,7 @@ export const fetchAdminCategories = async () => {
 // Fetch single category by ID for editing
 export const fetchAdminCategoryById = async (categoryId) => {
     try {
-        const response = await fetch(`https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-admin-category-detail?id=${categoryId}`, {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_GET_ADMIN_CATEGORY_DETAIL_URL}?id=${categoryId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -264,7 +264,7 @@ export const fetchAdminCategoryById = async (categoryId) => {
 // Create a new category
 export const createAdminCategory = async (categoryData) => {
     try {
-        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/create-admin-category', {
+        const response = await fetch(import.meta.env.VITE_SUPABASE_CREATE_ADMIN_CATEGORY_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -290,7 +290,7 @@ export const createAdminCategory = async (categoryData) => {
 // Update an existing category
 export const updateAdminCategory = async (categoryId, categoryData) => {
     try {
-        const response = await fetch(`https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/update-admin-category?id=${categoryId}`, {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_UPDATE_ADMIN_CATEGORY_URL}?id=${categoryId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -316,7 +316,7 @@ export const updateAdminCategory = async (categoryId, categoryData) => {
 // Delete a category by ID
 export const deleteAdminCategory = async (categoryId) => {
     try {
-        const response = await fetch(`https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/delete-admin-category?id=${categoryId}`, {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_DELETE_ADMIN_CATEGORY_URL}?id=${categoryId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -341,7 +341,7 @@ export const deleteAdminCategory = async (categoryId) => {
 // Fetch all users (admin only)
 export const fetchAllUsers = async () => {
     try {
-        const response = await fetch('https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/get-users', {
+        const response = await fetch(import.meta.env.VITE_SUPABASE_GET_USERS_URL, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -366,7 +366,7 @@ export const fetchAllUsers = async () => {
 // Delete a user (admin only)
 export const deleteUserApi = async (userId) => {
     try {
-        const response = await fetch(`https://exutmsxktrnltvdgnlop.supabase.co/functions/v1/delete-user?id=${userId}`, {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_DELETE_USER_URL}?id=${userId}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
