@@ -1,12 +1,20 @@
 // src/config/db.js
 import { PrismaClient } from '@prisma/client';
+import dotenv from 'dotenv';
 
-// Update the Prisma client to use the Supabase database connection string
+// Load environment variables from .env file
+dotenv.config();
+
+// Ensure DATABASE_URL is loaded
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not defined.');
+}
+
+// Instantiate Prisma Client, explicitly passing the database URL
 const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
   datasources: {
     db: {
-      url: process.env.DATABASE_URL, // Ensure DATABASE_URL is set to the Supabase connection string
+      url: process.env.DATABASE_URL,
     },
   },
 });

@@ -15,10 +15,9 @@ generator client {
 // --- Models ---
 
 model User {
-  id        String   @id @default(cuid()) // Using CUIDs for IDs is often a good practice
+  id        String   @id @default(uuid()) // Using CUIDs for IDs is often a good practice
   email     String   @unique
   name      String? // Optional name
-  password  String // Will store the hashed password
   role      Role     @default(USER) // User roles (USER or ADMIN)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -36,7 +35,7 @@ enum Role {
 }
 
 model Address {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade) // Link to user, Cascade means delete addresses if user is deleted
   street    String
@@ -54,7 +53,7 @@ model Address {
 }
 
 model Category {
-  id          String    @id @default(cuid())
+  id          String    @id @default(uuid())
   name        String    @unique // Category names should be unique
   slug        String    @unique // URL-friendly slug for category pages
   description String?
@@ -66,7 +65,7 @@ model Category {
 }
 
 model Product {
-  id            String    @id @default(cuid())
+  id            String    @id @default(uuid())
   name          String
   slug          String    @unique // URL-friendly slug for product pages
   description   String
@@ -84,7 +83,7 @@ model Product {
   sellerName     String? // Or link to a Seller model if complex
   sellerLocation String?
   unitsSold      Int?     @default(0)
-  isActive      Boolean  @default(true) // Soft delete or inactive products
+  isActive       Boolean  @default(true) // Soft delete or inactive products
 
   orderItems OrderItem[] // Product can be in multiple order items
   cartItems  CartItem[] // Product can be in multiple cart items
@@ -97,7 +96,7 @@ model Product {
 }
 
 model Cart {
-  id        String     @id @default(cuid())
+  id        String     @id @default(uuid())
   userId    String     @unique // Each user has only one cart
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade) // Link to user
   createdAt DateTime   @default(now())
@@ -108,7 +107,7 @@ model Cart {
 }
 
 model CartItem {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   cartId    String
   cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade) // Link to cart
   productId String
@@ -125,7 +124,7 @@ model CartItem {
 }
 
 model Order {
-  id              String      @id @default(cuid())
+  id              String      @id @default(uuid())
   userId          String
   user            User        @relation(fields: [userId], references: [id], onDelete: Restrict) // Link to user (Restrict: prevent deleting user if they have orders)
   status          OrderStatus @default(PENDING)
@@ -153,7 +152,7 @@ enum OrderStatus {
 }
 
 model OrderItem {
-  id              String   @id @default(cuid())
+  id              String   @id @default(uuid())
   orderId         String
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade) // Link to order
   productId       String

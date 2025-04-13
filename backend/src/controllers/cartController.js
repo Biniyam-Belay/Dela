@@ -1,6 +1,7 @@
 import prisma from "../prisma/prisma.js";
 import { validationResult, body } from 'express-validator';
 import { Prisma } from '@prisma/client'; // Import Prisma types for specific error handling
+import { v4 as uuidv4 } from 'uuid'; // Import uuid generator
 
 // Assuming you have a logger instance (e.g., Winston, Pino)
 // import logger from '../utils/logger';
@@ -124,8 +125,9 @@ export const addToCart = async (req, res, next) => { // Added next
             });
 
             if (!cart) {
+                const newCartId = uuidv4(); // Explicitly generate UUID
                 cart = await tx.cart.create({
-                    data: { userId: userId }
+                    data: { id: newCartId, userId: userId }
                 });
                 // logger.info(`Created new cart ${cart.id} for user: ${userId}`);
             }

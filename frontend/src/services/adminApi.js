@@ -33,8 +33,13 @@ export const fetchAdminProducts = async (params = {}) => {
         // Expects { success, count, totalProducts, totalPages, currentPage, data }
         return data;
     } catch (error) {
-        console.error("Admin API - Error fetching products:", error.response?.data || error.message);
-        throw error.response?.data || new Error('Failed to fetch products');
+        console.error(`Admin API - Error fetching products (Params: ${JSON.stringify(params)}):`, {
+            message: error.message,
+            status: error.response?.status, // Log status if available
+            data: error.response?.data,     // Log data if available
+            isNetworkError: !error.response // Check if it might be a network/CORS issue
+        });
+        throw error.response?.data || new Error(`Failed to fetch products. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -58,8 +63,13 @@ export const fetchAdminProductById = async (productId) => {
         // Expects { success, data: product }
         return data;
     } catch (error) {
-        console.error(`Admin API - Error fetching product ${productId}:`, error.response?.data || error.message);
-        throw error.response?.data || new Error(`Failed to fetch product ${productId}`);
+        console.error(`Admin API - Error fetching product ${productId}:`, {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to fetch product ${productId}. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -83,46 +93,57 @@ export const deleteAdminProduct = async (productId) => {
         // Expects { success, message, data: {} }
         return data;
     } catch (error) {
-        console.error(`Admin API - Error deleting product ${productId}:`, error.response?.data || error.message);
-        throw error.response?.data || new Error(`Failed to delete product ${productId}`);
+        console.error(`Admin API - Error deleting product ${productId}:`, {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to delete product ${productId}. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
 // Create a new product (using Supabase function and Storage API)
 export const createAdminProduct = async (formData) => {
     try {
-        // 1. Extract image files from formData
-        const imageFiles = formData.getAll('images'); // Assuming the field name is 'images'
+        // 1. Extract NEW image files from formData
+        const newImageFiles = formData.getAll('newImages'); // Use 'newImages' field
 
-        // 2. Upload images to Supabase Storage
-        const imageUrls = [];
-        for (const imageFile of imageFiles) {
+        // 2. Upload NEW images to Supabase Storage and get relative paths
+        const uploadedImagePaths = [];
+        for (const imageFile of newImageFiles) {
+            const uniqueFileName = `${Date.now()}-${imageFile.name.replace(/\s+/g, '_')}`; // Ensure unique names
             const { data, error } = await supabase
                 .storage
-                .from('products') // Replace 'products' with your bucket name
-                .upload(`${Date.now()}-${imageFile.name}`, imageFile, {
+                .from('products') // Your bucket name
+                .upload(uniqueFileName, imageFile, {
                     cacheControl: '3600',
-                    upsert: false
+                    upsert: false // Don't overwrite existing files with the same name (though unlikely with timestamp)
                 });
 
             if (error) {
                 console.error("Error uploading image:", error);
-                throw new Error('Failed to upload image');
+                // Consider cleanup: delete already uploaded images for this product if one fails?
+                throw new Error(`Failed to upload image: ${imageFile.name}`);
             }
 
-            imageUrls.push(supabase.storage.from('products').getPublicUrl(data.path).data.publicUrl);
+            if (data?.path) {
+                uploadedImagePaths.push(`/${data.path}`); // Store relative path starting with '/'
+            } else {
+                console.warn("Upload successful but path not found for:", imageFile.name);
+                // Handle cases where path might be missing, though unlikely on success
+            }
         }
 
-        // 3. Create product data object
-        const productData = {
-            name: formData.get('name'),
-            description: formData.get('description'),
-            price: formData.get('price'),
-            stockQuantity: formData.get('stockQuantity'),
-            categoryId: formData.get('categoryId'),
-            images: imageUrls, // Add image URLs to the product data
-            // Add other product fields here
-        };
+        // 3. Create product data object for the backend function
+        const productData = {};
+        // Iterate over formData entries and build productData, excluding files
+        for (const [key, value] of formData.entries()) {
+            if (key !== 'newImages') { // Exclude the file input field itself
+                productData[key] = value;
+            }
+        }
+        productData.images = uploadedImagePaths; // Add the array of relative image paths
 
         // 4. Call create-admin-product function
         const response = await fetch(import.meta.env.VITE_SUPABASE_CREATE_ADMIN_PRODUCT_URL, {
@@ -131,11 +152,17 @@ export const createAdminProduct = async (formData) => {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
             },
-            body: JSON.stringify(productData)
+            body: JSON.stringify(productData) // Send structured JSON data
         });
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            // Attempt to delete uploaded images if backend function fails
+            if (uploadedImagePaths.length > 0) {
+                const pathsToDelete = uploadedImagePaths.map(p => p.substring(1)); // Remove leading '/' for deletion API
+                await supabase.storage.from('products').remove(pathsToDelete);
+                console.log("Cleaned up uploaded images due to backend error.");
+            }
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
 
@@ -143,50 +170,64 @@ export const createAdminProduct = async (formData) => {
         // Expects { success, data: product }
         return data;
     } catch (error) {
-        console.error("Admin API - Error creating product:", error.response?.data || error.message);
-        throw error.response?.data || new Error('Failed to create product');
+        console.error("Admin API - Error creating product:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw new Error(error.message || `Failed to create product. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
 // Update an existing product (using Supabase function and Storage API)
 export const updateAdminProduct = async (productId, formData) => {
     try {
-        // 1. Extract image files from formData
-        const imageFiles = formData.getAll('images'); // Assuming the field name is 'images'
+        // 1. Extract data from formData
+        const newImageFiles = formData.getAll('newImages');
+        const imagesToDelete = JSON.parse(formData.get('imagesToDelete') || '[]'); // Array of relative paths (e.g., /image.jpg)
+        const existingImages = JSON.parse(formData.get('images') || '[]'); // Array of existing relative paths to keep
 
-        // 2. Upload images to Supabase Storage
-        const imageUrls = [];
-        for (const imageFile of imageFiles) {
+        // 2. Upload NEW images and get relative paths
+        const newlyUploadedPaths = [];
+        for (const imageFile of newImageFiles) {
+            const uniqueFileName = `${Date.now()}-${imageFile.name.replace(/\s+/g, '_')}`;
             const { data, error } = await supabase
                 .storage
-                .from('products') // Replace 'products' with your bucket name
-                .upload(`${Date.now()}-${imageFile.name}`, imageFile, {
+                .from('products')
+                .upload(uniqueFileName, imageFile, {
                     cacheControl: '3600',
                     upsert: false
                 });
 
             if (error) {
                 console.error("Error uploading image:", error);
-                throw new Error('Failed to upload image');
+                throw new Error(`Failed to upload new image: ${imageFile.name}`);
             }
-
-            imageUrls.push(supabase.storage.from('products').getPublicUrl(data.path).data.publicUrl);
+            if (data?.path) {
+                newlyUploadedPaths.push(`/${data.path}`); // Store relative path starting with '/'
+            } else {
+                console.warn("Upload successful but path not found for:", imageFile.name);
+            }
         }
 
-        // 3. Create product data object
-        const productData = {
-            name: formData.get('name'),
-            description: formData.get('description'),
-            price: formData.get('price'),
-            stockQuantity: formData.get('stockQuantity'),
-            categoryId: formData.get('categoryId'),
-            images: imageUrls, // Add image URLs to the product data
-            // Add other product fields here
-        };
+        // 3. Combine existing and new image paths
+        const finalImagePaths = [...existingImages, ...newlyUploadedPaths];
 
-        // 4. Call update-admin-product function
+        // 4. Create product data object for the backend function
+        const productData = {};
+        for (const [key, value] of formData.entries()) {
+            // Exclude file inputs and image management fields handled separately
+            if (!['newImages', 'imagesToDelete', 'images'].includes(key)) {
+                productData[key] = value;
+            }
+        }
+        productData.images = finalImagePaths; // Set the final list of relative paths
+        productData.imagesToDelete = imagesToDelete; // Pass paths to delete to the backend
+
+        // 5. Call update-admin-product function
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_UPDATE_ADMIN_PRODUCT_URL}?id=${productId}`, {
-            method: 'PUT',
+            method: 'PUT', // Or PATCH depending on your backend function
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
@@ -196,18 +237,31 @@ export const updateAdminProduct = async (productId, formData) => {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
+            // Attempt to delete newly uploaded images if backend function fails
+            if (newlyUploadedPaths.length > 0) {
+                const pathsToDelete = newlyUploadedPaths.map(p => p.substring(1)); // Remove leading '/'
+                await supabase.storage.from('products').remove(pathsToDelete);
+                console.log("Cleaned up newly uploaded images due to backend update error.");
+            }
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
+
+        // Note: The backend function should handle deleting the 'imagesToDelete' from storage *after* DB update succeeds.
+        // This frontend code assumes the backend will do the deletion.
 
         const data = await response.json();
         // Expects { success, data: product }
         return data;
     } catch (error) {
-        console.error(`Admin API - Error updating product ${productId}:`, error.response?.data || error.message);
-        throw error.response?.data || new Error(`Failed to update product ${productId}`);
+        console.error(`Admin API - Error updating product ${productId}:`, {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw new Error(error.message || `Failed to update product ${productId}. Status: ${error.response?.status || 'N/A'}`);
     }
 };
-
 
 // --- Admin Category API Functions ---
 
@@ -231,8 +285,13 @@ export const fetchAdminCategories = async () => {
         // Expects { success, count, data: categories }
         return data;
     } catch (error) {
-        console.error("Admin API - Error fetching categories:", error.response?.data || error.message);
-        throw error.response?.data || new Error('Failed to fetch categories');
+        console.error("Admin API - Error fetching categories:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to fetch categories. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -256,8 +315,13 @@ export const fetchAdminCategoryById = async (categoryId) => {
         // Expects { success, data: category }
         return data;
     } catch (error) {
-        console.error(`Admin API - Error fetching category ${categoryId}:`, error.response?.data || error.message);
-        throw error.response?.data || new Error(`Failed to fetch category ${categoryId}`);
+        console.error(`Admin API - Error fetching category ${categoryId}:`, {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to fetch category ${categoryId}. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -282,8 +346,13 @@ export const createAdminCategory = async (categoryData) => {
         // Expects { success, data: category }
         return data;
     } catch (error) {
-        console.error("Admin API - Error creating category:", error.response?.data || error.message);
-        throw error.response?.data || new Error('Failed to create category');
+        console.error("Admin API - Error creating category:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to create category. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -308,8 +377,13 @@ export const updateAdminCategory = async (categoryId, categoryData) => {
         // Expects { success, data: category }
         return data;
     } catch (error) {
-        console.error(`Admin API - Error updating category ${categoryId}:`, error.response?.data || error.message);
-        throw error.response?.data || new Error(`Failed to update category ${categoryId}`);
+        console.error(`Admin API - Error updating category ${categoryId}:`, {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to update category ${categoryId}. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -333,8 +407,13 @@ export const deleteAdminCategory = async (categoryId) => {
         // Expects { success, message, data: {} }
         return data;
     } catch (error) {
-        console.error(`Admin API - Error deleting category ${categoryId}:`, error.response?.data || error.message);
-        throw error.response?.data || new Error(`Failed to delete category ${categoryId}`);
+        console.error(`Admin API - Error deleting category ${categoryId}:`, {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to delete category ${categoryId}. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -358,8 +437,13 @@ export const fetchAllUsers = async () => {
         // Expects { success: true, data: users[] }
         return data;
     } catch (error) {
-        console.error("Admin API - Error fetching users:", error.response?.data || error.message);
-        throw error.response?.data || new Error('Failed to fetch users');
+        console.error("Admin API - Error fetching users:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to fetch users. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -383,7 +467,12 @@ export const deleteUserApi = async (userId) => {
         // Expects { success: true, message: "User deleted successfully" }
         return data;
     } catch (error) {
-        console.error("Admin API - Error deleting user:", error.response?.data || error.message);
-        throw error.response?.data || new Error('Failed to delete user');
+        console.error("Admin API - Error deleting user:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to delete user. Status: ${error.response?.status || 'N/A'}`);
     }
 };
