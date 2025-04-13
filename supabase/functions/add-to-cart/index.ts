@@ -3,42 +3,70 @@
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { PrismaClient } from 'npm:@prisma/client/edge'; // Use npm: specifier
-import { corsHeaders } from '../_shared/cors.ts'; // Import shared CORS headers
-import { v4 as uuidv4 } from "https://deno.land/std@0.224.0/uuid/mod.ts"; // Import Deno standard UUID
+import { Prisma, PrismaClient } from 'npm:@prisma/client/edge'; // Uncomment import
+import { corsHeaders } from '../_shared/cors.ts';
+import { v4 as uuidv4 } from "https://deno.land/std@0.224.0/uuid/mod.ts";
 
-console.log("Add-to-cart function script loaded."); // Log script load
+console.log("Add-to-cart function script loaded.");
+
+// Function to check required environment variables
+function checkEnvVars() {
+  const requiredVars = ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'];
+  const missingVars = requiredVars.filter(v => !Deno.env.get(v));
+  if (missingVars.length > 0) {
+    console.error(`Missing environment variables: ${missingVars.join(', ')}`);
+    return false;
+  }
+  console.log("All required environment variables are present.");
+  return true;
+}
 
 serve(async (req) => {
-  console.log(`Received request: ${req.method} ${req.url}`); // Log every request
+  console.log(`Received request: ${req.method} ${req.url}`);
 
   // Handle CORS preflight request FIRST
   if (req.method === 'OPTIONS') {
-    console.log("Handling OPTIONS preflight request."); // Log OPTIONS handling
+    console.log("Handling OPTIONS preflight request.");
     return new Response('ok', { headers: corsHeaders });
+  }
+
+  // Check environment variables early
+  if (!checkEnvVars()) {
+      return new Response(JSON.stringify({ success: false, error: 'Server configuration error: Missing environment variables.' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+      });
   }
 
   // Initialize Prisma Client *inside* the handler, after OPTIONS check
   let prisma;
   try {
+    const dbUrl = Deno.env.get('DATABASE_URL'); // Already checked, but get it again
     console.log("Initializing Prisma Client for request...");
     prisma = new PrismaClient({
       datasources: {
         db: {
-          url: Deno.env.get('DATABASE_URL'),
+          url: dbUrl,
         },
       },
     });
+    // Attempt a simple query to force connection/validation early (optional, but can help diagnose)
+    // await prisma.$queryRaw`SELECT 1`;
     console.log("Prisma Client initialized successfully for request.");
   } catch (initError) {
     console.error("FATAL: Prisma Client initialization failed:", initError);
-    return new Response(JSON.stringify({ success: false, error: 'Database initialization error' }), {
+    let errorMsg = 'Database initialization error.';
+    if (initError instanceof Prisma.PrismaClientInitializationError) {
+        errorMsg = `Prisma Initialization Error: ${initError.message}. Error Code: ${initError.errorCode || 'N/A'}`;
+        // You might want to check initError.errorCode for specific issues
+    }
+    return new Response(JSON.stringify({ success: false, error: errorMsg }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500, // Internal Server Error
+      status: 503, // Service Unavailable might be more appropriate
     });
   }
 
-  // Now proceed with the rest of the logic, using the initialized `prisma` instance
+  // --- Restore Main Logic ---
   try {
     console.log("Processing non-OPTIONS request...");
     // 1. Get User ID from JWT
@@ -46,11 +74,13 @@ serve(async (req) => {
     if (!authHeader) {
       throw new Error('Missing Authorization header');
     }
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    // Use checked env vars
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
       console.error('Auth error:', userError);
@@ -129,7 +159,7 @@ serve(async (req) => {
 
     // 4. Return Success Response
     console.log("Deno: Transaction successful. Sending updated cart to client.");
-    return new Response(JSON.stringify(updatedCart), {
+    return new Response(JSON.stringify(updatedCart), { // Return the actual cart data
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
@@ -139,6 +169,7 @@ serve(async (req) => {
     let status = 500;
     let message = error.message || 'Internal Server Error';
 
+    // Specific error handling remains the same
     if (error.message === 'ProductNotFound') {
       status = 404;
       message = 'Product not found.';
@@ -147,6 +178,10 @@ serve(async (req) => {
       message = 'Insufficient stock.';
     } else if (error.code === 'P2011' && error.message.includes('"carts"."id"')) {
       message = 'Failed to generate or assign cart ID.';
+    }
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+        message = `Database connection error: ${error.message}`;
+        status = 503; // Service Unavailable
     }
 
     return new Response(JSON.stringify({ success: false, error: message }), {
@@ -164,4 +199,6 @@ serve(async (req) => {
       }
     }
   }
+  // --- End Restore Main Logic ---
+
 });
