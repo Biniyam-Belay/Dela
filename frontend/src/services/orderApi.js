@@ -20,8 +20,14 @@ export const createOrderApi = async (orderData) => {
         const data = await response.json();
         return data;
     } catch (error) {
-        console.error("Order API - Error creating order:", error.response?.data || error.message);
-        throw error.response?.data || new Error('Failed to create order');
+        console.error("Order API - Error creating order:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response,
+            requestData: orderData // Log the data sent
+        });
+        throw error.response?.data || new Error(`Failed to create order. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -45,8 +51,13 @@ export const fetchMyOrdersApi = async () => {
         // Backend sends { success: true, count: num, data: orders[] }
         return data;
     } catch (error) {
-        console.error("Error fetching orders:", error.response?.data || error.message);
-        throw error.response?.data || new Error('Failed to fetch orders');
+        console.error("Order API - Error fetching orders:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to fetch orders. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
@@ -70,7 +81,12 @@ export const fetchOrderByIdApi = async (orderId) => {
         // Backend sends { success: true, data: order }
         return data;
     } catch (error) {
-         console.error(`Error fetching order ${orderId}:`, error.response?.data || error.message);
-         throw error.response?.data || new Error(`Failed to fetch order ${orderId}`);
+         console.error(`Order API - Error fetching order ${orderId}:`, {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+         });
+         throw error.response?.data || new Error(`Failed to fetch order ${orderId}. Status: ${error.response?.status || 'N/A'}`);
     }
  };

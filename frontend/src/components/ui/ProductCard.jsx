@@ -3,18 +3,21 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { FiShoppingBag, FiHeart, FiEye } from 'react-icons/fi';
 
-// Define backend URL at the component level
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+// Get Supabase URL and define bucket name
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const bucketName = 'products'; // Replace with your actual bucket name if different
+const localPlaceholder = '/placeholder-image.jpg'; // Path relative to the public folder
 
 const ProductCard = ({ product }) => {
   const { addItem } = useCart();
   const [isHovered, setIsHovered] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
-  // Construct image URL
-  const imageUrl = product.images?.[0] 
-    ? `${backendUrl}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
-    : `${backendUrl}/placeholder-image.jpg`;
+  // Construct Supabase Storage public image URL
+  // Assumes image paths stored in DB start with '/' (e.g., '/product-image.jpg')
+  const imageUrl = product.images?.[0]
+    ? `${supabaseUrl}/storage/v1/object/public/${bucketName}${product.images[0]}`
+    : localPlaceholder; // Use local placeholder if no image in DB
 
   const handleAddToCart = (e) => {
     e.preventDefault();
@@ -43,7 +46,7 @@ const ProductCard = ({ product }) => {
           loading="lazy"
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = `${backendUrl}/placeholder-image.jpg`;
+            e.target.src = localPlaceholder; // Fallback to local placeholder on error
           }}
         />
         

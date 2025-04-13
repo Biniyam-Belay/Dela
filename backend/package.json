@@ -11,7 +11,7 @@
     "postinstall": "prisma generate --schema=./src/prisma/schema.prisma"
   },
   "prisma": {
-    "seed": "node prisma/seed.js"
+    "seed": "node src/prisma/seed.js"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +30,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.49.4",
     "nodemon": "^3.1.9",
     "prisma": "^6.6.0"
   }

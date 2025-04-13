@@ -1,9 +1,13 @@
-import express from 'express';
 import dotenv from 'dotenv';
+// Load environment variables
+dotenv.config();
+
+import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import db from './src/config/db.js';
 import categoryRoutes from './src/routes/categoryRoutes.js';
 import productRoutes from './src/routes/productRoutes.js';
 import authRoutes from './src/routes/authRoutes.js';
@@ -14,7 +18,6 @@ import adminCategoryRoutes from './src/routes/adminCategoryRoutes.js';
 import errorHandler from './src/middleware/errorHandler.js';
 import ApiError from './src/utils/apiError.js';
 
-dotenv.config();
 const app = express();
 
 // Fix __dirname for ES Modules
