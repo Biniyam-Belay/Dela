@@ -1,5 +1,4 @@
-import apiClient from './apiClient';
-import { supabase } from '../utils/supabaseClient.js' // Ensure supabase is imported
+import { supabase } from '../utils/supabaseClient.js'; // Ensure supabase is imported
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -45,11 +44,24 @@ export const fetchProducts = async (params = {}) => {
 // Fetch a single product by its slug or ID
 export const fetchProductByIdentifier = async (identifier) => {
   try {
-    const response = await apiClient.get(`/products/${identifier}`);
-    return response.data; // The backend returns { success, data }
+    // Use Supabase Edge Function for product detail
+    const functionUrl = `${supabaseUrl}/functions/v1/get-public-product-detail?identifier=${encodeURIComponent(identifier)}`;
+    const response = await fetch(functionUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // No Authorization needed for public product detail
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data; // { success, data: product }
   } catch (error) {
-    console.error(`Error fetching product ${identifier}:`, error.response?.data || error.message);
-    throw error.response?.data || new Error(`Failed to fetch product ${identifier}`);
+    console.error(`Error fetching product ${identifier}:`, error.message);
+    throw new Error(error.message || `Failed to fetch product ${identifier}`);
   }
 };
 
