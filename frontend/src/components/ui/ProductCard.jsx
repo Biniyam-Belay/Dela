@@ -1,138 +1,151 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useCart } from '../../contexts/CartContext';
-import { FiShoppingBag, FiHeart, FiEye } from 'react-icons/fi';
+"use client"
 
-// Get Supabase URL and define bucket name
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const bucketName = 'products'; // Replace with your actual bucket name if different
-const localPlaceholder = '/placeholder-image.jpg'; // Path relative to the public folder
+import { useState } from "react"
+import { Link } from "react-router-dom"
+import { FiStar, FiShoppingBag, FiHeart } from "react-icons/fi"
+import { getImageUrl, placeholderImageUrl } from "../../utils/imageUrl" // Import the utility
 
 const ProductCard = ({ product }) => {
-  const { addItem } = useCart();
-  const [isHovered, setIsHovered] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isHovered, setIsHovered] = useState(false) // Keep for image scale
+  const [isWishlist, setIsWishlist] = useState(false)
 
-  // Construct Supabase Storage public image URL
-  // Assumes image paths stored in DB start with '/' (e.g., '/product-image.jpg')
-  const imageUrl = product.images?.[0]
-    ? `${supabaseUrl}/storage/v1/object/public/${bucketName}${product.images[0]}`
-    : localPlaceholder; // Use local placeholder if no image in DB
+  if (!product) return null
+
+  // Safely extract values from product object
+  const id = product.id || ""
+  const slug = product.slug || id // Use slug if available, fallback to id
+  const displayName = typeof product.name === "object" ? product.name.name : product.name
+  const displayCategory = typeof product.category === "object" ? product.category.name : product.category
+  const imageUrl = getImageUrl(product.images?.[0])
+  const price = product.price || 0
+  const isNew = product.isNew || false
+  const discount = product.discount || 0
+  const rating = product.rating || 4.5
+  const reviewCount = product.reviewCount || 12
+
+  // Generate stars based on rating
+  const renderStars = (rating) => {
+    const stars = []
+    const fullStars = Math.floor(rating)
+    const hasHalfStar = rating % 1 !== 0
+
+    // Full stars
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<FiStar key={`star-${i}`} className="w-3 h-3 fill-current text-yellow-500" />)
+    }
+
+    // Half star
+    if (hasHalfStar) {
+      stars.push(
+        <div key="half-star" className="relative">
+          <FiStar className="w-3 h-3 text-neutral-300" />
+          <div className="absolute inset-0 overflow-hidden w-1/2">
+            <FiStar className="w-3 h-3 fill-current text-yellow-500" />
+          </div>
+        </div>,
+      )
+    }
+
+    // Empty stars
+    const emptyStars = 5 - Math.ceil(rating)
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<FiStar key={`empty-${i}`} className="w-3 h-3 text-neutral-300" />)
+    }
+
+    return stars
+  }
 
   const handleAddToCart = (e) => {
-    e.preventDefault();
-    if (product.stockQuantity > 0) {
-      addItem(product, 1);
-    }
-  };
+    e.preventDefault()
+    e.stopPropagation()
+    // Add to cart functionality would go here
+    console.log("Added to cart:", displayName)
+  }
 
   const toggleWishlist = (e) => {
-    e.preventDefault();
-    setIsWishlisted(!isWishlisted);
+    e.preventDefault()
+    e.stopPropagation()
+    setIsWishlist(!isWishlist)
+  }
+
+  const handleImageError = (e) => {
+    e.target.onerror = null; // Prevent infinite loop if placeholder fails
+    e.target.src = placeholderImageUrl;
   };
 
   return (
-    <div 
-      className="group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {/* Product Image */}
-      <Link to={`/products/${product.slug || product.id}`} className="block relative aspect-[3/4]">
-        <img
-          src={imageUrl}
-          alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = localPlaceholder; // Fallback to local placeholder on error
-          }}
-        />
-        
-        {/* Quick Actions (appear on hover) */}
-        {isHovered && (
-          <div className="absolute inset-0 bg-black/10 flex items-center justify-center gap-4 transition-opacity duration-300">
-            <button 
-              onClick={toggleWishlist}
-              className="bg-white p-3 rounded-full shadow-md hover:bg-gray-100 transition-colors"
-              aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-            >
-              <FiHeart className={isWishlisted ? "text-red-500 fill-red-500" : "text-gray-700"} />
-            </button>
-            <button className="bg-white p-3 rounded-full shadow-md hover:bg-gray-100 transition-colors" aria-label="Quick view">
-              <FiEye className="text-gray-700" />
-            </button>
-          </div>
-        )}
-        
-        {/* Stock Status Badge */}
-        {product.stockQuantity <= 0 && (
-          <div className="absolute top-4 left-4 bg-white px-3 py-1 rounded-full text-xs font-medium shadow-sm">
-            Out of Stock
-          </div>
-        )}
-      </Link>
+    // Use group for image scale on hover
+    <div className="group relative" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+      {/* Image container */}
+      <div className="relative overflow-hidden aspect-[3/4]">
+        <Link to={`/products/${slug}`} className="block w-full h-full"> {/* Link the image */}
+          <img
+            src={imageUrl} // Use the constructed URL
+            alt={displayName || "Product"}
+            className={`w-full h-full object-cover transition-transform duration-700 ${isHovered ? "scale-105" : "scale-100"}`}
+            onError={handleImageError} // Add error handler
+            loading="lazy" // Add lazy loading
+          />
+        </Link>
 
-      {/* Product Info */}
-      <div className="p-4">
-        <div className="flex justify-between items-start mb-1">
-          <Link to={`/products/${product.slug || product.id}`} className="hover:text-gray-900 transition-colors">
-            <h3 className="font-medium text-gray-800 line-clamp-2">{product.name}</h3>
-          </Link>
-          <button 
-            onClick={toggleWishlist}
-            className="text-gray-400 hover:text-red-500 transition-colors"
-            aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          >
-            <FiHeart className={isWishlisted ? "text-red-500 fill-red-500" : ""} />
-          </button>
-        </div>
-        
-        {product.category && (
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">{product.category.name}</p>
+        {/* Badges */}
+        {isNew && !discount && <div className="absolute top-3 left-3 bg-black text-white text-xs px-2 py-1 rounded">New</div>}
+        {discount > 0 && (
+          <div className="absolute top-3 left-3 bg-red-600 text-white text-xs px-2 py-1 rounded">{discount}% Off</div>
         )}
-        
-        <div className="flex justify-between items-center mt-2">
-          <span className="font-bold text-gray-900">
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.price)}
-          </span>
-          
-          {/* Rating (if available) */}
-          {product.rating > 0 && (
-            <div className="flex items-center text-sm text-gray-600">
-              <span className="mr-1">{product.rating.toFixed(1)}</span>
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <svg
-                    key={i}
-                    className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-            </div>
-          )}
+
+        {/* Wishlist button - Always visible, subtle */}
+        <button
+          onClick={toggleWishlist}
+          className="absolute top-3 right-3 h-8 w-8 bg-white/70 backdrop-blur-sm rounded-full flex items-center justify-center text-neutral-600 transition-colors duration-300 hover:bg-white hover:text-black"
+          aria-label="Toggle Wishlist"
+        >
+          <FiHeart className={`w-4 h-4 ${isWishlist ? "fill-red-500 text-red-500" : ""}`} />
+        </button>
+      </div>
+
+      {/* Product info */}
+      <div className="mt-4">
+        {/* Details Column - Takes full width now */}
+        <div>
+          {displayCategory && <p className="text-sm text-neutral-500 mb-1">{displayCategory}</p>}
+          <h3 className="font-light text-base mb-1">
+            <Link to={`/products/${slug}`} className="hover:text-black transition-colors">
+              {displayName || "Product"}
+            </Link>
+          </h3>
+
+          {/* Rating */}
+          <div className="flex items-center gap-1 mb-2">
+            <div className="flex">{renderStars(rating)}</div>
+            <span className="text-xs text-neutral-500 ml-1">({reviewCount})</span>
+          </div>
+
+          {/* Price */}
+          <div className="flex items-center gap-2 mb-3"> {/* Added margin-bottom */}
+            {discount > 0 ? (
+              <>
+                <p className="font-medium">${(price * (1 - discount / 100)).toFixed(2)}</p>
+                <p className="text-sm text-neutral-500 line-through">${price.toFixed(2)}</p>
+              </>
+            ) : (
+              <p className="font-medium">${price.toFixed(2)}</p>
+            )}
+          </div>
         </div>
-        
-        {/* Add to Cart Button */}
+
+        {/* Add to Cart Button (Always Visible) */}
         <button
           onClick={handleAddToCart}
-          disabled={product.stockQuantity <= 0}
-          className={`w-full mt-4 py-2 rounded-md flex items-center justify-center gap-2 text-sm font-medium transition-colors ${
-            product.stockQuantity > 0
-              ? 'bg-black text-white hover:bg-gray-800'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          }`}
+          className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-black text-white text-sm font-medium rounded hover:bg-gray-800 transition-colors"
+          aria-label="Add to cart"
         >
-          <FiShoppingBag />
-          {product.stockQuantity > 0 ? 'Add to Cart' : 'Out of Stock'}
+          <FiShoppingBag className="w-4 h-4" />
+          Add to Cart
         </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ProductCard;
+export default ProductCard

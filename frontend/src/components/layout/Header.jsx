@@ -1,72 +1,83 @@
-import React, { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/authContext.jsx';
-import { useCart } from '../../contexts/CartContext.jsx';
-import { 
-  FiShoppingBag, 
-  FiUser, 
-  FiSearch, 
-  FiMenu, 
-  FiX,
-  FiHeart
-} from 'react-icons/fi';
+"use client"
+
+import { useState, useEffect } from "react"
+import { Link, NavLink, useNavigate } from "react-router-dom"
+import { useAuth } from "../../contexts/authContext.jsx"
+import { useCart } from "../../contexts/CartContext.jsx"
+import { FiShoppingBag, FiUser, FiSearch, FiMenu, FiX, FiHeart, FiChevronRight } from "react-icons/fi"
 
 const Header = () => {
-  const { isAuthenticated, logout, isLoading } = useAuth();
-  const { cartCount } = useCart();
-  const navigate = useNavigate();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { isAuthenticated, logout, isLoading } = useAuth()
+  const { cartCount } = useCart()
+  const navigate = useNavigate()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true)
+      } else {
+        setIsScrolled(false)
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
-    setIsMobileMenuOpen(false);
-  };
+    logout()
+    navigate("/")
+    setIsMobileMenuOpen(false)
+  }
 
   const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Shop', path: '/products' },
-    { name: 'Collections', path: '/collections' },
-    { name: 'About', path: '/about' },
-  ];
+    { name: "Home", path: "/" },
+    { name: "Shop", path: "/products" },
+    { name: "Collections", path: "/collections" },
+    { name: "About", path: "/about" },
+  ]
 
   const activeStyle = ({ isActive }) =>
     isActive
-      ? 'text-black font-medium border-b-2 border-black'
-      : 'text-gray-600 hover:text-black transition-colors duration-300';
+      ? "text-black font-medium border-b border-black"
+      : "text-neutral-600 hover:text-black transition-colors duration-300"
 
   return (
-    <header className="bg-white sticky top-0 z-50 border-b border-gray-100">
+    <header
+      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
+        isScrolled ? "bg-white border-b border-neutral-200 py-3" : "bg-white/95 backdrop-blur-sm py-5"
+      }`}
+    >
       {/* Desktop Navigation */}
-      <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
+      <nav className="container mx-auto px-6 flex justify-between items-center">
         {/* Logo */}
-        <Link
-          to="/"
-          className="text-2xl font-light tracking-wider hover:opacity-80 transition-opacity"
-        >
+        <Link to="/" className="text-2xl font-extralight tracking-widest hover:opacity-80 transition-opacity">
           suriAddis
         </Link>
 
         {/* Desktop Navigation Links (Centered) */}
-        <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 space-x-8">
+        <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2 space-x-10">
           {navLinks.map((link) => (
-            <NavLink 
-              key={link.name} 
-              to={link.path} 
-              className={`${activeStyle} text-sm uppercase tracking-wider`}
-            >
+            <NavLink key={link.name} to={link.path} className={`${activeStyle} text-sm uppercase tracking-widest py-1`}>
               {link.name}
             </NavLink>
           ))}
         </div>
 
         {/* Right-aligned Icons */}
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center space-x-7">
+          {/* Search */}
+          <button className="text-neutral-600 hover:text-black transition-colors hidden md:block" aria-label="Search">
+            <FiSearch size={18} />
+          </button>
 
           {/* Wishlist */}
           <Link
             to="/wishlist"
-            className="text-gray-600 hover:text-black transition-colors"
+            className="text-neutral-600 hover:text-black transition-colors hidden sm:block"
             aria-label="Wishlist"
           >
             <FiHeart size={18} />
@@ -74,19 +85,15 @@ const Header = () => {
 
           {/* User Account */}
           <Link
-            to={isAuthenticated ? '/profile' : '/login'}
-            className="text-gray-600 hover:text-black transition-colors"
-            aria-label={isAuthenticated ? 'My Account' : 'Login'}
+            to={isAuthenticated ? "/profile" : "/login"}
+            className="text-neutral-600 hover:text-black transition-colors"
+            aria-label={isAuthenticated ? "My Account" : "Login"}
           >
             <FiUser size={18} />
           </Link>
 
           {/* Shopping Bag */}
-          <Link
-            to="/cart"
-            className="relative text-gray-600 hover:text-black transition-colors"
-            aria-label="Cart"
-          >
+          <Link to="/cart" className="relative text-neutral-600 hover:text-black transition-colors" aria-label="Cart">
             <FiShoppingBag size={18} />
             {cartCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -97,7 +104,7 @@ const Header = () => {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden text-gray-600 hover:text-black transition-colors"
+            className="md:hidden text-neutral-600 hover:text-black transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle menu"
           >
@@ -108,64 +115,119 @@ const Header = () => {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed inset-0 bg-white z-50 pt-20 px-6 transition-all duration-300 ease-in-out ${
-          isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+        className={`fixed inset-0 bg-white z-50 transition-all duration-500 ease-in-out ${
+          isMobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
         }`}
       >
-        <div className="flex flex-col space-y-8">
-          {navLinks.map((link) => (
-            <NavLink
-              key={`mobile-${link.name}`}
-              to={link.path}
-              className={`${activeStyle} text-xl py-2`}
+        <div className="absolute top-5 right-6">
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="text-neutral-600 hover:text-black transition-colors"
+            aria-label="Close menu"
+          >
+            <FiX size={24} />
+          </button>
+        </div>
+
+        <div className="flex flex-col h-full justify-center px-10">
+          <div className="mb-16">
+            <Link
+              to="/"
+              className="text-3xl font-extralight tracking-widest"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              {link.name}
-            </NavLink>
-          ))}
+              suriAddis
+            </Link>
+          </div>
 
-          <div className="border-t border-gray-100 pt-6">
+          <div className="flex flex-col space-y-6">
+            {navLinks.map((link) => (
+              <NavLink
+                key={`mobile-${link.name}`}
+                to={link.path}
+                className={({ isActive }) =>
+                  `text-2xl font-light tracking-wide flex items-center justify-between group ${
+                    isActive ? "text-black" : "text-neutral-600"
+                  }`
+                }
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <span>{link.name}</span>
+                <FiChevronRight className="opacity-0 group-hover:opacity-100 transition-opacity" />
+              </NavLink>
+            ))}
+          </div>
+
+          <div className="border-t border-neutral-200 mt-10 pt-10">
             {isLoading ? (
-              <div className="text-gray-500">Loading...</div>
+              <div className="text-neutral-500">Loading...</div>
             ) : isAuthenticated ? (
-              <>
+              <div className="space-y-6">
                 <Link
                   to="/profile"
-                  className="block text-gray-600 hover:text-black py-3 transition-colors"
+                  className="block text-neutral-600 hover:text-black transition-colors text-lg font-light"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   My Account
                 </Link>
+                <Link
+                  to="/orders"
+                  className="block text-neutral-600 hover:text-black transition-colors text-lg font-light"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  My Orders
+                </Link>
+                <Link
+                  to="/wishlist"
+                  className="block text-neutral-600 hover:text-black transition-colors text-lg font-light"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Wishlist
+                </Link>
                 <button
                   onClick={handleLogout}
-                  className="text-gray-600 hover:text-black py-3 transition-colors"
+                  className="text-neutral-600 hover:text-black transition-colors text-lg font-light"
                 >
                   Logout
                 </button>
-              </>
+              </div>
             ) : (
-              <>
+              <div className="space-y-6">
                 <Link
                   to="/login"
-                  className="block text-gray-600 hover:text-black py-3 transition-colors"
+                  className="block text-neutral-600 hover:text-black transition-colors text-lg font-light"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="block text-gray-600 hover:text-black py-3 transition-colors"
+                  className="block text-neutral-600 hover:text-black transition-colors text-lg font-light"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Create Account
                 </Link>
-              </>
+              </div>
             )}
+          </div>
+
+          <div className="mt-auto mb-10 pt-10 border-t border-neutral-200">
+            <div className="flex space-x-6">
+              <a href="#" className="text-neutral-600 hover:text-black transition-colors">
+                Instagram
+              </a>
+              <a href="#" className="text-neutral-600 hover:text-black transition-colors">
+                Facebook
+              </a>
+              <a href="#" className="text-neutral-600 hover:text-black transition-colors">
+                Pinterest
+              </a>
+            </div>
           </div>
         </div>
       </div>
     </header>
-  );
-};
+  )
+}
 
-export default Header;
+export default Header
