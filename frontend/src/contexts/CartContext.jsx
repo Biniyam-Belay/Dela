@@ -29,7 +29,11 @@ export const CartProvider = ({ children }) => {
   useEffect(() => {
     const fetchCartFromSupabase = async () => {
       const accessToken = localStorage.getItem('accessToken');
-      if (!accessToken) return; // Only fetch for logged-in users
+      if (!accessToken) {
+        console.log("CartContext: No access token found, skipping Supabase cart fetch.");
+        return; // Only fetch for logged-in users
+      }
+      console.log("CartContext: Access token found, attempting to fetch cart from Supabase.");
       try {
         const response = await fetch(import.meta.env.VITE_SUPABASE_GET_CART_URL, {
           method: 'GET',
@@ -38,21 +42,48 @@ export const CartProvider = ({ children }) => {
             'Authorization': `Bearer ${accessToken}`
           }
         });
+
+        console.log("CartContext: Fetch response status:", response.status); // Log status
+
         if (response.ok) {
           const cartData = await response.json();
+          console.log("CartContext: Fetched cart data:", cartData); // Log successful data
           if (cartData && Array.isArray(cartData.items)) {
-            const transformedItems = cartData.items.map(item => item.product ? { product: item.product, quantity: item.quantity } : null).filter(Boolean);
+            // Filter items with valid product data before setting state
+            const transformedItems = cartData.items
+              .filter(item => item && item.product) // Ensure item and product exist
+              .map(item => ({ product: item.product, quantity: item.quantity }));
             setCartItems(transformedItems);
+            console.log(`CartContext: Cart loaded successfully with ${transformedItems.length} items.`);
+          } else {
+             console.warn("CartContext: Fetched cart data format unexpected or missing items array:", cartData);
+             // Optionally clear local cart if backend response is invalid?
+             // setCartItems([]);
           }
         } else {
-          console.warn('Failed to fetch cart from Supabase:', response.status);
+          // Log detailed error response if possible
+          let errorBody = null;
+          try {
+            errorBody = await response.json();
+          } catch (e) {
+             // Ignore if response body is not JSON
+          }
+          console.warn(`CartContext: Failed to fetch cart from Supabase. Status: ${response.status}`, errorBody || response.statusText);
+          // Handle specific statuses? e.g., 401 Unauthorized might mean token expired
+          if (response.status === 401) {
+              // Consider triggering logout or token refresh here
+              console.error("CartContext: Authorization failed (401). Token might be invalid or expired.");
+              // alert("Your session has expired. Please log in again.");
+              // logout(); // Assuming you have access to logout function
+          }
         }
       } catch (err) {
-        console.error('Error fetching cart from Supabase:', err);
+        // Log the caught error object
+        console.error('CartContext: Error fetching cart from Supabase:', err);
       }
     };
     fetchCartFromSupabase();
-  }, []);
+  }, []); // Dependency array is empty, runs once on mount
 
   // Effect to save cart to localStorage whenever it changes
   useEffect(() => {
