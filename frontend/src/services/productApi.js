@@ -1,4 +1,9 @@
 import apiClient from './apiClient';
+import { supabase } from '../utils/supabaseClient.js' // Ensure supabase is imported
+
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Fetch all products with optional filters/pagination
 export const fetchProducts = async (params = {}) => {
@@ -48,30 +53,35 @@ export const fetchProductByIdentifier = async (identifier) => {
   }
 };
 
-// Fetch all categories (add this here or create categoryApi.js)
+// Fetch Categories from Supabase Function
 export const fetchCategories = async () => {
+  const functionUrl = `${supabaseUrl}/functions/v1/get-public-categories`;
+
   try {
-    // Replace apiClient call with direct fetch to the Supabase Edge Function
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-public-categories`, {
-      method: 'GET',
+    const response = await fetch(functionUrl, {
+      method: "GET",
       headers: {
-        'Content-Type': 'application/json',
-        // No Authorization header needed for this public function
+        // Add the Authorization header with the anon key
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        "Content-Type": "application/json",
+        // Supabase functions often also require the apikey header
+        apikey: supabaseAnonKey,
       },
     });
 
     if (!response.ok) {
-      // Attempt to parse error from Supabase function response
-      const errorData = await response.json().catch(() => ({})); // Gracefully handle non-JSON error response
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      // Log the response status and text for more details
+      const errorText = await response.text();
+      console.error(`Error fetching categories: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    return data; // The function returns { success, count, data } or { success: false, error }
+    // Assuming the function returns { data: [...] } or just [...]
+    return data.data ? { data: data.data } : { data: data };
   } catch (error) {
-    console.error("Error fetching categories:", error.message);
-    // Re-throw a consistent error structure
-    throw new Error(error.message || 'Failed to fetch categories');
+    console.error("Error fetching categories:", error);
+    throw error; // Re-throw the error to be caught by the calling component
   }
 };
 
