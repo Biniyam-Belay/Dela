@@ -25,6 +25,35 @@ const getInitialCartState = () => {
 export const CartProvider = ({ children }) => {
   const [cartItems, setCartItems] = useState(getInitialCartState); // Array of { product: {...}, quantity: number }
 
+  // --- NEW: Fetch cart from Supabase for logged-in users on mount ---
+  useEffect(() => {
+    const fetchCartFromSupabase = async () => {
+      const accessToken = localStorage.getItem('accessToken');
+      if (!accessToken) return; // Only fetch for logged-in users
+      try {
+        const response = await fetch(import.meta.env.VITE_SUPABASE_GET_CART_URL, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+        if (response.ok) {
+          const cartData = await response.json();
+          if (cartData && Array.isArray(cartData.items)) {
+            const transformedItems = cartData.items.map(item => item.product ? { product: item.product, quantity: item.quantity } : null).filter(Boolean);
+            setCartItems(transformedItems);
+          }
+        } else {
+          console.warn('Failed to fetch cart from Supabase:', response.status);
+        }
+      } catch (err) {
+        console.error('Error fetching cart from Supabase:', err);
+      }
+    };
+    fetchCartFromSupabase();
+  }, []);
+
   // Effect to save cart to localStorage whenever it changes
   useEffect(() => {
     try {
@@ -74,6 +103,7 @@ export const CartProvider = ({ children }) => {
           }
 
           console.warn("Backend sync failed, proceeding with local update only.");
+          // Fall through to local update ONLY if backend fails for logged-in user
         } else {
             // Update based on Backend Response (Assuming backend returns the full updated cart)
             const updatedCartData = await response.json();
@@ -81,11 +111,13 @@ export const CartProvider = ({ children }) => {
 
             if (updatedCartData && Array.isArray(updatedCartData.items)) {
                // Transform backend items to match frontend structure { product: {...}, quantity: number }
+               // Ensure product details (including slug) from backend are used
                const transformedItems = updatedCartData.items.map(item => {
                    if (!item.product) {
                        console.warn("Cart item from backend missing product details:", item);
                        return null;
                    }
+                   // Backend function already selects slug, so it should be here
                    return {
                        product: item.product,
                        quantity: item.quantity
@@ -97,6 +129,7 @@ export const CartProvider = ({ children }) => {
                return; // Exit early as backend provided the state
             } else {
                 console.warn("Add to cart response format unexpected or missing items array:", updatedCartData);
+                // Fall through to local update if backend response is unusable
             }
         }
       }
@@ -113,11 +146,13 @@ export const CartProvider = ({ children }) => {
               : item
           );
         } else {
+          // Ensure all necessary product details, including slug, are added
           const productDetails = {
               id: productToAdd.id,
               name: productToAdd.name,
               price: productToAdd.price,
               images: productToAdd.images || [],
+              slug: productToAdd.slug || null, // Include slug if available
           };
           return [...prevItems, { product: productDetails, quantity: quantity }];
         }
@@ -125,18 +160,51 @@ export const CartProvider = ({ children }) => {
       console.log(`Added ${quantity} of ${productToAdd.name} to local cart`);
 
     } catch (error) {
-      console.error("Error in addItem function (local update stage):", error.message);
-      alert(`Failed to add item locally: ${error.message}`);
+      console.error("Error in addItem function:", error.message);
+      alert(`Failed to add item: ${error.message}`);
+      // Consider if a local update should still happen on generic catch
     }
-  }, []); // Dependency array is empty
+  }, [setCartItems]); // Add setCartItems as dependency
 
   const removeItem = useCallback(async (productId) => {
+    // TODO: Implement backend API call to remove item for logged-in users
+    // Example:
+    // const accessToken = localStorage.getItem('accessToken');
+    // if (accessToken) {
+    //   try {
+    //     await fetch(`${import.meta.env.VITE_SUPABASE_REMOVE_FROM_CART_URL}`, { // Replace with actual URL
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+    //       body: JSON.stringify({ productId })
+    //     });
+    //     // Optionally refetch cart or trust local update if API returns new state
+    //   } catch (error) {
+    //     console.error("Failed to remove item from backend:", error);
+    //     // Handle error, maybe revert local state or notify user
+    //   }
+    // }
     setCartItems(prevItems => prevItems.filter(item => item.product.id !== productId));
     console.log(`Removed item with ID ${productId} from cart (Local)`);
-  }, []);
+  }, [setCartItems]); // Add setCartItems as dependency
 
   const updateQuantity = useCallback(async (productId, newQuantity) => {
-    const quantity = Math.max(1, newQuantity);
+    const quantity = Math.max(1, newQuantity); // Ensure quantity doesn't go below 1
+    // TODO: Implement backend API call to update quantity for logged-in users
+    // Example:
+    // const accessToken = localStorage.getItem('accessToken');
+    // if (accessToken) {
+    //   try {
+    //     await fetch(`${import.meta.env.VITE_SUPABASE_UPDATE_CART_ITEM_URL}`, { // Replace with actual URL
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+    //       body: JSON.stringify({ productId, quantity })
+    //     });
+    //     // Optionally refetch cart or trust local update
+    //   } catch (error) {
+    //     console.error("Failed to update item quantity on backend:", error);
+    //     // Handle error
+    //   }
+    // }
     setCartItems(prevItems =>
       prevItems.map(item =>
         item.product.id === productId
@@ -145,12 +213,26 @@ export const CartProvider = ({ children }) => {
       )
     );
     console.log(`Updated quantity for ID ${productId} to ${quantity} (Local)`);
-  }, []);
+  }, [setCartItems]); // Add setCartItems as dependency
 
   const clearCart = useCallback(async () => {
+    // TODO: Implement backend API call to clear cart for logged-in users
+    // Example:
+    // const accessToken = localStorage.getItem('accessToken');
+    // if (accessToken) {
+    //   try {
+    //     await fetch(`${import.meta.env.VITE_SUPABASE_CLEAR_CART_URL}`, { // Replace with actual URL
+    //       method: 'POST',
+    //       headers: { 'Authorization': `Bearer ${accessToken}` }
+    //     });
+    //   } catch (error) {
+    //     console.error("Failed to clear cart on backend:", error);
+    //     // Handle error
+    //   }
+    // }
     setCartItems([]);
     console.log('Cart cleared (Local)');
-  }, []);
+  }, [setCartItems]); // Add setCartItems as dependency
 
   // --- Calculated Values ---
 

@@ -4,8 +4,10 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { FiStar, FiShoppingBag, FiHeart } from "react-icons/fi"
 import { getImageUrl, placeholderImageUrl } from "../../utils/imageUrl" // Import the utility
+import { useCart } from "../../contexts/CartContext.jsx" // Corrected import path
 
 const ProductCard = ({ product }) => {
+  const { addItem } = useCart()
   const [isHovered, setIsHovered] = useState(false) // Keep for image scale
   const [isWishlist, setIsWishlist] = useState(false)
 
@@ -58,7 +60,9 @@ const ProductCard = ({ product }) => {
   const handleAddToCart = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    // Add to cart functionality would go here
+    // Include slug in the object passed to addItem
+    const productToAdd = { id, name: displayName, price, images: product.images, slug }
+    addItem(productToAdd, 1) // Add 1 quantity of this product
     console.log("Added to cart:", displayName)
   }
 
