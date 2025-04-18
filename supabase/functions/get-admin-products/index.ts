@@ -32,40 +32,24 @@ serve(async (req) => {
     }
 
     const url = new URL(req.url);
-    const id = url.searchParams.get('id');
-    if (!id) {
-      return new Response(JSON.stringify({ success: false, error: 'Missing product id' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const limit = parseInt(url.searchParams.get('limit') || '20', 10);
+    const search = url.searchParams.get('search') || '';
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    let query = supabase.from('products').select('*', { count: 'exact' }).range(from, to);
+    if (search) {
+      query = query.ilike('name', `%${search}%`);
     }
-    const body = await req.json();
-    const { name, description, price, stockQuantity, categoryId, isActive, images, originalPrice, rating, reviewCount, sellerName, sellerLocation, unitsSold, imagesToDelete } = body;
-
-    const { data, error } = await supabase.from('products').update({
-      name,
-      description,
-      price,
-      stock_quantity: stockQuantity,
-      category_id: categoryId,
-      is_active: isActive,
-      images,
-      original_price: originalPrice,
-      rating,
-      review_count: reviewCount,
-      seller_name: sellerName,
-      seller_location: sellerLocation,
-      units_sold: unitsSold,
-    }).eq('id', id).select().single();
-
+    const { data, error, count } = await query;
     if (error) {
       return new Response(JSON.stringify({ success: false, error: error.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
     }
-
-    return new Response(JSON.stringify({ success: true, data }), {
+    return new Response(JSON.stringify({ success: true, data, count, currentPage: page, totalPages: Math.ceil((count || 0) / limit) }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });

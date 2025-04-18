@@ -31,15 +31,18 @@ WITH CHECK ( is_admin() );
 -- ----------------------------------------
 -- Ensure RLS is enabled: ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 
--- Allow admins to do anything with categories
+-- Allow public read access to categories
+CREATE POLICY "Allow public read access to categories"
+ON public.categories
+FOR SELECT
+USING (true);
+
+-- Allow ADMIN full access to categories
 CREATE POLICY "Allow ADMIN full access to categories"
 ON public.categories
-FOR ALL -- Covers SELECT, INSERT, UPDATE, DELETE
+FOR INSERT, UPDATE, DELETE
 USING ( is_admin() )
 WITH CHECK ( is_admin() );
-
--- Keep existing public read policy (if needed)
--- CREATE POLICY "Allow public read access to categories" ON public.categories FOR SELECT USING (true);
 
 -- Add similar policies for other tables admins need to manage (e.g., orders)
 

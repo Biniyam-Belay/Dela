@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,28 +11,21 @@ import {
 } from '../../services/adminApi';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import { FiTrash2, FiSave, FiX, FiPlus, FiChevronLeft } from 'react-icons/fi';
+import { FiTrash2, FiSave, FiX, FiPlus, FiChevronLeft, FiUploadCloud } from 'react-icons/fi';
 
 const productSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   price: z.coerce.number({ invalid_type_error: 'Price must be a number' }).positive('Price must be positive'),
-  stockQuantity: z.coerce.number({ invalid_type_error: 'Stock must be a whole number' })
-    .int('Stock must be a whole number')
-    .min(0, 'Stock cannot be negative'),
+  stockQuantity: z.coerce.number({ invalid_type_error: 'Stock must be a number' }).int().nonnegative('Stock cannot be negative'),
   categoryId: z.string().optional().nullable(),
-  isActive: z.boolean().optional(),
-  rating: z.coerce.number().min(0).max(5).optional().nullable().or(z.literal('')),
-  reviewCount: z.coerce.number().int().min(0).optional().nullable().or(z.literal('')),
-  originalPrice: z.coerce.number().positive().optional().nullable().or(z.literal('')),
-  sellerName: z.string().max(100).optional().nullable(),
-  sellerLocation: z.string().max(100).optional().nullable(),
-  unitsSold: z.coerce.number({ invalid_type_error: 'Units Sold must be a whole number' })
-    .int()
-    .min(0)
-    .optional()
-    .nullable()
-    .or(z.literal('')),
+  isActive: z.boolean().default(true),
+  originalPrice: z.coerce.number({ invalid_type_error: 'Original price must be a number' }).positive('Original price must be positive').optional().nullable(),
+  rating: z.coerce.number().min(0).max(5).optional().nullable(),
+  reviewCount: z.coerce.number().int().nonnegative().optional().nullable(),
+  sellerName: z.string().optional().nullable(),
+  sellerLocation: z.string().optional().nullable(),
+  unitsSold: z.coerce.number().int().nonnegative().optional().nullable(),
 });
 
 const AdminProductAddEditPage = () => {
@@ -42,18 +35,19 @@ const AdminProductAddEditPage = () => {
 
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [formError, setFormError] = useState(null);
   const [existingImages, setExistingImages] = useState([]);
   const [newImageFiles, setNewImageFiles] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
 
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
 
   const {
     register,
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(productSchema),
@@ -61,7 +55,7 @@ const AdminProductAddEditPage = () => {
       name: '',
       description: '',
       price: '',
-      stockQuantity: '',
+      stockQuantity: 0,
       categoryId: '',
       isActive: true,
       originalPrice: '',
@@ -69,61 +63,51 @@ const AdminProductAddEditPage = () => {
       reviewCount: '',
       sellerName: '',
       sellerLocation: '',
-      unitsSold: '',
+      unitsSold: 0,
     },
   });
+
+  const isActiveValue = watch('isActive');
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      setError(null);
+      setFormError(null);
       try {
         const categoriesResponse = await fetchAdminCategories();
         setCategories(categoriesResponse.data || []);
 
-        if (isEditMode) {
+        if (isEditMode && productId) {
           const productResponse = await fetchAdminProductById(productId);
           const productData = productResponse.data;
           if (productData) {
             reset({
               name: productData.name || '',
               description: productData.description || '',
-              price: productData.price || 0,
-              stockQuantity: productData.stock_quantity || 0,
+              price: productData.price ?? '',
+              stockQuantity: productData.stock_quantity ?? productData.stockQuantity ?? 0,
               categoryId: productData.category_id || '',
               isActive: productData.is_active !== undefined ? productData.is_active : true,
-              rating: productData.rating || '',
-              reviewCount: productData.review_count || '',
-              originalPrice: productData.original_price || '',
+              rating: productData.rating ?? '',
+              reviewCount: productData.review_count ?? '',
+              originalPrice: productData.original_price ?? '',
               sellerName: productData.seller_name || '',
               sellerLocation: productData.seller_location || '',
-              unitsSold: productData.units_sold || '',
+              unitsSold: productData.units_sold ?? 0,
             });
-            setExistingImages(productData.images || []);
-            setImagePreviews(productData.images?.map(img => `${backendUrl}${img}`) || []);
+            const currentImages = productData.images || [];
+            setExistingImages(currentImages);
+            setImagePreviews(currentImages.map(img => `${backendUrl}${img.startsWith('/') ? '' : '/'}${img}`));
           } else {
             throw new Error('Product not found');
           }
         } else {
-          reset({
-            name: '',
-            description: '',
-            price: '',
-            stockQuantity: 0,
-            categoryId: '',
-            isActive: true,
-            rating: '',
-            reviewCount: '',
-            originalPrice: '',
-            sellerName: '',
-            sellerLocation: '',
-            unitsSold: '',
-          });
+          reset();
           setExistingImages([]);
           setImagePreviews([]);
         }
       } catch (err) {
-        setError(err.message || 'Failed to load data');
+        setFormError(err.message || 'Failed to load data');
         console.error("Error loading data:", err);
       } finally {
         setLoading(false);
@@ -136,27 +120,34 @@ const AdminProductAddEditPage = () => {
   const handleImageChange = (e) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      setNewImageFiles(files);
-      const previews = files.map((file) => URL.createObjectURL(file));
-      setImagePreviews(previews);
+      const validFiles = files.filter(file => file.type.startsWith('image/'));
+
+      setNewImageFiles(prev => [...prev, ...validFiles]);
+
+      const newPreviews = validFiles.map(file => ({
+        url: URL.createObjectURL(file),
+        isNew: true,
+        file: file,
+      }));
+      setImagePreviews(prev => [...prev, ...newPreviews]);
+
+      e.target.value = '';
     }
   };
 
-  const removeExistingImage = (indexToRemove) => {
-    setExistingImages((prev) => prev.filter((_, index) => index !== indexToRemove));
-  };
+  const removeImage = (indexToRemove) => {
+    const previewToRemove = imagePreviews[indexToRemove];
 
-  const removeNewImagePreview = (indexToRemove) => {
-    setNewImageFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
-    setImagePreviews((prev) => {
-      const urlToRemove = prev[indexToRemove];
-      URL.revokeObjectURL(urlToRemove);
-      return prev.filter((_, index) => index !== indexToRemove);
-    });
+    if (previewToRemove.isNew) {
+      URL.revokeObjectURL(previewToRemove.url);
+      setNewImageFiles(prev => prev.filter(file => file !== previewToRemove.file));
+    }
+
+    setImagePreviews(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const onSubmit = async (data) => {
-    setError(null);
+    setFormError(null);
     const formData = new FormData();
 
     formData.append('name', data.name);
@@ -166,19 +157,27 @@ const AdminProductAddEditPage = () => {
     if (data.categoryId) formData.append('categoryId', data.categoryId);
     formData.append('isActive', data.isActive);
 
+    if (data.originalPrice) formData.append('originalPrice', data.originalPrice);
     if (data.rating) formData.append('rating', data.rating);
     if (data.reviewCount) formData.append('reviewCount', data.reviewCount);
-    if (data.originalPrice) formData.append('originalPrice', data.originalPrice);
     if (data.sellerName) formData.append('sellerName', data.sellerName);
     if (data.sellerLocation) formData.append('sellerLocation', data.sellerLocation);
     if (data.unitsSold) formData.append('unitsSold', data.unitsSold);
 
-    const imagesToDelete = existingImages.filter(img => !imagePreviews.includes(`${backendUrl}${img}`));
-    if (imagesToDelete.length > 0) {
-      formData.append('imagesToDelete', JSON.stringify(imagesToDelete));
+    if (isEditMode) {
+      const currentPreviewUrls = imagePreviews.map(p => p.url);
+      const imagesToDelete = existingImages.filter(imgUrl =>
+        !currentPreviewUrls.includes(`${backendUrl}${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`)
+      );
+      const keptExistingImageUrls = existingImages.filter(imgUrl =>
+        currentPreviewUrls.includes(`${backendUrl}${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`)
+      );
+
+      if (imagesToDelete.length > 0) {
+        formData.append('imagesToDelete', JSON.stringify(imagesToDelete));
+      }
+      formData.append('existingImages', JSON.stringify(keptExistingImageUrls));
     }
-    const keptExistingImages = existingImages.filter(img => imagePreviews.includes(`${backendUrl}${img}`));
-    formData.append('images', JSON.stringify(keptExistingImages));
 
     newImageFiles.forEach((file) => {
       formData.append('newImages', file);
@@ -192,7 +191,8 @@ const AdminProductAddEditPage = () => {
       }
       navigate('/admin/products');
     } catch (err) {
-      setError(err.response?.data?.error || err.message || `Failed to ${isEditMode ? 'update' : 'create'} product.`);
+      const apiError = err.response?.data?.error || err.message || `Failed to ${isEditMode ? 'update' : 'create'} product.`;
+      setFormError(apiError);
       console.error("Submit error:", err.response?.data || err);
     }
   };
@@ -205,375 +205,307 @@ const AdminProductAddEditPage = () => {
     );
   }
 
+  const inputClass = (hasError) =>
+    `block w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 text-sm ${
+      hasError ? 'border-red-500' : 'border-slate-200'
+    }`;
+  const labelClass = "block text-sm font-medium text-slate-700 mb-1";
+
   return (
-    <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-light text-gray-900 mb-1">
-                {isEditMode ? 'Edit Product' : 'Create Product'}
-              </h1>
-              <p className="text-gray-600">
-                {isEditMode ? 'Update product details' : 'Add a new product to your store'}
-              </p>
-            </div>
-            <Link
-              to="/admin/products"
-              className="flex items-center text-gray-600 hover:text-black"
-            >
-              <FiChevronLeft className="mr-2" />
-              Back to Products
-            </Link>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {isEditMode ? 'Edit Product' : 'Create New Product'}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {isEditMode ? 'Update product details' : 'Add a new product to your store'}
+          </p>
         </div>
+        <Link
+          to="/admin/products"
+          className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
+        >
+          <FiChevronLeft size={16} />
+          Back to Products
+        </Link>
+      </div>
 
-        {error && <ErrorMessage message={error} className="mb-6" />}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8 border border-slate-200 space-y-8">
+          {formError && <ErrorMessage message={formError} />}
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-gray-100">
-            <div className="mb-8">
-              <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Basic Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="md:col-span-2">
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Product Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    {...register('name')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.name ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.name && (
-                    <p className="text-red-600 text-xs mt-1">{errors.name.message}</p>
-                  )}
-                </div>
-
-                <div className="md:col-span-2">
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Description *
-                  </label>
-                  <textarea
-                    id="description"
-                    rows={4}
-                    {...register('description')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.description ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.description && (
-                    <p className="text-red-600 text-xs mt-1">{errors.description.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <select
-                    id="categoryId"
-                    {...register('categoryId')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.categoryId ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.categoryId && (
-                    <p className="text-red-600 text-xs mt-1">{errors.categoryId.message}</p>
-                  )}
-                </div>
-
-                <div className="flex items-center">
+          <section>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+              Basic Information
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              <div className="md:col-span-2">
+                <label htmlFor="name" className={labelClass}>
+                  Product Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  {...register('name')}
+                  className={inputClass(errors.name)}
+                  placeholder="e.g., Premium Leather Wallet"
+                />
+                {errors.name && <p className="text-red-600 text-xs mt-1">{errors.name.message}</p>}
+              </div>
+              <div className="md:col-span-2">
+                <label htmlFor="description" className={labelClass}>
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  id="description"
+                  rows={4}
+                  {...register('description')}
+                  className={inputClass(errors.description)}
+                  placeholder="Describe the product..."
+                />
+                {errors.description && <p className="text-red-600 text-xs mt-1">{errors.description.message}</p>}
+              </div>
+              <div>
+                <label htmlFor="categoryId" className={labelClass}>
+                  Category
+                </label>
+                <select
+                  id="categoryId"
+                  {...register('categoryId')}
+                  className={inputClass(errors.categoryId)}
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.categoryId && <p className="text-red-600 text-xs mt-1">{errors.categoryId.message}</p>}
+              </div>
+              <div className="flex items-end pb-1">
+                <label htmlFor="isActive" className="flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     id="isActive"
                     {...register('isActive')}
-                    className="h-4 w-4 border-gray-300 rounded text-black focus:ring-black"
+                    className="h-4 w-4 border-slate-300 rounded text-slate-600 focus:ring-slate-500"
                   />
-                  <label htmlFor="isActive" className="ml-2 block text-sm text-gray-700">
-                    Product is active
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Pricing & Inventory
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                    Price *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    id="price"
-                    {...register('price')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.price ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.price && (
-                    <p className="text-red-600 text-xs mt-1">{errors.price.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="originalPrice" className="block text-sm font-medium text-gray-700 mb-1">
-                    Original Price
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    id="originalPrice"
-                    {...register('originalPrice')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.originalPrice ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.originalPrice && (
-                    <p className="text-red-600 text-xs mt-1">{errors.originalPrice.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="stockQuantity" className="block text-sm font-medium text-gray-700 mb-1">
-                    Stock Quantity *
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    id="stockQuantity"
-                    {...register('stockQuantity')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.stockQuantity ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.stockQuantity && (
-                    <p className="text-red-600 text-xs mt-1">{errors.stockQuantity.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="unitsSold" className="block text-sm font-medium text-gray-700 mb-1">
-                    Units Sold
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    id="unitsSold"
-                    {...register('unitsSold')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.unitsSold ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.unitsSold && (
-                    <p className="text-red-600 text-xs mt-1">{errors.unitsSold.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Optional Details
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="rating" className="block text-sm font-medium text-gray-700 mb-1">
-                    Rating (0-5)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    id="rating"
-                    {...register('rating')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.rating ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.rating && (
-                    <p className="text-red-600 text-xs mt-1">{errors.rating.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="reviewCount" className="block text-sm font-medium text-gray-700 mb-1">
-                    Review Count
-                  </label>
-                  <input
-                    type="number"
-                    step="1"
-                    id="reviewCount"
-                    {...register('reviewCount')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.reviewCount ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.reviewCount && (
-                    <p className="text-red-600 text-xs mt-1">{errors.reviewCount.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="sellerName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Seller Name
-                  </label>
-                  <input
-                    type="text"
-                    id="sellerName"
-                    {...register('sellerName')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.sellerName ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.sellerName && (
-                    <p className="text-red-600 text-xs mt-1">{errors.sellerName.message}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="sellerLocation" className="block text-sm font-medium text-gray-700 mb-1">
-                    Seller Location
-                  </label>
-                  <input
-                    type="text"
-                    id="sellerLocation"
-                    {...register('sellerLocation')}
-                    className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-                      errors.sellerLocation ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                  />
-                  {errors.sellerLocation && (
-                    <p className="text-red-600 text-xs mt-1">{errors.sellerLocation.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <h2 className="text-xl font-light text-gray-900 mb-6 pb-2 border-b border-gray-200">
-                Product Images
-              </h2>
-              
-              {isEditMode && existingImages.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Current Images</h3>
-                  <div className="flex flex-wrap gap-4">
-                    {existingImages.map((imgUrl, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={`${backendUrl}${imgUrl.startsWith('/') ? '' : '/'}${imgUrl}`}
-                          alt={`Product ${index + 1}`}
-                          className="h-24 w-24 object-cover rounded-lg border border-gray-200"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = '/placeholder-image.jpg';
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeExistingImage(index)}
-                          className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                        >
-                          <FiTrash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {imagePreviews.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">New Images to Upload</h3>
-                  <div className="flex flex-wrap gap-4">
-                    {imagePreviews.map((previewUrl, index) => (
-                      <div key={previewUrl} className="relative group">
-                        <img
-                          src={previewUrl}
-                          alt={`Preview ${index + 1}`}
-                          className="h-24 w-24 object-cover rounded-lg border border-gray-200"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeNewImagePreview(index)}
-                          className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                        >
-                          <FiTrash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {isEditMode ? 'Add More Images' : 'Upload Images'}
+                  <span className="ml-2 text-sm text-slate-700">Product is Active</span>
                 </label>
-                <div className="flex items-center gap-3">
-                  <label className="cursor-pointer">
-                    <div className="flex flex-col items-center justify-center h-24 w-24 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
-                      <FiPlus className="text-gray-400" size={20} />
-                      <span className="text-xs text-gray-500 mt-1">Add Images</span>
-                    </div>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                  </label>
-                  <p className="text-xs text-gray-500">
-                    JPEG, PNG, GIF, WEBP<br />
-                    Max 5MB per image
-                  </p>
-                </div>
+              </div>
+              <div className="md:col-span-2 text-xs text-slate-500">
+                Status: {isActiveValue ? <span className="font-medium text-emerald-600">Active</span> : <span className="font-medium text-amber-600">Inactive</span>}
               </div>
             </div>
+          </section>
 
-            <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
-              <Link
-                to="/admin/products"
-                className="px-6 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </Link>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className={`px-6 py-3 rounded-lg text-white flex items-center gap-2 ${
-                  isSubmitting ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'
-                } transition-colors`}
-              >
-                {isSubmitting ? (
-                  <Spinner size="sm" />
-                ) : (
-                  <>
-                    <FiSave size={16} />
-                    {isEditMode ? 'Update Product' : 'Create Product'}
-                  </>
-                )}
-              </button>
+          <section>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+              Pricing & Inventory
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+              <div>
+                <label htmlFor="price" className={labelClass}>
+                  Price <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  id="price"
+                  {...register('price')}
+                  className={inputClass(errors.price)}
+                  placeholder="0.00"
+                />
+                {errors.price && <p className="text-red-600 text-xs mt-1">{errors.price.message}</p>}
+              </div>
+              <div>
+                <label htmlFor="originalPrice" className={labelClass}>
+                  Original Price (Optional)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  id="originalPrice"
+                  {...register('originalPrice')}
+                  className={inputClass(errors.originalPrice)}
+                  placeholder="e.g., 99.99 (for sales)"
+                />
+                {errors.originalPrice && <p className="text-red-600 text-xs mt-1">{errors.originalPrice.message}</p>}
+              </div>
+              <div>
+                <label htmlFor="stockQuantity" className={labelClass}>
+                  Stock Quantity <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  id="stockQuantity"
+                  {...register('stockQuantity')}
+                  className={inputClass(errors.stockQuantity)}
+                  placeholder="0"
+                />
+                {errors.stockQuantity && <p className="text-red-600 text-xs mt-1">{errors.stockQuantity.message}</p>}
+              </div>
             </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+              Optional Details
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4">
+              <div>
+                <label htmlFor="rating" className={labelClass}>
+                  Rating (0-5)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0" max="5"
+                  id="rating"
+                  {...register('rating')}
+                  className={inputClass(errors.rating)}
+                  placeholder="e.g., 4.5"
+                />
+                {errors.rating && <p className="text-red-600 text-xs mt-1">{errors.rating.message}</p>}
+              </div>
+              <div>
+                <label htmlFor="reviewCount" className={labelClass}>
+                  Review Count
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  id="reviewCount"
+                  {...register('reviewCount')}
+                  className={inputClass(errors.reviewCount)}
+                  placeholder="0"
+                />
+                {errors.reviewCount && <p className="text-red-600 text-xs mt-1">{errors.reviewCount.message}</p>}
+              </div>
+              <div>
+                <label htmlFor="unitsSold" className={labelClass}>
+                  Units Sold
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  id="unitsSold"
+                  {...register('unitsSold')}
+                  className={inputClass(errors.unitsSold)}
+                  placeholder="0"
+                />
+                {errors.unitsSold && <p className="text-red-600 text-xs mt-1">{errors.unitsSold.message}</p>}
+              </div>
+              <div className="sm:col-span-1">
+                <label htmlFor="sellerName" className={labelClass}>
+                  Seller Name
+                </label>
+                <input
+                  type="text"
+                  id="sellerName"
+                  {...register('sellerName')}
+                  className={inputClass(errors.sellerName)}
+                  placeholder="e.g., SuriAddis Official"
+                />
+                {errors.sellerName && <p className="text-red-600 text-xs mt-1">{errors.sellerName.message}</p>}
+              </div>
+              <div className="sm:col-span-1">
+                <label htmlFor="sellerLocation" className={labelClass}>
+                  Seller Location
+                </label>
+                <input
+                  type="text"
+                  id="sellerLocation"
+                  {...register('sellerLocation')}
+                  className={inputClass(errors.sellerLocation)}
+                  placeholder="e.g., Addis Ababa"
+                />
+                {errors.sellerLocation && <p className="text-red-600 text-xs mt-1">{errors.sellerLocation.message}</p>}
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+              Product Images
+            </h2>
+            {imagePreviews.length > 0 && (
+              <div className="mb-4">
+                <label className={labelClass}>Image Previews</label>
+                <div className="flex flex-wrap gap-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group w-20 h-20 sm:w-24 sm:h-24">
+                      <img
+                        src={preview.url}
+                        alt={`Preview ${index + 1}`}
+                        className="h-full w-full object-cover rounded-lg border border-slate-200"
+                        onError={(e) => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute -top-2 -right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                        aria-label="Remove image"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="productImages" className={labelClass}>
+                {imagePreviews.length > 0 ? 'Add More Images' : 'Upload Images'}
+              </label>
+              <label
+                htmlFor="productImages"
+                className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-lg cursor-pointer hover:border-slate-400 transition-colors"
+              >
+                <div className="space-y-1 text-center">
+                  <FiUploadCloud className="mx-auto h-10 w-10 text-slate-400" />
+                  <div className="flex text-sm text-slate-600">
+                    <span className="relative font-medium text-slate-700 hover:text-slate-900 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-slate-500">
+                      Click to upload
+                    </span>
+                    <input id="productImages" name="productImages" type="file" multiple accept="image/*" className="sr-only" onChange={handleImageChange} />
+                  </div>
+                  <p className="text-xs text-slate-500">PNG, JPG, GIF, WEBP up to 5MB</p>
+                </div>
+              </label>
+            </div>
+          </section>
+
+          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+            <Link
+              to="/admin/products"
+              className="px-5 py-2 border border-slate-200 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`px-5 py-2 rounded-md text-sm text-white flex items-center gap-2 ${
+                isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'
+              } transition-colors`}
+            >
+              {isSubmitting ? (
+                <Spinner size="sm" />
+              ) : (
+                <FiSave size={16} />
+              )}
+              {isEditMode ? 'Update Product' : 'Create Product'}
+            </button>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 };
