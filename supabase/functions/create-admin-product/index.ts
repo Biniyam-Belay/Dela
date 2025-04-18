@@ -31,32 +31,26 @@ serve(async (req) => {
       });
     }
 
-    const url = new URL(req.url);
-    const id = url.searchParams.get('id');
-    if (!id) {
-      return new Response(JSON.stringify({ success: false, error: 'Missing product id' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
-    }
     const body = await req.json();
-    const { name, description, price, stockQuantity, categoryId, isActive, images, originalPrice, rating, reviewCount, sellerName, sellerLocation, unitsSold, imagesToDelete } = body;
+    const { name, description, price, stockQuantity, categoryId, isActive, images, originalPrice, rating, reviewCount, sellerName, sellerLocation, unitsSold } = body;
 
-    const { data, error } = await supabase.from('products').update({
-      name,
-      description,
-      price,
-      stock_quantity: stockQuantity,
-      category_id: categoryId,
-      is_active: isActive,
-      images,
-      original_price: originalPrice,
-      rating,
-      review_count: reviewCount,
-      seller_name: sellerName,
-      seller_location: sellerLocation,
-      units_sold: unitsSold,
-    }).eq('id', id).select().single();
+    const { data, error } = await supabase.from('products').insert([
+      {
+        name,
+        description,
+        price,
+        stock_quantity: stockQuantity,
+        category_id: categoryId,
+        is_active: isActive,
+        images,
+        original_price: originalPrice,
+        rating,
+        review_count: reviewCount,
+        seller_name: sellerName,
+        seller_location: sellerLocation,
+        units_sold: unitsSold,
+      }
+    ]).select().single();
 
     if (error) {
       return new Response(JSON.stringify({ success: false, error: error.message }), {
@@ -67,7 +61,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ success: true, data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
+      status: 201,
     });
   } catch (err) {
     return new Response(JSON.stringify({ success: false, error: err.message }), {

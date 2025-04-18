@@ -1,6 +1,7 @@
 // frontend/src/App.jsx
 import React, { useEffect, useState } from 'react'; // Import useState/useEffect for path check
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider } from './contexts/authContext'; // Assuming AuthProvider wraps everything
 
 // --- Layouts ---
 import Header from './components/layout/Header';
@@ -23,9 +24,12 @@ import NotFoundPage from './pages/NotFoundPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminProductListPage from './pages/admin/AdminProductListPage';
 import AdminCategoryListPage from './pages/admin/AdminCategoryListPage';
-import AdminProductAddEditPage from './pages/admin/AdminProductAddEditPage'; // Import Admin Product Add/Edit page later
-// Import Admin Product/Category Add/Edit pages later
-import AdminCategoryAddEditPage from './pages/admin/AdminCategoryAddEditPage'; // Import Admin Category Add/Edit page later
+import AdminProductAddEditPage from './pages/admin/AdminProductAddEditPage';
+import AdminCategoryAddEditPage from './pages/admin/AdminCategoryAddEditPage';
+import AdminOrderListPage from './pages/admin/AdminOrderListPage';   // Ensure this path is correct
+import AdminUserListPage from './pages/admin/AdminUserListPage';     // Ensure this path is correct
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';   // Ensure this path is correct
+import AdminFinancePage from './pages/admin/AdminFinancePage'; // Import the new page
 
 // --- Route Protection ---
 import ProtectedRoute from './components/routes/ProtectedRoute';
@@ -74,6 +78,10 @@ const AppContent = () => {
                         <Route path="categories" element={<AdminCategoryListPage />} />
                         <Route path="categories/new" element={<AdminCategoryAddEditPage />} />
                         <Route path="categories/edit/:categoryId" element={<AdminCategoryAddEditPage />} />
+                        <Route path="orders" element={<AdminOrderListPage />} />
+                        <Route path="users" element={<AdminUserListPage />} />
+                        <Route path="finance" element={<AdminFinancePage />} /> {/* Add Finance Route */}
+                        <Route path="settings" element={<AdminSettingsPage />} />
                     </Route>
 
                     {/* --- Not Found --- */}
@@ -90,10 +98,12 @@ const AppContent = () => {
 // --- Main App Component ---
 function App() {
   return (
-    <Router>
-      {/* Render the AppContent which handles layout based on location */}
-      <AppContent />
-    </Router>
+    <AuthProvider>
+      <Router>
+        {/* Render the AppContent which handles layout based on location */}
+        <AppContent />
+      </Router>
+    </AuthProvider>
   );
 }
 
