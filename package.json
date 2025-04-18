@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@react-native-picker/picker": "^2.11.0",
+    "expo-image-picker": "^16.0.6",
+    "expo-linear-gradient": "^14.0.2",
+    "use-debounce": "^10.0.4"
+  }
+}
