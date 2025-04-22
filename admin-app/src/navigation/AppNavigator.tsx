@@ -37,15 +37,15 @@ function UserStackNavigator() {
 function MainTabs({ onLogout }: { onLogout: () => void }) {
   return (
     <Tab.Navigator
-      initialRouteName="Dashboard"
+      initialRouteName="Home"
       tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Control" component={ControlPanelScreen} />
-      <Tab.Screen name="Orders" component={OrdersScreen} />
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Users" component={UserStackNavigator} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} />
+      <Tab.Screen name="Home" component={DashboardScreen} />
+      <Tab.Screen name="Wallet" component={ControlPanelScreen} />
+      <Tab.Screen name="Exchange" component={NotificationsScreen} />
+      <Tab.Screen name="Markets" component={OrdersScreen} />
+      <Tab.Screen name="Profile" component={UserStackNavigator} />
     </Tab.Navigator>
   );
 }

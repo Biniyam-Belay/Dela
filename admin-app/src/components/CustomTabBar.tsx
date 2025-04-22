@@ -10,11 +10,11 @@ type TabConfig = {
 };
 
 const TABS: TabConfig[] = [
-  { name: 'Control', icon: 'tune' },
-  { name: 'Orders', icon: 'shopping-cart' },
-  { name: 'Dashboard', icon: 'dashboard' },
-  { name: 'Users', icon: 'people' },
-  { name: 'Notifications', icon: 'notifications' },
+  { name: 'Home', icon: 'home' },
+  { name: 'Wallet', icon: 'account-balance-wallet' },
+  { name: 'Exchange', icon: 'swap-horiz' },
+  { name: 'Markets', icon: 'storefront' },
+  { name: 'Profile', icon: 'person' },
 ];
 
 const getIconForRoute = (routeName: string): keyof typeof MaterialIcons.glyphMap => {
@@ -23,94 +23,124 @@ const getIconForRoute = (routeName: string): keyof typeof MaterialIcons.glyphMap
 };
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const middleIndex = Math.floor(TABS.length / 2);
+
   return (
-    <View style={styles.container}>
-      {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const label =
-          options.tabBarLabel !== undefined
-            ? options.tabBarLabel
-            : options.title !== undefined
-            ? options.title
-            : route.name;
+    <View style={styles.outerContainer}>
+      <View style={styles.container}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const label =
+            options.tabBarLabel !== undefined
+              ? options.tabBarLabel
+              : options.title !== undefined
+              ? options.title
+              : route.name;
 
-        const isFocused = state.index === index;
+          const isFocused = state.index === index;
+          const isMiddleButton = index === middleIndex;
 
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
 
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
-          }
-        };
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name, route.params);
+            }
+          };
 
-        const onLongPress = () => {
-          navigation.emit({
-            type: 'tabLongPress',
-            target: route.key,
-          });
-        };
+          const onLongPress = () => {
+            navigation.emit({
+              type: 'tabLongPress',
+              target: route.key,
+            });
+          };
 
-        const activeColor = colors.primary;
-        const inactiveColor = colors.textSecondary;
-        const color = isFocused ? activeColor : inactiveColor;
-        const iconName = getIconForRoute(route.name);
+          const activeColor = colors.white;
+          const inactiveColor = colors.textSecondary;
+          const color = isFocused ? activeColor : inactiveColor;
+          const iconName = getIconForRoute(route.name);
 
-        return (
-          <TouchableOpacity
-            key={route.key}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarTestID}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            style={styles.tabButton}
-            activeOpacity={0.8}
-          >
-            {isFocused && <View style={styles.activeIndicator} />}
-            <View style={styles.tabContent}>
-              <MaterialIcons
-                name={iconName}
-                size={24}
-                color={color}
-              />
-              <Text style={[styles.label, { color }]}>{label}</Text>
-            </View>
-          </TouchableOpacity>
-        );
-      })}
+          const middleButtonContainerStyle = isMiddleButton ? styles.middleButtonContainer : {};
+          const middleIconWrapperStyle = isMiddleButton ? styles.middleIconWrapper : {};
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={options.tabBarAccessibilityLabel}
+              testID={options.tabBarTestID}
+              onPress={onPress}
+              onLongPress={onLongPress}
+              style={[styles.tabButton, middleButtonContainerStyle]}
+              activeOpacity={0.8}
+            >
+              {isFocused && !isMiddleButton && <View style={styles.activeIndicator} />}
+              <View style={[styles.tabContent, middleIconWrapperStyle]}>
+                <MaterialIcons
+                  name={iconName}
+                  size={isMiddleButton ? 30 : 24}
+                  color={isMiddleButton ? colors.primary : color}
+                />
+                {!isMiddleButton && (
+                  <Text style={[styles.label, { color }]}>{label}</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outerContainer: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 10,
+    marginHorizontal: spacing.md,
+    marginBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
+    borderRadius: constants.borderRadiusXl,
+    overflow: 'hidden',
+  },
   container: {
     flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 80 : 70,
-    paddingBottom: Platform.OS === 'ios' ? spacing.lg : spacing.sm,
-    backgroundColor: colors.cardBackground,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 5,
-    elevation: 5,
+    height: 70,
+    backgroundColor: colors.black,
     justifyContent: 'space-around',
     alignItems: 'center',
+    borderRadius: constants.borderRadiusXl,
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     height: '100%',
-    paddingTop: spacing.sm,
     position: 'relative',
+  },
+  middleButtonContainer: {},
+  middleIconWrapper: {
+    backgroundColor: colors.primary,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -35,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
+    borderWidth: 3,
+    borderColor: colors.black,
   },
   tabContent: {
     alignItems: 'center',
@@ -124,12 +154,11 @@ const styles = StyleSheet.create({
   },
   activeIndicator: {
     position: 'absolute',
-    top: 0,
+    bottom: 5,
     left: spacing.lg,
     right: spacing.lg,
     height: 3,
-    backgroundColor: colors.primary,
-    borderBottomLeftRadius: 2,
-    borderBottomRightRadius: 2,
+    backgroundColor: '#34D399',
+    borderRadius: 1.5,
   },
 });
