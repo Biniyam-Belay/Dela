@@ -3,15 +3,16 @@
 import { useState, useEffect } from "react"
 import { Link, NavLink, useNavigate } from "react-router-dom"
 import { useAuth } from "../../contexts/authContext.jsx"
-import { useCart } from "../../contexts/CartContext.jsx"
 import { FiShoppingBag, FiUser, FiSearch, FiMenu, FiX, FiHeart, FiChevronRight } from "react-icons/fi"
+import { useSelector } from 'react-redux';
+import { selectCartCount } from '../../store/cartSlice';
 
 const Header = () => {
   const { isAuthenticated, logout, isLoading } = useAuth()
-  const { cartCount } = useCart()
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const cartCount = useSelector(selectCartCount);
 
   // Handle scroll effect
   useEffect(() => {

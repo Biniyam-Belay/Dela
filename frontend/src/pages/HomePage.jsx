@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
+import { useQuery } from '@tanstack/react-query'
 import { fetchProducts, fetchCategories } from "../services/productApi"
 import { getImageUrl, placeholderImageUrl } from "../utils/imageUrl"
 import ProductCard from "../components/ui/ProductCard"
@@ -62,26 +63,11 @@ const HeroSection = () => (
 
 // --- Category Showcase Section (Updated) ---
 const CategoryShowcase = () => {
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    const loadCategories = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetchCategories()
-        setCategories((response.data || []).slice(0, 3))
-      } catch (err) {
-        console.error("Error fetching categories:", err)
-        setError("Could not load categories")
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadCategories()
-  }, [])
+  const { data: categoriesData, isLoading, error } = useQuery({
+    queryKey: ['categories', { limit: 3 }],
+    queryFn: () => fetchCategories({ limit: 3 }),
+    select: (data) => (data?.data || []).slice(0, 3),
+  })
 
   const handleImageError = (e) => {
     e.target.onerror = null
@@ -98,17 +84,17 @@ const CategoryShowcase = () => {
           </p>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {Array.from({ length: 3 }).map((_, index) => (
               <div key={index} className="aspect-[3/4] bg-gray-200 animate-pulse rounded-lg"></div>
             ))}
           </div>
         ) : error ? (
-          <ErrorMessage message={error} />
-        ) : categories.length > 0 ? (
+          <ErrorMessage message={error.message || "Could not load categories"} />
+        ) : categoriesData && categoriesData.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {categories.map((category) => (
+            {categoriesData.map((category) => (
               <Link
                 to={`/products?category=${category.slug}`}
                 key={category.id}
@@ -309,31 +295,18 @@ const NewsletterSection = () => (
 
 // --- Main HomePage Component ---
 const HomePage = () => {
-  const [products, setProducts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const response = await fetchProducts({ limit: 8, page: 1 })
-        setProducts(response.data || [])
-      } catch (err) {
-        console.error("Error fetching products:", err)
-        setError("Could not load products")
-      } finally {
-        setLoading(false)
-      }
-    }
-    loadProducts()
-  }, [])
+  const { data: productsData, isLoading: productsLoading, error: productsError } = useQuery({
+    queryKey: ['products', { limit: 8, page: 1 }],
+    queryFn: () => fetchProducts({ limit: 8, page: 1 }),
+    select: (data) => data?.data || [],
+  })
 
   return (
     <div className="bg-white">
       <HeroSection />
       <CategoryShowcase />
       <FeaturedBanner />
-      <TrendingProducts products={products} loading={loading} error={error} />
+      <TrendingProducts products={productsData} loading={productsLoading} error={productsError} />
       <BrandHighlights />
       <NewsletterSection />
     </div>

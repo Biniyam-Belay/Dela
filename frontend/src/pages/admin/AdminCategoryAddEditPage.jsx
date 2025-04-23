@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiArrowLeft, FiSave, FiImage, FiX } from 'react-icons/fi';
 import {
   fetchAdminCategoryById,
@@ -21,10 +22,9 @@ const categorySchema = z.object({
 const AdminCategoryAddEditPage = () => {
   const { categoryId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isEditMode = Boolean(categoryId);
 
-  const [loading, setLoading] = useState(false);
-  const [formError, setFormError] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [existingImageUrl, setExistingImageUrl] = useState(null);
@@ -33,7 +33,7 @@ const AdminCategoryAddEditPage = () => {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(categorySchema),
     defaultValues: {
@@ -42,36 +42,118 @@ const AdminCategoryAddEditPage = () => {
     },
   });
 
-  useEffect(() => {
-    if (isEditMode && categoryId) {
-      const loadCategory = async () => {
-        setLoading(true);
-        setFormError(null);
-        try {
-          const response = await fetchAdminCategoryById(categoryId);
-          const categoryData = response.data;
-          if (categoryData) {
-            reset({
-              name: categoryData.name || '',
-              description: categoryData.description || '',
-            });
-            if (categoryData.image_url) {
-              setExistingImageUrl(categoryData.image_url);
-              setImagePreview(categoryData.image_url);
-            }
-          } else {
-            throw new Error('Category not found');
-          }
-        } catch (err) {
-          setFormError(err.message || 'Failed to load category data.');
-          console.error('Error loading category:', err);
-        } finally {
-          setLoading(false);
+  const {
+    data: categoryData,
+    isLoading: isLoadingCategory,
+    error: fetchError,
+  } = useQuery({
+    queryKey: ['adminCategoryDetail', categoryId],
+    queryFn: () => fetchAdminCategoryById(categoryId),
+    enabled: isEditMode,
+    select: (data) => data?.data || null,
+    onSuccess: (data) => {
+      if (data) {
+        reset({
+          name: data.name || '',
+          description: data.description || '',
+        });
+        if (data.image_url) {
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+          const imageUrl = `${backendUrl}${data.image_url.startsWith('/') ? '' : '/'}${data.image_url}`;
+          setExistingImageUrl(imageUrl);
+          setImagePreview(imageUrl);
+        } else {
+          setExistingImageUrl(null);
+          setImagePreview(null);
         }
-      };
-      loadCategory();
+        setImageFile(null);
+      }
+    },
+    onError: (err) => {
+      console.error('Error loading category:', err);
+    },
+  });
+
+  // Effect to populate form in edit mode
+  useEffect(() => {
+    // Only run if in edit mode AND categoryData has been successfully fetched
+    if (isEditMode && categoryData) {
+      console.log("Category Data for Reset:", categoryData); // Debugging line
+      reset({
+        name: categoryData.name || '',
+        description: categoryData.description || '',
+      });
+      // Set image preview if an image exists
+      if (categoryData.image) {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+        const imageUrl = `${backendUrl}${categoryData.image.startsWith('/') ? '' : '/'}${categoryData.image}`;
+        setExistingImageUrl(imageUrl);
+        setImagePreview(imageUrl);
+      } else {
+        setExistingImageUrl(null);
+        setImagePreview(null);
+      }
+      setNewImageFile(null);
+    } else if (!isEditMode) {
+      // Reset form for add mode or if data fetch fails in edit mode initially
+      reset({ name: '', description: '' });
+      setImagePreview(null);
+      setExistingImageUrl(null);
+      setNewImageFile(null);
     }
-  }, [isEditMode, categoryId, reset]);
+    // Ensure reset is included in dependencies if it's stable (which it should be from react-hook-form)
+    // Key dependencies are isEditMode and the fetched data (categoryData)
+  }, [isEditMode, categoryData, reset]);
+
+  const categoryMutation = useMutation({
+    mutationFn: async (formData) => {
+      let finalImageUrl = existingImageUrl;
+
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `category-${Date.now()}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('categories')
+          .upload(fileName, imageFile, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+          console.error('Supabase Storage Upload Error:', uploadError);
+          throw new Error('Image upload failed');
+        }
+
+        if (uploadData?.path) {
+          finalImageUrl = `/${uploadData.path}`;
+          console.log('Uploaded image relative path:', finalImageUrl);
+        } else {
+          console.warn('Upload successful but path not found in response.');
+        }
+      } else if (existingImageUrl && !imagePreview) {
+        finalImageUrl = null;
+      }
+
+      const categoryPayload = {
+        name: formData.name,
+        description: formData.description || null,
+        image_url: finalImageUrl,
+      };
+
+      console.log('Sending category payload:', categoryPayload);
+
+      if (isEditMode) {
+        return updateAdminCategory(categoryId, categoryPayload);
+      } else {
+        return createAdminCategory(categoryPayload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminCategories'] });
+      queryClient.invalidateQueries({ queryKey: ['adminCategoryDetail', categoryId] });
+      navigate('/admin/categories');
+    },
+    onError: (err) => {
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} category:`, err);
+    },
+  });
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -86,53 +168,13 @@ const AdminCategoryAddEditPage = () => {
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
-    setExistingImageUrl(null);
   };
 
-  const uploadImageToSupabase = async (file) => {
-    if (!file) return null;
-    const fileExt = file.name.split('.').pop();
-    const fileName = `category-${Date.now()}.${fileExt}`;
-    const { data, error } = await supabase.storage.from('categories').upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
-    if (error) throw new Error('Image upload failed');
-    const { data: publicUrlData } = supabase.storage.from('categories').getPublicUrl(fileName);
-    return publicUrlData.publicUrl;
+  const onSubmit = (data) => {
+    categoryMutation.mutate(data);
   };
 
-  const onSubmit = async (data) => {
-    setFormError(null);
-    let finalImageUrl = existingImageUrl;
-
-    try {
-      if (imageFile) {
-        finalImageUrl = await uploadImageToSupabase(imageFile);
-      } else if (existingImageUrl && !imagePreview) {
-        finalImageUrl = null;
-      }
-
-      const categoryData = {
-        name: data.name,
-        description: data.description || null,
-        image_url: finalImageUrl,
-      };
-
-      if (isEditMode) {
-        await updateAdminCategory(categoryId, categoryData);
-      } else {
-        await createAdminCategory(categoryData);
-      }
-      navigate('/admin/categories');
-    } catch (err) {
-      const errorMessage = err.error?.message || err.message || `Failed to ${isEditMode ? 'update' : 'create'} category.`;
-      setFormError(errorMessage);
-      console.error(`Error ${isEditMode ? 'updating' : 'creating'} category:`, err);
-    }
-  };
-
-  if (loading && isEditMode) {
+  if (isLoadingCategory && isEditMode) {
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner />
@@ -167,7 +209,10 @@ const AdminCategoryAddEditPage = () => {
 
       <div className="bg-white rounded-lg shadow-sm p-6 md:p-8 border border-slate-200">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {formError && <ErrorMessage message={formError} />}
+          {fetchError && <ErrorMessage message={fetchError.message || 'Failed to load category data.'} />}
+          {categoryMutation.isError && (
+            <ErrorMessage message={categoryMutation.error?.message || `Failed to ${isEditMode ? 'update' : 'create'} category.`} />
+          )}
 
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">
@@ -249,12 +294,12 @@ const AdminCategoryAddEditPage = () => {
             </Link>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={categoryMutation.isPending}
               className={`px-5 py-2 rounded-md text-sm text-white flex items-center gap-2 ${
-                isSubmitting ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'
+                categoryMutation.isPending ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'
               } transition-colors`}
             >
-              {isSubmitting ? (
+              {categoryMutation.isPending ? (
                 <Spinner size="sm" />
               ) : (
                 <FiSave size={16} />

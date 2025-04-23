@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../utils/supabaseClient'; // Adjust path if needed
 import Spinner from '../components/common/Spinner'; // Assuming you have a Spinner
+import { store } from '../store/store';
+import { clearLocalCartAndState, mergeLocalCartWithBackend } from '../store/cartSlice';
 
 const AuthContext = createContext(null);
 
@@ -84,6 +86,9 @@ export const AuthProvider = ({ children }) => {
             console.log("Auth Context: Sign in successful for", data?.user?.email);
             // State update handled by listener
 
+            // After successful login, merge local cart with backend cart
+            await store.dispatch(mergeLocalCartWithBackend());
+
         } catch (err) {
             setError(err.message || 'Failed to sign in.');
             setUser(null);
@@ -103,6 +108,8 @@ export const AuthProvider = ({ children }) => {
                 console.error("Auth Context: Sign out error:", signOutError);
                 throw signOutError;
             }
+            // Clear cart state and localStorage
+            store.dispatch(clearLocalCartAndState());
             console.log("Auth Context: Sign out initiated.");
             // State update handled by listener
         } catch (err) {
@@ -110,6 +117,8 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             setIsAuthenticated(false);
             localStorage.removeItem('accessToken');
+            // Also clear cart on error, just in case
+            store.dispatch(clearLocalCartAndState());
         } finally {
             setIsLoading(false);
         }

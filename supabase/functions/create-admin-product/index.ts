@@ -32,7 +32,33 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { name, description, price, stockQuantity, categoryId, isActive, images, originalPrice, rating, reviewCount, sellerName, sellerLocation, unitsSold } = body;
+    console.log("Received body in function:", JSON.stringify(body, null, 2)); // Log received body
+
+    const {
+      name,
+      description,
+      price,
+      stockQuantity,
+      categoryId,
+      isActive,
+      images,
+      originalPrice,
+      rating,
+      reviewCount,
+      sellerName,
+      sellerLocation,
+      unitsSold,
+      slug // Extract slug from body
+    } = body;
+
+    if (!slug || typeof slug !== 'string' || !slug.trim()) {
+      console.error("Slug is missing or invalid in request body:", slug);
+      return new Response(JSON.stringify({ success: false, error: 'Slug is required and must be a non-empty string.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
+    }
+    console.log("Extracted slug:", slug);
 
     const { data, error } = await supabase.from('products').insert([
       {
@@ -49,10 +75,12 @@ serve(async (req) => {
         seller_name: sellerName,
         seller_location: sellerLocation,
         units_sold: unitsSold,
+        slug: slug // Ensure slug is included in the insert object
       }
     ]).select().single();
 
     if (error) {
+      console.error("Database insert error:", error);
       return new Response(JSON.stringify({ success: false, error: error.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
@@ -64,6 +92,7 @@ serve(async (req) => {
       status: 201,
     });
   } catch (err) {
+    console.error("Function error:", err);
     return new Response(JSON.stringify({ success: false, error: err.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,

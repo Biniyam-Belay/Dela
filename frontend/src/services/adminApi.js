@@ -144,6 +144,30 @@ export const createAdminProduct = async (formData) => {
         }
         productData.images = uploadedImagePaths; // Add the array of relative image paths
 
+        // --- Ensure slug is included if required by your DB schema ---
+        // If your backend expects a slug, generate it here if not present
+        // Also ensure it's not empty or whitespace
+        if ((!productData.slug || !String(productData.slug).trim()) && productData.name) {
+            productData.slug = String(productData.name)
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '') // Remove non-alphanumeric, non-space, non-hyphen
+                .trim() // Trim leading/trailing spaces
+                .replace(/\s+/g, '-') // Replace spaces with hyphens
+                .replace(/-+/g, '-') // Replace multiple hyphens with single
+                .replace(/(^-|-$)+/g, ''); // Remove leading/trailing hyphens
+        }
+
+        // Defensive: If slug is still missing or empty after generation, throw before sending
+        if (!productData.slug || !String(productData.slug).trim()) {
+            // Log the name to see why slug generation failed
+            console.error("Slug generation failed. Product Name:", productData.name);
+            throw new Error('Product slug is required and could not be generated from the name.');
+        }
+
+        // --- Add Logging Here ---
+        console.log("Sending productData to backend:", JSON.stringify(productData, null, 2));
+        // ------------------------
+
         // 4. Call create-admin-product function
         const response = await fetch(import.meta.env.VITE_SUPABASE_CREATE_ADMIN_PRODUCT_URL, {
             method: 'POST',

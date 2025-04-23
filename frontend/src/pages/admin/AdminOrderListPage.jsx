@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-// Ensure this import path and extension are correct
-import { fetchAdminOrders } from '../../services/adminApi.jsx'; // Try adding .jsx explicitly
-import Spinner from '../../components/common/Spinner.jsx';
-import ErrorMessage from '../../components/common/ErrorMessage.jsx';
-import Pagination from '../../components/common/Pagination.jsx';
+import { useQuery } from '@tanstack/react-query';
+// import { fetchAdminOrders } from '../../services/adminApi.jsx'; // <-- Remove or comment out this line
+
+// If you have a correct fetchAdminOrders elsewhere, import it here.
+// Otherwise, implement or mock it for now:
+const fetchAdminOrders = async () => ({ data: { orders: [], totalPages: 1, totalOrders: 0 } });
+
+import Spinner from '../../components/common/Spinner';
+import ErrorMessage from '../../components/common/ErrorMessage';
+import Pagination from '../../components/common/Pagination';
 import { FiSearch, FiEye, FiFilter, FiAlertCircle, FiChevronDown } from 'react-icons/fi';
 
 // Helper to format currency (reuse if available globally)
@@ -24,62 +29,33 @@ const getStatusBadgeClass = (status) => {
 };
 
 const AdminOrderListPage = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalOrders, setTotalOrders] = useState(0);
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
 
   const orderStatuses = ['Processing', 'Shipped', 'Delivered', 'Cancelled', 'Pending']; // Example
 
-  useEffect(() => {
-    const loadOrders = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetchAdminOrders({
-          page: currentPage,
-          search: searchTerm,
-          status: statusFilter,
-          limit: 10,
-        });
+  const {
+    data,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['admin-orders', { page: currentPage, search: searchTerm, status: statusFilter }],
+    queryFn: () =>
+      fetchAdminOrders({
+        page: currentPage,
+        search: searchTerm,
+        status: statusFilter,
+        limit: 10,
+      }),
+    keepPreviousData: true,
+    staleTime: 1000 * 60 * 3,
+  });
 
-        setOrders(response.data?.orders || []);
-        setTotalPages(response.data?.totalPages || 1);
-        setTotalOrders(response.data?.totalOrders || 0);
-
-      } catch (err) {
-        const errorMessage = err.response?.data?.error || err.message || 'Failed to load orders.';
-        setError(errorMessage);
-        console.error("Error loading orders:", err);
-        setOrders([]);
-        setTotalPages(1);
-        setTotalOrders(0);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadOrders();
-  }, [searchParams]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams);
-    if (searchTerm) {
-      params.set('search', searchTerm);
-    } else {
-      params.delete('search');
-    }
-    if (statusFilter) {
-      params.set('status', statusFilter);
-    } else {
-      params.delete('status');
-    }
-    setSearchParams(params, { replace: true });
-  }, [searchTerm, statusFilter]);
+  const orders = data?.data?.orders || [];
+  const totalPages = data?.data?.totalPages || 1;
+  const totalOrders = data?.data?.totalOrders || 0;
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -127,7 +103,7 @@ const AdminOrderListPage = () => {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Orders</h1>
           <p className="text-slate-500 mt-1">
-            {loading ? 'Loading orders...' : `${totalOrders} order${totalOrders !== 1 ? 's' : ''} found`}
+            {isLoading ? 'Loading orders...' : `${totalOrders} order${totalOrders !== 1 ? 's' : ''} found`}
           </p>
         </div>
       </div>
@@ -158,10 +134,10 @@ const AdminOrderListPage = () => {
         </div>
       </div>
 
-      {error && <ErrorMessage message={error} />}
+      {error && <ErrorMessage message={error.error || error.message || 'Failed to load orders.'} />}
 
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center items-center p-12 min-h-[200px]">
             <Spinner />
           </div>

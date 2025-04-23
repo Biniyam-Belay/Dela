@@ -1,107 +1,121 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/cors.ts'
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from '../_shared/cors.ts';
 
-console.log(`Function "get-public-products" up and running!`)
-
-// Helper function to get category ID from slug
-async function getCategoryIdFromSlug(supabaseClient: SupabaseClient, categorySlug: string): Promise<string | null> {
-  if (!categorySlug) return null;
-  try {
-    const { data, error } = await supabaseClient
-      .from('categories')
-      .select('id')
-      .eq('slug', categorySlug)
-      .single(); // Expect only one category per slug
-
-    if (error) {
-      console.error(`Error fetching category ID for slug ${categorySlug}:`, error);
-      return null; // Or throw an error if category must exist
-    }
-    return data?.id || null;
-  } catch (err) {
-    console.error(`Exception fetching category ID for slug ${categorySlug}:`, err);
-    return null;
-  }
-}
+console.log(`Function "get-public-products" up and running!`);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    // 1. Parse Query Parameters
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get('page') || '1', 10);
-    const limit = parseInt(url.searchParams.get('limit') || '10', 10);
-    const categorySlug = url.searchParams.get('category');
-    const search = url.searchParams.get('search');
-    const skip = (page - 1) * limit;
+    const limit = parseInt(url.searchParams.get('limit') || '12', 10);
+    const categorySlug = url.searchParams.get('category'); // Assuming category is passed as slug
+    const searchTerm = url.searchParams.get('search');
+    const sortBy = url.searchParams.get('sortBy') || 'name'; // Use 'name' as the default sort column (temporary fix)
+    const sortOrder = url.searchParams.get('sortOrder') || 'asc'; // Default to 'asc' for name sorting
 
-    // 2. Build Base Query
-    let query = supabaseClient
+    console.log(`Function called with params: page=${page}, limit=${limit}, category=${categorySlug}, search=${searchTerm}, sortBy=${sortBy}, sortOrder=${sortOrder}`); // Log entry params
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    let query = supabase
       .from('products')
-      .select('*, category:categories(name, slug)', { count: 'exact' }) // Select all product fields and category name/slug, get total count
-      .eq('isActive', true) // Only fetch active products for public view
-      .order('createdAt', { ascending: false }) // Default sort
-      .range(skip, skip + limit - 1); // Apply pagination
+      .select(`
+        *,
+        category:categories ( name, slug )
+      `, { count: 'exact' })
+      .eq('is_active', true) // Only fetch active products
+      .range(from, to)
+      .order(sortBy, { ascending: sortOrder === 'asc' }); // Ensure .order() uses the correct column name from sortBy
 
-    // 3. Apply Filters
-    // Category Filter
+    if (searchTerm) {
+      console.log(`Applying search term: ${searchTerm}`);
+      query = query.ilike('name', `%${searchTerm}%`);
+    }
+
+    // --- Filter by category slug ---
     if (categorySlug) {
-      const categoryId = await getCategoryIdFromSlug(supabaseClient, categorySlug);
-      if (categoryId) {
-        query = query.eq('categoryId', categoryId);
+      console.log(`Attempting to filter by category slug: ${categorySlug}`);
+      // Fetch the category ID based on the slug first
+      console.log(`Fetching category ID for slug: ${categorySlug}`);
+      const { data: categoryData, error: categoryError } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('slug', categorySlug)
+        .maybeSingle();
+
+      if (categoryError) {
+        console.error("Error fetching category by slug:", categoryError);
+         return new Response(JSON.stringify({ success: false, error: `Error finding category: ${categoryError.message}` }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500,
+        });
+      }
+
+      if (categoryData) {
+        console.log(`Found category ID: ${categoryData.id}. Applying filter.`);
+        // --- Use category_id for filtering ---
+        query = query.eq('category_id', categoryData.id);
+        // ------------------------------------
       } else {
-        // If category slug is provided but not found, return no products
-        return new Response(JSON.stringify({ success: true, count: 0, totalProducts: 0, totalPages: 0, currentPage: page, data: [] }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
+        // Category slug not found, return empty results for this filter
+        console.warn(`Category slug "${categorySlug}" not found. Returning empty results.`);
+        return new Response(JSON.stringify({ success: true, data: [], count: 0, currentPage: page, totalPages: 0 }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
         });
       }
     }
 
-    // Search Filter (case-insensitive on name and description)
-    if (search) {
-      const searchQuery = `%${search}%`; // Prepare pattern for ilike
-      query = query.or(`name.ilike.${searchQuery},description.ilike.${searchQuery}`);
-    }
-
-    // 4. Execute Query
-    const { data: products, error, count: totalProducts } = await query;
+    console.log("Executing final product query..."); // Log before final query execution
+    const { data, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching products:', error);
-      throw error;
+      console.error("Error executing final product query:", error); // Log the specific error
+      // --- Check if the error is about the column name ---
+      if (error.message.includes("column") && error.message.includes("does not exist")) {
+         return new Response(JSON.stringify({ success: false, error: `Database query error: ${error.message}. Check column names.` }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500, // Internal Server Error because the function code is wrong
+        });
+      }
+      // --- End column name check ---
+      return new Response(JSON.stringify({ success: false, error: error.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, // Or 500 depending on the error type
+      });
     }
 
-    // 5. Calculate Pagination Details
-    const totalPages = Math.ceil((totalProducts || 0) / limit);
+    console.log(`Query successful. Found ${count} products.`); // Log success
 
-    // 6. Return Response
+    const totalProducts = count || 0;
+    const totalPages = Math.ceil(totalProducts / limit);
+
     return new Response(JSON.stringify({
-      success: true,
-      count: products?.length || 0,
-      totalProducts: totalProducts || 0,
-      totalPages,
-      currentPage: page,
-      data: products || [],
+        success: true,
+        data,
+        count: totalProducts,
+        currentPage: page,
+        totalPages,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
 
-  } catch (error) {
-    console.error('Error in get-public-products function:', error);
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
+  } catch (err) {
+    console.error("Unexpected function error:", err); // Log unexpected function errors
+    return new Response(JSON.stringify({ success: false, error: `Unexpected function error: ${err.message}` }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
   }
-})
+});

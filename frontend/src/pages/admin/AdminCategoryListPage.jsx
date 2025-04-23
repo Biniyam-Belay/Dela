@@ -1,43 +1,43 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchAdminCategories, deleteAdminCategory } from '../../services/adminApi';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiAlertCircle } from 'react-icons/fi';
 
 const AdminCategoryListPage = () => {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const queryClient = useQueryClient();
 
-  const loadCategories = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetchAdminCategories();
-      setCategories(response.data || []);
-    } catch (err) {
-      setError(err.error || err.message || 'Failed to load categories.');
-      setCategories([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Fetch categories using useQuery
+  const {
+    data: categories = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['adminCategories'],
+    queryFn: fetchAdminCategories,
+    select: (data) => data?.data || [],
+    staleTime: 1000 * 60 * 3,
+  });
 
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
+  // Delete category mutation
+  const deleteMutation = useMutation({
+    mutationFn: deleteAdminCategory,
+    onSuccess: () => {
+      // Invalidate and refetch the categories query after deletion
+      queryClient.invalidateQueries({ queryKey: ['adminCategories'] });
+    },
+    onError: (err) => {
+      console.error("Delete error:", err);
+      alert(err.error || err.message || 'Failed to delete category.');
+    },
+  });
 
-  const handleDelete = async (categoryId, categoryName) => {
+  const handleDelete = (categoryId, categoryName) => {
     if (window.confirm(`Are you sure you want to delete "${categoryName}"?`)) {
-      try {
-        setLoading(true);
-        await deleteAdminCategory(categoryId);
-        loadCategories();
-      } catch (err) {
-        setError(err.error || err.message || 'Failed to delete category.');
-      }
+      deleteMutation.mutate(categoryId);
     }
   };
 
@@ -76,11 +76,12 @@ const AdminCategoryListPage = () => {
       </div>
 
       {/* Error Message */}
-      {error && <ErrorMessage message={error} />}
+      {error && <ErrorMessage message={error.error || error.message || 'Failed to load categories.'} />}
+      {deleteMutation.isError && <ErrorMessage message={deleteMutation.error.message || 'Failed to delete category.'} />}
 
       {/* Content Area */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center items-center p-12">
             <Spinner />
           </div>
@@ -142,10 +143,13 @@ const AdminCategoryListPage = () => {
                         </Link>
                         <button
                           onClick={() => handleDelete(category.id, category.name)}
-                          className="text-slate-600 hover:text-red-600 transition-colors"
+                          disabled={deleteMutation.isLoading && deleteMutation.variables === category.id}
+                          className={`text-slate-600 hover:text-red-600 transition-colors ${
+                            deleteMutation.isLoading && deleteMutation.variables === category.id ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                           title="Delete"
                         >
-                          <FiTrash2 size={16} />
+                          {deleteMutation.isLoading && deleteMutation.variables === category.id ? <Spinner size="xs" /> : <FiTrash2 size={16} />}
                         </button>
                       </div>
                     </td>
