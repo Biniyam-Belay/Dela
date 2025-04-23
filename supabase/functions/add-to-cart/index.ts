@@ -148,7 +148,7 @@ serve(async (req) => {
         console.log(`Found existing cart with ID: ${cart.id} for user ${userId}`);
       }
 
-      // 3. Upsert or delete cart_items
+      // 3. Determine final quantity and Upsert/Delete cart_items
       const { data: existingItem, error: existingItemError } = await supabase
         .from('cart_items')
         .select('id, quantity')
@@ -157,48 +157,87 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingItemError) {
-        return new Response(JSON.stringify({ success: false, error: existingItemError.message }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500,
-        });
+        // Log the error but maybe don't fail the whole request? Depends on desired behavior.
+        console.error(`Error checking for existing cart item: ${existingItemError.message}`);
+        // return new Response(JSON.stringify({ success: false, error: existingItemError.message }), {
+        //   headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        //   status: 500,
+        // });
       }
 
-      let newQuantity = quantity;
-      if (existingItem) {
-        newQuantity = existingItem.quantity + quantity;
-      }
+      // --- REVISED LOGIC --- 
+      // The incoming 'quantity' dictates the *final* state or the *change*.
+      // If quantity is 0, it means DELETE.
+      // If quantity > 0, it could mean ADD or UPDATE.
+      // Let's assume the frontend sends the *final* desired quantity for updates, 
+      // and 0 for deletes. For adding, it sends the quantity to add.
 
-      if (newQuantity <= 0) {
-        // Delete the item if the new quantity is zero or negative
+      let finalQuantity = quantity; // Start with the requested quantity
+
+      // If the intent wasn't explicitly delete (quantity != 0) AND the item exists, 
+      // treat the incoming quantity as an addition to the existing quantity.
+      // NOTE: This assumes frontend sends delta for adds, not final quantity. Adjust if needed.
+      // If frontend sends FINAL quantity for updates, remove this `if` block.
+      if (quantity !== 0 && existingItem) {
+         finalQuantity = existingItem.quantity + quantity;
+      }
+      // Ensure quantity doesn't go below 0 if logic results in negative
+      finalQuantity = Math.max(0, finalQuantity); 
+
+      console.log(`[QUANTITY CALC] Incoming: ${quantity}, Existing: ${existingItem?.quantity}, Final: ${finalQuantity}`);
+
+      // --- END REVISED LOGIC ---
+
+      if (finalQuantity <= 0) {
+        // --- Delete Block (Should now be reached if finalQuantity is 0) ---
+        console.log(`[DELETE ATTEMPT] cartId: ${cart?.id}, productId: ${product?.id}`);
+        if (!cart?.id || !product?.id) {
+          console.error('[DELETE FAILED] Missing cartId or productId before delete call.');
+          // Return 500 if critical IDs are missing
+          return new Response(JSON.stringify({ success: false, error: 'Internal error: Missing IDs for delete operation' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500,
+          });
+        }
+
         const { error: deleteError } = await supabase
           .from('cart_items')
           .delete()
           .eq('cartId', cart.id)
           .eq('productId', product.id);
+
         if (deleteError) {
-          return new Response(JSON.stringify({ success: false, error: deleteError.message }), {
+          console.error(`[DELETE FAILED] Error deleting cart item: ${deleteError.message}`, { cartId: cart?.id, productId: product?.id });
+          // Return 500 if delete fails
+          return new Response(JSON.stringify({ success: false, error: `Failed to remove item: ${deleteError.message}` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
           });
+        } else {
+          console.log(`[DELETE SUCCESS] Successfully executed delete for cartId: ${cart?.id}, productId: ${product?.id}.`);
         }
       } else {
-        // Upsert (add/update) the item with the new quantity
+        // --- Upsert Block (for adding or updating quantity > 0) ---
+        console.log(`[UPSERT ATTEMPT] cartId: ${cart?.id}, productId: ${product?.id}, quantity: ${finalQuantity}`);
         const { data: cartItem, error: cartItemError } = await supabase
           .from('cart_items')
           .upsert({
             cartId: cart.id,
             productId: product.id,
-            quantity: newQuantity,
+            quantity: finalQuantity, // Use the calculated final quantity
             updatedAt: new Date().toISOString(),
           }, { onConflict: 'cartId,productId' })
-          .select()
+          .select('id') // Select only id for performance
           .single();
 
         if (cartItemError) {
+          console.error(`[UPSERT FAILED] Error upserting cart item: ${cartItemError.message}`);
           return new Response(JSON.stringify({ success: false, error: `Error updating cart item: ${cartItemError.message}` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
           });
+        } else {
+          console.log(`[UPSERT SUCCESS] Successfully upserted item: ${cartItem?.id}`);
         }
       }
 
