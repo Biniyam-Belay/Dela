@@ -107,7 +107,8 @@ export const addItemToCart = createAsyncThunk(
 // Thunk for updating quantity
 export const updateQuantity = createAsyncThunk(
   'cart/updateQuantity',
-  async ({ productId, quantity }, { getState, rejectWithValue }) => {
+  // Send delta directly to the backend
+  async ({ productId, delta }, { getState, rejectWithValue }) => { 
     const accessToken = localStorage.getItem('accessToken');
     if (accessToken) {
       try {
@@ -117,7 +118,8 @@ export const updateQuantity = createAsyncThunk(
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
           },
-          body: JSON.stringify({ productId, quantity }),
+          // Send the delta directly
+          body: JSON.stringify({ productId, delta }), 
         });
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
@@ -131,10 +133,18 @@ export const updateQuantity = createAsyncThunk(
         return rejectWithValue(error.message || 'Failed to update quantity');
       }
     } else {
-      // Anonymous user: Update localStorage directly
+      // Anonymous user: Still need to calculate final quantity for local update
       const localCart = getInitialCartState();
+      const itemIndex = localCart.items.findIndex(item => item.product.id === productId);
+      if (itemIndex === -1) {
+        // Should not happen if called from UI, but good safeguard
+        return rejectWithValue('Item not found locally');
+      }
+      const currentQuantity = localCart.items[itemIndex].quantity;
+      const finalQuantity = Math.max(0, currentQuantity + delta);
+
       let newItems = localCart.items.map(item =>
-        item.product.id === productId ? { ...item, quantity } : item
+        item.product.id === productId ? { ...item, quantity: finalQuantity } : item
       ).filter(item => item.quantity > 0); // Remove if quantity is 0
       localStorage.setItem('cart', JSON.stringify({ items: newItems }));
       return newItems;
@@ -277,10 +287,19 @@ const cartSlice = createSlice({
       // For simplicity, just re-fetch the cart in the thunk on error
     },
     updateQuantityOptimistic: (state, action) => {
-      const { productId, quantity } = action.payload;
-      state.items = (state.items || []).map(item =>
-        item.product.id === productId ? { ...item, quantity } : item
-      ).filter(item => item.quantity > 0);
+      const { productId, delta } = action.payload; // Expecting delta (+1 or -1)
+      const itemIndex = (state.items || []).findIndex(item => item.product.id === productId);
+      if (itemIndex > -1) {
+        const currentQuantity = state.items[itemIndex].quantity;
+        const newQuantity = currentQuantity + delta;
+        // Only update if the new quantity is 1 or more
+        if (newQuantity >= 1) {
+          state.items[itemIndex].quantity = newQuantity;
+        } 
+        // If delta is negative and quantity becomes 0 or less, we don't update here.
+        // The actual removal is handled by removeItemOptimistic/removeItem.
+        // This prevents the item disappearing briefly when clicking '-' on quantity 1.
+      }
     },
     removeItemOptimistic: (state, action) => {
       const productId = action.payload;
