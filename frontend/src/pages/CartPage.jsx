@@ -28,16 +28,37 @@ const CartPage = () => {
   const cartError = useSelector(selectCartError);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Find the specific item in the cart to check its current quantity
+  const findItemQuantity = (productId) => {
+    const item = cartItems.find(item => item.product.id === productId);
+    return item ? item.quantity : 0;
+  };
+
   const updateQuantityHandler = (productId, delta) => {
     if (isUpdating) return;
+
+    const currentQuantity = findItemQuantity(productId);
+    const finalQuantity = currentQuantity + delta;
+
+    // If decrementing results in 0 or less, treat it as a remove action
+    if (finalQuantity <= 0) {
+      removeItemHandler(productId); // Delegate to the remove handler
+      return;
+    }
+
+    // Otherwise, proceed with the update action
     setIsUpdating(true);
-    dispatch(updateQuantityOptimistic({ productId, quantity: delta }));
-    dispatch(updateQuantity({ productId, quantity: delta }))
+    // Dispatch optimistic update with the delta
+    dispatch(updateQuantityOptimistic({ productId, delta })); 
+    // Dispatch the async thunk with the delta
+    dispatch(updateQuantity({ productId, delta }))
       .unwrap()
       .then(() => toast.success('Cart updated!'))
       .catch((err) => {
         toast.error(err || 'Failed to update cart');
-        dispatch(fetchCart());
+        // Revert optimistic update by re-fetching cart state on error
+        // Consider if a more targeted revert is needed, but fetchCart is simpler
+        dispatch(fetchCart()); 
       })
       .finally(() => setIsUpdating(false));
   };
