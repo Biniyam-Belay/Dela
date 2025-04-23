@@ -71,26 +71,31 @@ serve(async (req) => {
         status: 400,
       });
     }
-    const { productId, quantity } = body;
-    if (!productId || typeof quantity !== 'number') {
+    // Expect productId and either quantity (for add) or delta (for update)
+    const { productId, quantity, delta } = body;
+    if (!productId || (typeof quantity !== 'number' && typeof delta !== 'number')) {
       console.error("Invalid input:", body);
-      return new Response(JSON.stringify({ success: false, error: 'Invalid input: productId and quantity required' }), {
+      return new Response(JSON.stringify({ success: false, error: 'Invalid input: productId and quantity OR delta required' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
     }
-    console.log(`Request details - Product ID: ${productId}, Quantity: ${quantity}`);
+    console.log(`Request details - Product ID: ${productId}, Quantity: ${quantity}, Delta: ${delta}`);
     // --- End Body Parsing Section ---
 
     // --- Database Operations ---
     try {
+      console.time('db_total_operation'); // Start total timer
+
       // 1. Check if product exists
+      console.time('db_check_product');
       console.log(`Checking existence for product ID: ${productId}`);
       const { data: product, error: productError } = await supabase
         .from('products')
         .select('id, name, price, images, slug')
         .eq('id', productId)
         .single();
+      console.timeEnd('db_check_product');
 
       if (productError || !product) {
         console.error(`Product not found or error fetching product ${productId}:`, productError?.message);
@@ -102,12 +107,14 @@ serve(async (req) => {
       console.log(`Product ${productId} found.`);
 
       // 2. Find or create cart
+      console.time('db_find_create_cart');
       console.log(`Finding or creating cart for user: ${userId}`);
       let { data: cart, error: cartError } = await supabase
         .from('carts')
         .select('id')
         .eq('userId', userId)
         .maybeSingle();
+      console.timeEnd('db_find_create_cart');
 
       if (cartError) {
         console.error(`Error finding cart for user ${userId}:`, cartError);
@@ -149,47 +156,50 @@ serve(async (req) => {
       }
 
       // 3. Determine final quantity and Upsert/Delete cart_items
+      console.time('db_check_existing_item');
       const { data: existingItem, error: existingItemError } = await supabase
         .from('cart_items')
         .select('id, quantity')
         .eq('cartId', cart.id)
         .eq('productId', product.id)
         .maybeSingle();
+      console.timeEnd('db_check_existing_item');
 
       if (existingItemError) {
-        // Log the error but maybe don't fail the whole request? Depends on desired behavior.
         console.error(`Error checking for existing cart item: ${existingItemError.message}`);
-        // return new Response(JSON.stringify({ success: false, error: existingItemError.message }), {
-        //   headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        //   status: 500,
-        // });
+        // Decide if this should be fatal
       }
 
-      // --- REVISED LOGIC --- 
-      // The incoming 'quantity' dictates the *final* state or the *change*.
-      // If quantity is 0, it means DELETE.
-      // If quantity > 0, it could mean ADD or UPDATE.
-      // Let's assume the frontend sends the *final* desired quantity for updates, 
-      // and 0 for deletes. For adding, it sends the quantity to add.
+      // --- REVISED LOGIC V4 (Handle explicit delete via quantity=0) ---
+      let finalQuantity;
+      const currentDbQuantity = existingItem?.quantity || 0;
 
-      let finalQuantity = quantity; // Start with the requested quantity
-
-      // If the intent wasn't explicitly delete (quantity != 0) AND the item exists, 
-      // treat the incoming quantity as an addition to the existing quantity.
-      // NOTE: This assumes frontend sends delta for adds, not final quantity. Adjust if needed.
-      // If frontend sends FINAL quantity for updates, remove this `if` block.
-      if (quantity !== 0 && existingItem) {
-         finalQuantity = existingItem.quantity + quantity;
+      if (typeof delta === 'number') { // Update existing item using delta
+        finalQuantity = Math.max(0, currentDbQuantity + delta);
+        console.log(`[QUANTITY CALC - DELTA] DB Current: ${currentDbQuantity}, Delta: ${delta}, Final: ${finalQuantity}`);
+      } else if (typeof quantity === 'number') { // Add new item OR Explicit Delete/Set
+        if (quantity <= 0) { // Explicit request to delete or set to 0
+          finalQuantity = 0;
+          console.log(`[QUANTITY CALC - EXPLICIT ZERO] Incoming Qty: ${quantity}, Final: ${finalQuantity}`);
+        } else { // Adding new item or setting specific quantity > 0
+          // If item exists, this adds. If not, it sets initial.
+          // If the intent is to SET quantity, this logic might need adjustment.
+          // Assuming 'quantity' means 'add this amount' if item exists.
+          finalQuantity = Math.max(0, currentDbQuantity + quantity);
+          console.log(`[QUANTITY CALC - QUANTITY ADD/SET] DB Current: ${currentDbQuantity}, Incoming Qty: ${quantity}, Final: ${finalQuantity}`);
+        }
+      } else {
+        console.error("Logic Error: Neither quantity nor delta provided correctly.");
+        return new Response(JSON.stringify({ success: false, error: 'Internal logic error: quantity/delta issue' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500,
+          });
       }
-      // Ensure quantity doesn't go below 0 if logic results in negative
-      finalQuantity = Math.max(0, finalQuantity); 
+      // --- END REVISED LOGIC V4 ---
 
-      console.log(`[QUANTITY CALC] Incoming: ${quantity}, Existing: ${existingItem?.quantity}, Final: ${finalQuantity}`);
-
-      // --- END REVISED LOGIC ---
-
+      console.time('db_upsert_delete_item');
       if (finalQuantity <= 0) {
-        // --- Delete Block (Should now be reached if finalQuantity is 0) ---
+        // --- Delete Block (Should now be reached correctly) ---
         console.log(`[DELETE ATTEMPT] cartId: ${cart?.id}, productId: ${product?.id}`);
         if (!cart?.id || !product?.id) {
           console.error('[DELETE FAILED] Missing cartId or productId before delete call.');
@@ -224,7 +234,7 @@ serve(async (req) => {
           .upsert({
             cartId: cart.id,
             productId: product.id,
-            quantity: finalQuantity, // Use the calculated final quantity
+            quantity: finalQuantity, // Use the final target quantity directly
             updatedAt: new Date().toISOString(),
           }, { onConflict: 'cartId,productId' })
           .select('id') // Select only id for performance
@@ -240,9 +250,11 @@ serve(async (req) => {
           console.log(`[UPSERT SUCCESS] Successfully upserted item: ${cartItem?.id}`);
         }
       }
+      console.timeEnd('db_upsert_delete_item');
 
-      // 4. Fetch updated cart with items and product details
-      console.log(`Fetching updated cart details for cart ID: ${cart.id}`);
+      // 4. Fetch updated cart with items and product details, SORTED by item creation time
+      console.time('db_fetch_updated_cart');
+      console.log(`Fetching updated cart details for cart ID: ${cart.id}, ordered by item creation time DESC`);
       const { data: updatedCart, error: updatedCartError } = await supabase
         .from('carts')
         .select(`
@@ -251,6 +263,7 @@ serve(async (req) => {
           cart_items(
             id,
             quantity,
+            created_at,
             product:products(
               id,
               name,
@@ -261,7 +274,10 @@ serve(async (req) => {
           )
         `)
         .eq('id', cart.id)
+        // Order by the creation timestamp of the cart_items records
+        .order('created_at', { foreignTable: 'cart_items', ascending: false })
         .single();
+      console.timeEnd('db_fetch_updated_cart');
 
       if (updatedCartError) {
         console.error(`Error fetching updated cart details for cart ${cart.id}:`, updatedCartError);
@@ -271,6 +287,7 @@ serve(async (req) => {
         });
       }
       console.log(`Successfully fetched updated cart details for cart ${cart.id}`);
+      console.timeEnd('db_total_operation'); // End total timer
 
       // 5. Return cart in frontend format
       const items = (updatedCart.cart_items || [])
