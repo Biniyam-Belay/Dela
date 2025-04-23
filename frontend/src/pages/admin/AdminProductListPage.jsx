@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchAdminProducts, deleteAdminProduct } from '../../services/adminApi';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -14,12 +15,6 @@ const formatCurrency = (amount) => {
 };
 
 const AdminProductListPage = () => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalProducts, setTotalProducts] = useState(0);
-
   const [searchParams, setSearchParams] = useSearchParams();
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
   const currentSearch = searchParams.get('search') || '';
@@ -39,49 +34,41 @@ const AdminProductListPage = () => {
         return newParams;
       }, { replace: true });
     }, 500);
-
     return () => clearTimeout(handler);
   }, [searchTerm, setSearchParams]);
 
-  const loadProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = {
-        page: currentPage,
-        limit: 10,
-        search: currentSearch || undefined,
-      };
-      const response = await fetchAdminProducts(params);
-      setProducts(response.data || []);
-      setTotalPages(response.totalPages || 1);
-      setTotalProducts(response.totalProducts || 0);
-    } catch (err) {
-      setError(err.error || err.message || 'Failed to load products.');
-      setProducts([]);
-      setTotalPages(1);
-      setTotalProducts(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, currentSearch]);
+  // --- React Query for Products ---
+  const queryClient = useQueryClient();
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['admin-products', { page: currentPage, search: currentSearch }],
+    queryFn: () => fetchAdminProducts({
+      page: currentPage,
+      limit: 10,
+      search: currentSearch || undefined,
+    }),
+    keepPreviousData: true,
+    staleTime: 1000 * 60 * 3, // 3 minutes
+  });
 
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+  const products = data?.data || [];
+  const totalPages = data?.totalPages || 1;
+  const totalProducts = data?.totalProducts || 0;
 
   const handleDelete = async (productId, productName) => {
     if (window.confirm(`Delete "${productName}"? This cannot be undone.`)) {
       try {
-        setLoading(true);
         await deleteAdminProduct(productId);
-        if (products.length === 1 && currentPage > 1) {
-          handlePageChange(currentPage - 1);
-        } else {
-          loadProducts();
-        }
+        // Invalidate and refetch products
+        queryClient.invalidateQueries(['admin-products']);
+        refetch();
       } catch (err) {
-        setError(err.error || err.message || 'Failed to delete product.');
+        // Show error message (can use toast or set local error state if needed)
+        alert(err.error || err.message || 'Failed to delete product.');
       }
     }
   };
@@ -103,7 +90,7 @@ const AdminProductListPage = () => {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Products</h1>
           <p className="text-slate-500 mt-1">
-            {loading ? 'Loading...' : `${totalProducts} products found`}
+            {isLoading ? 'Loading...' : `${totalProducts} products found`}
           </p>
         </div>
         <Link
@@ -128,11 +115,11 @@ const AdminProductListPage = () => {
       </div>
 
       {/* Error Message */}
-      {error && <ErrorMessage message={error} />}
+      {error && <ErrorMessage message={error.error || error.message || 'Failed to load products.'} />}
 
       {/* Content Area */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center items-center p-12">
             <Spinner />
           </div>

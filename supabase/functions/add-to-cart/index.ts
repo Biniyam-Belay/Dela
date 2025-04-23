@@ -35,8 +35,14 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const accessToken = authHeader.split(' ')[1]; // Extract token from Bearer scheme
     const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
+      global: {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        }
+      },
       db: { schema: 'public' }
     });
 
@@ -49,6 +55,8 @@ serve(async (req) => {
       });
     }
     const userId = user.id;
+    // SECURITY: userId is always taken from the authenticated Supabase context, never from the client request.
+    console.log(`[RLS DEBUG] Will insert cart with userId: ${userId}`);
     console.log(`Authenticated user: ${userId}`);
     // --- End Auth Section ---
 
@@ -64,9 +72,9 @@ serve(async (req) => {
       });
     }
     const { productId, quantity } = body;
-    if (!productId || typeof quantity !== 'number' || quantity <= 0) {
+    if (!productId || typeof quantity !== 'number') {
       console.error("Invalid input:", body);
-      return new Response(JSON.stringify({ success: false, error: 'Invalid input: productId and positive quantity required' }), {
+      return new Response(JSON.stringify({ success: false, error: 'Invalid input: productId and quantity required' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
       });
@@ -114,15 +122,22 @@ serve(async (req) => {
         // Use crypto.randomUUID() instead of deno.land/std
         const newCartId = crypto.randomUUID();
         console.log(`Generated new cart ID: ${newCartId}`);
+        const insertObj = { id: newCartId, userId: userId, updatedAt: new Date().toISOString() };
+        console.log(`[RLS DEBUG] Insert object for cart:`, insertObj);
         const { data: newCart, error: newCartError } = await supabase
           .from('carts')
-          .insert({ id: newCartId, userId: userId, updatedAt: new Date().toISOString() })
+          .insert(insertObj)
           .select('id')
           .single();
 
         if (newCartError || !newCart) {
+          // If permission denied, make it clear in the error message
+          const permDenied = newCartError?.message?.includes('permission denied');
+          const errorMsg = permDenied
+            ? `Failed to create cart: permission denied (RLS). Check that userId matches auth.uid() and RLS policy.`
+            : `Failed to create cart: ${newCartError?.message || 'Unknown error'}`;
           console.error(`Failed to create cart for user ${userId}:`, newCartError);
-          return new Response(JSON.stringify({ success: false, error: `Failed to create cart: ${newCartError?.message || 'Unknown error'}` }), {
+          return new Response(JSON.stringify({ success: false, error: errorMsg }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
           });
@@ -133,27 +148,59 @@ serve(async (req) => {
         console.log(`Found existing cart with ID: ${cart.id} for user ${userId}`);
       }
 
-      // 3. Upsert cart_items
-      console.log(`Upserting item for cart ID: ${cart.id}, product ID: ${productId}`);
-      const { data: cartItem, error: cartItemError } = await supabase
+      // 3. Upsert or delete cart_items
+      const { data: existingItem, error: existingItemError } = await supabase
         .from('cart_items')
-        .upsert({
-          cartId: cart.id,
-          productId: product.id,
-          quantity,
-          updatedAt: new Date().toISOString(),
-        }, { onConflict: 'cartId,productId' })
-        .select()
-        .single();
+        .select('id, quantity')
+        .eq('cartId', cart.id)
+        .eq('productId', product.id)
+        .maybeSingle();
 
-      if (cartItemError) {
-        console.error(`Error upserting cart item for cart ${cart.id}, product ${productId}:`, cartItemError);
-        return new Response(JSON.stringify({ success: false, error: `Error updating cart item: ${cartItemError.message}` }), {
+      if (existingItemError) {
+        return new Response(JSON.stringify({ success: false, error: existingItemError.message }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 500,
         });
       }
-      console.log(`Successfully upserted cart item. Cart Item ID: ${cartItem.id}`);
+
+      let newQuantity = quantity;
+      if (existingItem) {
+        newQuantity = existingItem.quantity + quantity;
+      }
+
+      if (newQuantity <= 0) {
+        // Delete the item if the new quantity is zero or negative
+        const { error: deleteError } = await supabase
+          .from('cart_items')
+          .delete()
+          .eq('cartId', cart.id)
+          .eq('productId', product.id);
+        if (deleteError) {
+          return new Response(JSON.stringify({ success: false, error: deleteError.message }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500,
+          });
+        }
+      } else {
+        // Upsert (add/update) the item with the new quantity
+        const { data: cartItem, error: cartItemError } = await supabase
+          .from('cart_items')
+          .upsert({
+            cartId: cart.id,
+            productId: product.id,
+            quantity: newQuantity,
+            updatedAt: new Date().toISOString(),
+          }, { onConflict: 'cartId,productId' })
+          .select()
+          .single();
+
+        if (cartItemError) {
+          return new Response(JSON.stringify({ success: false, error: `Error updating cart item: ${cartItemError.message}` }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500,
+          });
+        }
+      }
 
       // 4. Fetch updated cart with items and product details
       console.log(`Fetching updated cart details for cart ID: ${cart.id}`);

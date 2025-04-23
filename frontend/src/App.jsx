@@ -35,6 +35,9 @@ import AdminFinancePage from './pages/admin/AdminFinancePage'; // Import the new
 import ProtectedRoute from './components/routes/ProtectedRoute';
 import AdminRoute from './components/routes/AdminRoute';
 
+// --- Utilities ---
+import ScrollToTop from './components/common/ScrollToTop'; // Import the new component
+
 // --- Component to Handle Layout Switching ---
 // This helper component uses the useLocation hook, which can only be called
 // inside a component rendered by the Router.
@@ -44,6 +47,7 @@ const AppContent = () => {
 
     return (
         <div className={`flex flex-col min-h-screen ${!isAdminRoute ? 'bg-background' : 'bg-gray-100'}`}> {/* Apply background based on route */}
+            <ScrollToTop /> {/* Add ScrollToTop here */}
             {!isAdminRoute && <Header />}
 
             {/* Use flex-grow on main content area */}
@@ -97,14 +101,8 @@ const AppContent = () => {
 
 // --- Main App Component ---
 function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        {/* Render the AppContent which handles layout based on location */}
-        <AppContent />
-      </Router>
-    </AuthProvider>
-  );
+  // Just render AppContent directly
+  return <AppContent />;
 }
 
 export default App;

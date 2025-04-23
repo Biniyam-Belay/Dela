@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   fetchAdminProductById,
   createAdminProduct,
@@ -33,7 +34,8 @@ const AdminProductAddEditPage = () => {
   const navigate = useNavigate();
   const isEditMode = Boolean(productId);
 
-  const [categories, setCategories] = useState([]);
+  const queryClient = useQueryClient();
+
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState(null);
   const [existingImages, setExistingImages] = useState([]);
@@ -69,53 +71,74 @@ const AdminProductAddEditPage = () => {
 
   const isActiveValue = watch('isActive');
 
+  // Fetch categories with caching
+  const {
+    data: categoriesData,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useQuery({
+    queryKey: ['adminCategories'],
+    queryFn: fetchAdminCategories,
+    select: (data) => data?.data || [],
+    staleTime: 1000 * 60 * 3,
+  });
+
+  // Fetch product detail for edit mode with caching
+  const {
+    data: productData,
+    isLoading: productLoading,
+    error: productError,
+  } = useQuery({
+    queryKey: ['admin-product', productId],
+    queryFn: () => fetchAdminProductById(productId),
+    enabled: !!isEditMode && !!productId,
+    staleTime: 1000 * 60 * 3,
+  });
+
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      setFormError(null);
-      try {
-        const categoriesResponse = await fetchAdminCategories();
-        setCategories(categoriesResponse.data || []);
-
-        if (isEditMode && productId) {
-          const productResponse = await fetchAdminProductById(productId);
-          const productData = productResponse.data;
-          if (productData) {
-            reset({
-              name: productData.name || '',
-              description: productData.description || '',
-              price: productData.price ?? '',
-              stockQuantity: productData.stock_quantity ?? productData.stockQuantity ?? 0,
-              categoryId: productData.category_id || '',
-              isActive: productData.is_active !== undefined ? productData.is_active : true,
-              rating: productData.rating ?? '',
-              reviewCount: productData.review_count ?? '',
-              originalPrice: productData.original_price ?? '',
-              sellerName: productData.seller_name || '',
-              sellerLocation: productData.seller_location || '',
-              unitsSold: productData.units_sold ?? 0,
-            });
-            const currentImages = productData.images || [];
-            setExistingImages(currentImages);
-            setImagePreviews(currentImages.map(img => `${backendUrl}${img.startsWith('/') ? '' : '/'}${img}`));
-          } else {
-            throw new Error('Product not found');
-          }
-        } else {
-          reset();
-          setExistingImages([]);
-          setImagePreviews([]);
-        }
-      } catch (err) {
-        setFormError(err.message || 'Failed to load data');
-        console.error("Error loading data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [productId, isEditMode, reset, backendUrl]);
+    // Only run if in edit mode AND productData has been successfully fetched
+    if (isEditMode && productData) {
+      console.log("Product Data for Reset:", productData); // Debugging line
+      reset({
+        name: productData.name || '',
+        description: productData.description || '',
+        price: productData.price ?? '',
+        stockQuantity: productData.stock_quantity ?? productData.stockQuantity ?? 0,
+        categoryId: productData.category_id || '',
+        isActive: productData.is_active !== undefined ? productData.is_active : true,
+        rating: productData.rating ?? '',
+        reviewCount: productData.review_count ?? '',
+        originalPrice: productData.original_price ?? '',
+        sellerName: productData.seller_name || '',
+        sellerLocation: productData.seller_location || '',
+        unitsSold: productData.units_sold ?? 0,
+      });
+      const currentImages = productData.images || [];
+      setExistingImages(currentImages);
+      setImagePreviews(currentImages.map(img => `${backendUrl}${img.image_url.startsWith('/') ? '' : '/'}${img.image_url}`));
+      setNewImageFiles([]); // Clear any potentially selected new files
+    } else if (!isEditMode) {
+      // Reset form for add mode
+      reset({
+        name: '',
+        description: '',
+        price: '',
+        stockQuantity: 0,
+        categoryId: '',
+        isActive: true,
+        rating: '',
+        reviewCount: '',
+        originalPrice: '',
+        sellerName: '',
+        sellerLocation: '',
+        unitsSold: 0,
+      });
+      setExistingImages([]);
+      setImagePreviews([]);
+      setNewImageFiles([]);
+    }
+    // Dependencies: isEditMode, the fetched data (productData), and reset function
+  }, [isEditMode, productData, reset]);
 
   const handleImageChange = (e) => {
     if (e.target.files) {
@@ -197,7 +220,7 @@ const AdminProductAddEditPage = () => {
     }
   };
 
-  if (loading) {
+  if (loading || categoriesLoading || productLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Spinner />
@@ -276,7 +299,7 @@ const AdminProductAddEditPage = () => {
                   className={inputClass(errors.categoryId)}
                 >
                   <option value="">Select a category</option>
-                  {categories.map((cat) => (
+                  {categoriesData.map((cat) => (
                     <option key={cat.id} value={cat.id}>
                       {cat.name}
                     </option>

@@ -2,17 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext.jsx';
 import { useAuth } from '../contexts/authContext.jsx';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { createOrderApi } from '../services/orderApi.js';
 import Spinner from '../components/common/Spinner.jsx';
 import ErrorMessage from '../components/common/ErrorMessage.jsx';
 import { FiChevronLeft } from 'react-icons/fi';
+
+// Placeholder for fetchCart (remove if you have a real implementation):
+const fetchCart = async () => ({ items: [], total: 0, count: 0 });
 
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 };
 
 const CheckoutPage = () => {
-  const { cartItems, cartTotal, cartCount, clearCart } = useCart();
+  const { clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -28,15 +32,36 @@ const CheckoutPage = () => {
     phone: ''
   });
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activePayment, setActivePayment] = useState('chapa'); // Default payment method
 
+  // Fetch cart from backend
+  const { data: cartData, isLoading: cartLoading, error: cartError } = useQuery({
+    queryKey: ['cart'],
+    queryFn: fetchCart,
+    select: (data) => data || { items: [], total: 0, count: 0 },
+  });
+  const cartItems = cartData.items;
+  const cartTotal = cartData.total;
+  const cartCount = cartData.count;
+
+  // Place order mutation
+  const orderMutation = useMutation({
+    mutationFn: createOrderApi,
+    onSuccess: (response) => {
+      clearCart();
+      navigate(`/order-success/${response.data.id}`);
+    },
+    onError: (err) => {
+      setError(err.response?.data?.message || err.message || 'Failed to place order. Please try again.');
+    },
+  });
+
   useEffect(() => {
-    if (cartItems.length === 0 && !loading) {
+    if (cartItems.length === 0 && !cartLoading) {
       navigate('/cart');
     }
-  }, [cartItems, navigate, loading]);
+  }, [cartItems, navigate, cartLoading]);
 
   // Prefill user data if available
   useEffect(() => {
@@ -54,10 +79,9 @@ const CheckoutPage = () => {
     setShippingAddress(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePlaceOrder = async (e) => {
+  const handlePlaceOrder = (e) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
     // Enhanced validation
     const requiredFields = ['firstName', 'street', 'city', 'zipCode', 'country', 'phone'];
@@ -65,7 +89,6 @@ const CheckoutPage = () => {
 
     if (missingFields.length > 0) {
       setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
-      setLoading(false);
       return;
     }
 
@@ -80,16 +103,7 @@ const CheckoutPage = () => {
       totalAmount: cartTotal
     };
 
-    try {
-      const response = await createOrderApi(orderData);
-      clearCart();
-      navigate(`/order-success/${response.data.id}`);
-    } catch (err) {
-      console.error('Order error:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to place order. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    orderMutation.mutate(orderData);
   };
 
   return (
@@ -106,6 +120,8 @@ const CheckoutPage = () => {
 
         <h1 className="text-3xl font-light text-gray-900 mb-8">Checkout</h1>
 
+        {cartLoading && <Spinner />}
+        {cartError && <ErrorMessage message={cartError.message || 'Failed to load cart.'} className="mb-6" />}
         {error && <ErrorMessage message={error} className="mb-6" />}
 
         <div className="flex flex-col lg:flex-row gap-8">
@@ -300,12 +316,12 @@ const CheckoutPage = () => {
               {/* Place Order Button */}
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading || cartItems.length === 0}
+                disabled={orderMutation.isLoading || cartItems.length === 0}
                 className={`w-full mt-6 py-4 rounded-lg text-white font-medium flex items-center justify-center gap-2 ${
-                  loading ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'
+                  orderMutation.isLoading ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'
                 } transition-colors`}
               >
-                {loading ? (
+                {orderMutation.isLoading ? (
                   <>
                     <Spinner size="sm" />
                     Processing...

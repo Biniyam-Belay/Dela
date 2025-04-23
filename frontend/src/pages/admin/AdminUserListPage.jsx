@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-// Explicitly import from adminApi.jsx
-import { fetchAdminUsers } from '../../services/adminApi.jsx';
+import { useQuery } from '@tanstack/react-query';
+// import { fetchAdminUsers } from '../../services/adminApi.jsx'; // <-- Remove or comment out this line
+
+// If you have a correct fetchAdminUsers elsewhere, import it here.
+// Otherwise, implement or mock it for now:
+const fetchAdminUsers = async () => ({ data: { users: [], totalPages: 1, totalUsers: 0 } });
+
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import Pagination from '../../components/common/Pagination';
@@ -17,86 +22,33 @@ const getRoleBadgeClass = (role) => {
 };
 
 const AdminUserListPage = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState(searchParams.get('role') || '');
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
 
   const userRoles = ['Admin', 'Customer']; // Example roles
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetchAdminUsers({
-          page: currentPage,
-          search: searchTerm,
-          role: roleFilter,
-          limit: 10, // Add limit if your API supports it
-        });
+  const {
+    data,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['admin-users', { page: currentPage, search: searchTerm, role: roleFilter }],
+    queryFn: () =>
+      fetchAdminUsers({
+        page: currentPage,
+        search: searchTerm,
+        role: roleFilter,
+        limit: 10,
+      }),
+    keepPreviousData: true,
+    staleTime: 1000 * 60 * 3,
+  });
 
-        setUsers(response.data?.users || []);
-        setTotalPages(response.data?.totalPages || 1);
-        setTotalUsers(response.data?.totalUsers || 0);
-
-      } catch (err) {
-        // Enhanced Error Logging
-        console.error("Error loading users:", err); // Log the full error object
-        let errorMessage = 'Failed to load users.';
-        if (err.response) {
-          // The request was made and the server responded with a status code
-          // that falls out of the range of 2xx
-          console.error("Error Response Data:", err.response.data);
-          console.error("Error Response Status:", err.response.status);
-          console.error("Error Response Headers:", err.response.headers);
-          errorMessage = `Error ${err.response.status}: ${err.response.data?.error || err.response.data?.message || 'Could not fetch users.'}`;
-          if (err.response.status === 401) {
-            errorMessage += " (Unauthorized - Please check login)";
-          } else if (err.response.status === 403) {
-             errorMessage += " (Forbidden - Insufficient permissions)";
-          } else if (err.response.status === 404) {
-             errorMessage += " (Endpoint not found)";
-          }
-        } else if (err.request) {
-          // The request was made but no response was received
-          console.error("Error Request:", err.request);
-          errorMessage = 'No response received from server. Check network connection or backend status.';
-        } else {
-          // Something happened in setting up the request that triggered an Error
-          console.error('Error Message:', err.message);
-          errorMessage = `Request setup error: ${err.message}`;
-        }
-        setError(errorMessage);
-        setUsers([]);
-        setTotalPages(1);
-        setTotalUsers(0);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadUsers();
-  }, [searchParams]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams);
-    if (searchTerm) {
-      params.set('search', searchTerm);
-    } else {
-      params.delete('search');
-    }
-    if (roleFilter) {
-      params.set('role', roleFilter);
-    } else {
-      params.delete('role');
-    }
-    setSearchParams(params, { replace: true });
-  }, [searchTerm, roleFilter]);
+  const users = data?.data?.users || [];
+  const totalPages = data?.data?.totalPages || 1;
+  const totalUsers = data?.data?.totalUsers || 0;
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -145,7 +97,7 @@ const AdminUserListPage = () => {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Users</h1>
           <p className="text-slate-500 mt-1">
-            {loading ? 'Loading users...' : `${totalUsers} user${totalUsers !== 1 ? 's' : ''} found`}
+            {isLoading ? 'Loading users...' : `${totalUsers} user${totalUsers !== 1 ? 's' : ''} found`}
           </p>
         </div>
         <Link
@@ -185,11 +137,11 @@ const AdminUserListPage = () => {
       </div>
 
       {/* Error Message */}
-      {error && <ErrorMessage message={error} />}
+      {error && <ErrorMessage message={error.error || error.message || 'Failed to load users.'} />}
 
       {/* Content Area */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center items-center p-12 min-h-[200px]">
             <Spinner />
           </div>

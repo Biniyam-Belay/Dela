@@ -1,32 +1,83 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// --- Import shared CORS headers ---
+import { corsHeaders } from '../_shared/cors.ts';
+// ---------------------------------
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+console.log(`Function "get-public-product-detail" up and running!`);
 
-console.log("Hello from Functions!")
-
-Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+serve(async (req) => {
+  // --- Handle CORS preflight requests ---
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
   }
+  // ------------------------------------
 
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
-})
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-/* To invoke locally:
+    const url = new URL(req.url);
+    const identifier = url.searchParams.get('identifier'); // Can be slug or ID
 
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
+    if (!identifier) {
+      return new Response(JSON.stringify({ success: false, error: 'Missing product identifier (slug or ID)' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, // Add corsHeaders here too
+        status: 400,
+      });
+    }
 
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/get-public-product-detail' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
+    console.log(`Fetching product with identifier: ${identifier}`);
 
-*/
+    // Try fetching by slug first, then by ID if it looks like a UUID
+    const isUUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(identifier);
+
+    let query = supabase
+      .from('products')
+      .select(`
+        *,
+        category:categories ( name, slug )
+      `)
+      .eq('is_active', true);
+
+    if (isUUID) {
+      console.log(`Identifier looks like UUID, querying by id.`);
+      query = query.eq('id', identifier);
+    } else {
+      console.log(`Identifier looks like slug, querying by slug.`);
+      query = query.eq('slug', identifier);
+    }
+
+    const { data, error } = await query.maybeSingle(); // Use maybeSingle as slug/id might not match
+
+    if (error) {
+      console.error("Error fetching product detail:", error);
+      return new Response(JSON.stringify({ success: false, error: error.message }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, // Add corsHeaders here too
+        status: 500, // Use 500 for database errors
+      });
+    }
+
+    if (!data) {
+      console.log(`Product not found for identifier: ${identifier}`);
+      return new Response(JSON.stringify({ success: false, error: 'Product not found' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, // Add corsHeaders here too
+        status: 404,
+      });
+    }
+
+    console.log(`Product found: ${data.name}`);
+    return new Response(JSON.stringify({ success: true, data }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, // Add corsHeaders here too
+      status: 200,
+    });
+
+  } catch (err) {
+    console.error("Unexpected function error:", err);
+    return new Response(JSON.stringify({ success: false, error: `Unexpected function error: ${err.message}` }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, // Add corsHeaders here too
+      status: 500,
+    });
+  }
+});
