@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { FiArrowLeft, FiSave } from 'react-icons/fi';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FiArrowLeft, FiSave, FiImage, FiX } from 'react-icons/fi';
 import {
   fetchAdminCategoryById,
   createAdminCategory,
@@ -11,6 +12,7 @@ import {
 } from '../../services/adminApi';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
+import { supabase } from '../../utils/supabaseClient';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Category name must be at least 2 characters'),
@@ -20,16 +22,18 @@ const categorySchema = z.object({
 const AdminCategoryAddEditPage = () => {
   const { categoryId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isEditMode = Boolean(categoryId);
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [existingImageUrl, setExistingImageUrl] = useState(null);
 
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(categorySchema),
     defaultValues: {
@@ -38,45 +42,139 @@ const AdminCategoryAddEditPage = () => {
     },
   });
 
-  useEffect(() => {
-    if (isEditMode && categoryId) {
-      setLoading(true);
-      setError(null);
-      fetchAdminCategoryById(categoryId)
-        .then((response) => {
-          reset({
-            name: response.data.name,
-            description: response.data.description || '',
-          });
-        })
-        .catch((err) => {
-          setError(err.error || err.message || 'Failed to load category data.');
-          console.error('Error fetching category:', err);
-        })
-        .finally(() => setLoading(false));
-    }
-  }, [isEditMode, categoryId, reset]);
-
-  const onSubmit = async (data) => {
-    setError(null);
-    const categoryData = {
-      name: data.name,
-      description: data.description || null,
-    };
-
-    try {
-      if (isEditMode) {
-        await updateAdminCategory(categoryId, categoryData);
-      } else {
-        await createAdminCategory(categoryData);
+  const {
+    data: categoryData,
+    isLoading: isLoadingCategory,
+    error: fetchError,
+  } = useQuery({
+    queryKey: ['adminCategoryDetail', categoryId],
+    queryFn: () => fetchAdminCategoryById(categoryId),
+    enabled: isEditMode,
+    select: (data) => data?.data || null,
+    onSuccess: (data) => {
+      if (data) {
+        reset({
+          name: data.name || '',
+          description: data.description || '',
+        });
+        if (data.image_url) {
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+          const imageUrl = `${backendUrl}${data.image_url.startsWith('/') ? '' : '/'}${data.image_url}`;
+          setExistingImageUrl(imageUrl);
+          setImagePreview(imageUrl);
+        } else {
+          setExistingImageUrl(null);
+          setImagePreview(null);
+        }
+        setImageFile(null);
       }
+    },
+    onError: (err) => {
+      console.error('Error loading category:', err);
+    },
+  });
+
+  // Effect to populate form in edit mode
+  useEffect(() => {
+    // Only run if in edit mode AND categoryData has been successfully fetched
+    if (isEditMode && categoryData) {
+      console.log("Category Data for Reset:", categoryData); // Debugging line
+      reset({
+        name: categoryData.name || '',
+        description: categoryData.description || '',
+      });
+      // Set image preview if an image exists
+      if (categoryData.image) {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+        const imageUrl = `${backendUrl}${categoryData.image.startsWith('/') ? '' : '/'}${categoryData.image}`;
+        setExistingImageUrl(imageUrl);
+        setImagePreview(imageUrl);
+      } else {
+        setExistingImageUrl(null);
+        setImagePreview(null);
+      }
+      setNewImageFile(null);
+    } else if (!isEditMode) {
+      // Reset form for add mode or if data fetch fails in edit mode initially
+      reset({ name: '', description: '' });
+      setImagePreview(null);
+      setExistingImageUrl(null);
+      setNewImageFile(null);
+    }
+    // Ensure reset is included in dependencies if it's stable (which it should be from react-hook-form)
+    // Key dependencies are isEditMode and the fetched data (categoryData)
+  }, [isEditMode, categoryData, reset]);
+
+  const categoryMutation = useMutation({
+    mutationFn: async (formData) => {
+      let finalImageUrl = existingImageUrl;
+
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `category-${Date.now()}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('categories')
+          .upload(fileName, imageFile, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+          console.error('Supabase Storage Upload Error:', uploadError);
+          throw new Error('Image upload failed');
+        }
+
+        if (uploadData?.path) {
+          finalImageUrl = `/${uploadData.path}`;
+          console.log('Uploaded image relative path:', finalImageUrl);
+        } else {
+          console.warn('Upload successful but path not found in response.');
+        }
+      } else if (existingImageUrl && !imagePreview) {
+        finalImageUrl = null;
+      }
+
+      const categoryPayload = {
+        name: formData.name,
+        description: formData.description || null,
+        image_url: finalImageUrl,
+      };
+
+      console.log('Sending category payload:', categoryPayload);
+
+      if (isEditMode) {
+        return updateAdminCategory(categoryId, categoryPayload);
+      } else {
+        return createAdminCategory(categoryPayload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminCategories'] });
+      queryClient.invalidateQueries({ queryKey: ['adminCategoryDetail', categoryId] });
       navigate('/admin/categories');
-    } catch (err) {
-      setError(err.error || err.message || `Failed to ${isEditMode ? 'update' : 'create'} category.`);
+    },
+    onError: (err) => {
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} category:`, err);
+    },
+  });
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+      return () => URL.revokeObjectURL(previewUrl);
     }
   };
 
-  if (loading && isEditMode) {
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  const onSubmit = (data) => {
+    categoryMutation.mutate(data);
+  };
+
+  if (isLoadingCategory && isEditMode) {
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner />
@@ -84,97 +182,133 @@ const AdminCategoryAddEditPage = () => {
     );
   }
 
+  const inputClass = (hasError) =>
+    `block w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 text-sm ${
+      hasError ? 'border-red-500' : 'border-slate-200'
+    }`;
+
   return (
-    <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm p-6 md:p-8 border border-gray-100">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-light text-gray-900">
-              {isEditMode ? 'Edit Category' : 'Create New Category'}
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {isEditMode ? 'Update your category details' : 'Add a new product category'}
-            </p>
-          </div>
-          <Link
-            to="/admin/categories"
-            className="flex items-center text-gray-600 hover:text-black"
-          >
-            <FiArrowLeft className="mr-2" />
-            Back to Categories
-          </Link>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {isEditMode ? 'Edit Category' : 'Create New Category'}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {isEditMode ? 'Update category details' : 'Add a new product category'}
+          </p>
         </div>
+        <Link
+          to="/admin/categories"
+          className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900"
+        >
+          <FiArrowLeft size={16} />
+          Back to Categories
+        </Link>
       </div>
 
-      {/* Error Message */}
-      {error && <ErrorMessage message={error} className="mb-6" />}
-
-      {/* Form */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Name Field */}
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-            Category Name *
-          </label>
-          <input
-            type="text"
-            id="name"
-            {...register('name')}
-            autoFocus
-            className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-              errors.name ? 'border-red-500' : 'border-gray-200'
-            }`}
-          />
-          {errors.name && (
-            <p className="text-red-600 text-xs mt-1">{errors.name.message}</p>
+      <div className="bg-white rounded-lg shadow-sm p-6 md:p-8 border border-slate-200">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {fetchError && <ErrorMessage message={fetchError.message || 'Failed to load category data.'} />}
+          {categoryMutation.isError && (
+            <ErrorMessage message={categoryMutation.error?.message || `Failed to ${isEditMode ? 'update' : 'create'} category.`} />
           )}
-        </div>
 
-        {/* Description Field */}
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-            Description
-          </label>
-          <textarea
-            id="description"
-            rows={4}
-            {...register('description')}
-            className={`block w-full px-4 py-3 border rounded-lg focus:ring-1 focus:ring-black focus:border-black ${
-              errors.description ? 'border-red-500' : 'border-gray-200'
-            }`}
-          />
-          {errors.description && (
-            <p className="text-red-600 text-xs mt-1">{errors.description.message}</p>
-          )}
-        </div>
-
-        {/* Form Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-          <Link
-            to="/admin/categories"
-            className="px-6 py-3 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </Link>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`px-6 py-3 rounded-lg text-white flex items-center gap-2 ${
-              isSubmitting ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'
-            } transition-colors`}
-          >
-            {isSubmitting ? (
-              <Spinner size="sm" />
-            ) : (
-              <>
-                <FiSave size={16} />
-                {isEditMode ? 'Update Category' : 'Create Category'}
-              </>
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">
+              Category Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              id="name"
+              {...register('name')}
+              autoFocus
+              className={inputClass(errors.name)}
+              placeholder="e.g., Electronics"
+            />
+            {errors.name && (
+              <p className="text-red-600 text-xs mt-1">{errors.name.message}</p>
             )}
-          </button>
-        </div>
-      </form>
+          </div>
+
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">
+              Description
+            </label>
+            <textarea
+              id="description"
+              rows={4}
+              {...register('description')}
+              className={inputClass(errors.description)}
+              placeholder="Optional: Describe the category"
+            />
+            {errors.description && (
+              <p className="text-red-600 text-xs mt-1">{errors.description.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Category Image</label>
+            <div className="flex items-center gap-4">
+              <div className="relative h-24 w-24 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
+                {imagePreview ? (
+                  <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                ) : (
+                  <FiImage className="h-8 w-8 text-slate-400" />
+                )}
+              </div>
+              <div className="flex-1">
+                <label
+                  htmlFor="categoryImage"
+                  className="cursor-pointer px-4 py-2 border border-slate-300 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  {imagePreview ? 'Change Image' : 'Upload Image'}
+                </label>
+                <input
+                  type="file"
+                  id="categoryImage"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+                {imagePreview && (
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="ml-3 text-sm text-red-600 hover:text-red-800"
+                  >
+                    Remove
+                  </button>
+                )}
+                <p className="text-xs text-slate-500 mt-2">Recommended: Square image (e.g., 300x300px)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+            <Link
+              to="/admin/categories"
+              className="px-5 py-2 border border-slate-200 rounded-md text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </Link>
+            <button
+              type="submit"
+              disabled={categoryMutation.isPending}
+              className={`px-5 py-2 rounded-md text-sm text-white flex items-center gap-2 ${
+                categoryMutation.isPending ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'
+              } transition-colors`}
+            >
+              {categoryMutation.isPending ? (
+                <Spinner size="sm" />
+              ) : (
+                <FiSave size={16} />
+              )}
+              {isEditMode ? 'Update Category' : 'Create Category'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

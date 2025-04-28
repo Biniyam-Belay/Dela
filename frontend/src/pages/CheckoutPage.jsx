@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
 import { useCart } from '../contexts/CartContext.jsx';
 import { useAuth } from '../contexts/authContext.jsx';
-import { createOrderApi } from '../services/orderApi.js';
+import { createOrder, selectOrderStatus, selectOrderError } from '../store/orderSlice';
 import Spinner from '../components/common/Spinner.jsx';
 import ErrorMessage from '../components/common/ErrorMessage.jsx';
 import { FiChevronLeft } from 'react-icons/fi';
@@ -12,9 +13,12 @@ const formatCurrency = (amount) => {
 };
 
 const CheckoutPage = () => {
-  const { cartItems, cartTotal, cartCount, clearCart } = useCart();
+  const { clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const orderStatus = useSelector(selectOrderStatus);
+  const orderError = useSelector(selectOrderError);
 
   const [shippingAddress, setShippingAddress] = useState({
     firstName: '',
@@ -28,15 +32,20 @@ const CheckoutPage = () => {
     phone: ''
   });
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activePayment, setActivePayment] = useState('chapa'); // Default payment method
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+  // Get cart data from Redux
+  const cartItems = useSelector(state => state.cart.items);
+  // Robust price calculation in case state.cart.total is not correct
+  const cartTotal = cartItems.reduce((sum, item) => sum + (Number(item.product.price) * Number(item.quantity)), 0);
+  const cartCount = cartItems.reduce((sum, item) => sum + Number(item.quantity), 0);
 
   useEffect(() => {
-    if (cartItems.length === 0 && !loading) {
+    if (cartItems.length === 0) {
       navigate('/cart');
     }
-  }, [cartItems, navigate, loading]);
+  }, [cartItems, navigate]);
 
   // Prefill user data if available
   useEffect(() => {
@@ -54,10 +63,10 @@ const CheckoutPage = () => {
     setShippingAddress(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePlaceOrder = async (e) => {
+  const handlePlaceOrder = (e) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
+    setIsPlacingOrder(true);
 
     // Enhanced validation
     const requiredFields = ['firstName', 'street', 'city', 'zipCode', 'country', 'phone'];
@@ -65,7 +74,7 @@ const CheckoutPage = () => {
 
     if (missingFields.length > 0) {
       setError(`Please fill in all required fields: ${missingFields.join(', ')}`);
-      setLoading(false);
+      setIsPlacingOrder(false);
       return;
     }
 
@@ -76,20 +85,21 @@ const CheckoutPage = () => {
         price: item.product.price
       })),
       shippingAddress,
-      paymentMethod: activePayment,
       totalAmount: cartTotal
     };
 
-    try {
-      const response = await createOrderApi(orderData);
-      clearCart();
-      navigate(`/order-success/${response.data.id}`);
-    } catch (err) {
-      console.error('Order error:', err);
-      setError(err.response?.data?.message || err.message || 'Failed to place order. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    console.log('Submitting orderData:', orderData);
+
+    dispatch(createOrder(orderData))
+      .unwrap()
+      .then((order) => {
+        clearCart();
+        navigate(`/order-success/${order.id}`);
+      })
+      .catch((err) => {
+        setError(err || 'Failed to place order. Please try again.');
+      })
+      .finally(() => setIsPlacingOrder(false));
   };
 
   return (
@@ -107,9 +117,10 @@ const CheckoutPage = () => {
         <h1 className="text-3xl font-light text-gray-900 mb-8">Checkout</h1>
 
         {error && <ErrorMessage message={error} className="mb-6" />}
+        {orderError && <ErrorMessage message={orderError} className="mb-6" />}
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left Column - Shipping and Payment */}
+          {/* Left Column - Shipping */}
           <div className="lg:w-2/3 space-y-8">
             {/* Shipping Address */}
             <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-gray-100">
@@ -215,37 +226,6 @@ const CheckoutPage = () => {
                 </div>
               </form>
             </div>
-
-            {/* Payment Method */}
-            <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-gray-100">
-              <h2 className="text-xl font-medium text-gray-900 mb-6">Payment Method</h2>
-              <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => setActivePayment('chapa')}
-                  className={`w-full text-left p-4 border rounded-lg flex items-center gap-4 ${
-                    activePayment === 'chapa' ? 'border-black ring-1 ring-black' : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="h-10 w-16 bg-blue-50 rounded flex items-center justify-center">
-                    <span className="font-medium text-blue-600">Chapa</span>
-                  </div>
-                  <span>Pay with Chapa</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActivePayment('telebirr')}
-                  className={`w-full text-left p-4 border rounded-lg flex items-center gap-4 ${
-                    activePayment === 'telebirr' ? 'border-black ring-1 ring-black' : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="h-10 w-16 bg-green-50 rounded flex items-center justify-center">
-                    <span className="font-medium text-green-600">Telebirr</span>
-                  </div>
-                  <span>Pay with Telebirr</span>
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Right Column - Order Summary */}
@@ -300,12 +280,12 @@ const CheckoutPage = () => {
               {/* Place Order Button */}
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading || cartItems.length === 0}
+                disabled={orderStatus === 'loading' || isPlacingOrder || cartItems.length === 0}
                 className={`w-full mt-6 py-4 rounded-lg text-white font-medium flex items-center justify-center gap-2 ${
-                  loading ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'
-                } transition-colors`}
+                  orderStatus === 'loading' || isPlacingOrder ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'
+                }`}
               >
-                {loading ? (
+                {(orderStatus === 'loading' || isPlacingOrder) ? (
                   <>
                     <Spinner size="sm" />
                     Processing...

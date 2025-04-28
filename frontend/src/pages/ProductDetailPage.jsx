@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { fetchProductByIdentifier } from '../services/productApi';
 import Spinner from '../components/common/Spinner';
 import ErrorMessage from '../components/common/ErrorMessage';
-import { useCart } from '../contexts/CartContext';
+import { useDispatch } from 'react-redux';
+import { addItemOptimistic, addItemToCart, fetchCart } from '../store/cartSlice';
 import { FiShoppingCart, FiChevronLeft, FiMinus, FiPlus } from 'react-icons/fi';
 import { FaStar } from 'react-icons/fa';
+import toast from 'react-hot-toast';
 
 const formatCurrency = (amount) => {
   const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -36,35 +39,24 @@ const StarRating = ({ rating, reviewCount }) => {
 };
 
 const ProductDetailPage = () => {
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { identifier } = useParams();
+  const dispatch = useDispatch();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
-  const { identifier } = useParams();
-  const { addItem } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
 
-  useEffect(() => {
-    const loadProduct = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetchProductByIdentifier(identifier);
-        if (response.data) {
-          setProduct(response.data);
-          setSelectedImage(0);
-        } else {
-          throw new Error('Product not found');
-        }
-      } catch (err) {
-        setError(err.message || 'Failed to load product');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Use React Query to fetch product
+  const {
+    data,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['product-detail', identifier],
+    queryFn: () => fetchProductByIdentifier(identifier),
+    staleTime: 1000 * 60 * 5,
+  });
 
-    loadProduct();
-  }, [identifier]);
+  const product = data?.data;
 
   const handleQuantityChange = (amount) => {
     setQuantity(prev => Math.max(1, Math.min(product?.stockQuantity || 1, prev + amount)));
@@ -73,9 +65,17 @@ const ProductDetailPage = () => {
   const handleAddToCart = (e) => {
     e.preventDefault();
     if (product?.stockQuantity > 0) {
-      addItem(product, quantity);
-      // You might replace this with a toast notification
-      alert(`${quantity} × ${product.name} added to cart`);
+      if (isAdding) return;
+      setIsAdding(true);
+      dispatch(addItemOptimistic({ product, quantity }));
+      dispatch(addItemToCart({ product, quantity }))
+        .unwrap()
+        .then(() => toast.success(`${quantity} × ${product.name} added to cart!`))
+        .catch((err) => {
+          toast.error(err || 'Failed to add to cart');
+          dispatch(fetchCart()); // Revert optimistic update by re-fetching cart
+        })
+        .finally(() => setIsAdding(false));
     }
   };
 
@@ -84,7 +84,7 @@ const ProductDetailPage = () => {
     e.target.src = '/placeholder-image.jpg';
   };
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex justify-center items-center min-h-[50vh]">
       <Spinner size="lg" />
     </div>
@@ -92,7 +92,7 @@ const ProductDetailPage = () => {
 
   if (error) return (
     <div className="container mx-auto px-4 py-8">
-      <ErrorMessage message={error} />
+      <ErrorMessage message={error.message || error} />
       <Link 
         to="/products" 
         className="mt-4 inline-flex items-center text-indigo-600 hover:text-indigo-800"
@@ -256,7 +256,7 @@ const ProductDetailPage = () => {
                 {/* Add to Cart */}
                 <button
                   onClick={handleAddToCart}
-                  disabled={product.stockQuantity <= 0}
+                  disabled={isAdding || product.stockQuantity <= 0}
                   className={`w-full sm:w-auto px-6 sm:px-8 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors ${
                     product.stockQuantity > 0
                       ? 'bg-black text-white hover:bg-gray-800'
