@@ -1,10 +1,92 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useCart } from '../contexts/CartContext';
 import { FiTrash2, FiPlus, FiMinus, FiArrowLeft } from 'react-icons/fi';
+import { useSelector, useDispatch } from 'react-redux';
+import toast from 'react-hot-toast';
+import {
+  selectCartItems,
+  selectCartCount,
+  selectCartTotal,
+  addItemToCart,
+  updateQuantityOptimistic,
+  updateQuantity,
+  removeItemOptimistic,
+  removeItem,
+  clearLocalCartAndState,
+  clearCart,
+  fetchCart,
+  selectCartStatus,
+  selectCartError
+} from '../store/cartSlice';
 
 const CartPage = () => {
-  const { cartItems, removeItem, updateQuantity, clearCart, cartTotal, cartCount } = useCart();
+  const dispatch = useDispatch();
+  const cartItems = useSelector(selectCartItems);
+  const cartCount = useSelector(selectCartCount);
+  const cartTotal = useSelector(selectCartTotal);
+  const cartStatus = useSelector(selectCartStatus);
+  const cartError = useSelector(selectCartError);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Find the specific item in the cart to check its current quantity
+  const findItemQuantity = (productId) => {
+    const item = cartItems.find(item => item.product.id === productId);
+    return item ? item.quantity : 0;
+  };
+
+  const updateQuantityHandler = (productId, delta) => {
+    if (isUpdating) return;
+
+    const currentQuantity = findItemQuantity(productId);
+    const finalQuantity = currentQuantity + delta;
+
+    // If decrementing results in 0 or less, treat it as a remove action
+    if (finalQuantity <= 0) {
+      removeItemHandler(productId); // Delegate to the remove handler
+      return;
+    }
+
+    // Otherwise, proceed with the update action
+    setIsUpdating(true);
+    // Dispatch optimistic update with the delta
+    dispatch(updateQuantityOptimistic({ productId, delta })); 
+    // Dispatch the async thunk with the delta
+    dispatch(updateQuantity({ productId, delta }))
+      .unwrap()
+      .then(() => toast.success('Cart updated!'))
+      .catch((err) => {
+        toast.error(err || 'Failed to update cart');
+        // Revert optimistic update by re-fetching cart state on error
+        // Consider if a more targeted revert is needed, but fetchCart is simpler
+        dispatch(fetchCart()); 
+      })
+      .finally(() => setIsUpdating(false));
+  };
+
+  const removeItemHandler = (productId) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    dispatch(removeItemOptimistic(productId));
+    dispatch(removeItem(productId))
+      .unwrap()
+      .then(() => toast.success('Item removed from cart!'))
+      .catch((err) => {
+        toast.error(err || 'Failed to remove item');
+        dispatch(fetchCart());
+      })
+      .finally(() => setIsUpdating(false));
+  };
+
+  const clearCartHandler = () => {
+    dispatch(clearLocalCartAndState()); // Optimistically clear UI
+    toast.success('Cart cleared!');
+    dispatch(clearCart())
+      .unwrap()
+      .catch((err) => {
+        toast.error(err || 'Failed to clear cart');
+        dispatch(fetchCart());
+      });
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -25,7 +107,11 @@ const CartPage = () => {
           </Link>
         </div>
 
-        {cartItems.length === 0 ? (
+        {cartStatus === 'loading' ? (
+          <div className="flex justify-center py-20">Loading...</div>
+        ) : cartError ? (
+          <div className="flex justify-center py-20 text-red-500">{cartError}</div>
+        ) : cartItems.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-6 sm:p-12 text-center">
             <p className="text-lg text-gray-600 mb-6">Your cart is empty</p>
             <Link
@@ -76,23 +162,25 @@ const CartPage = () => {
                     <div className="sm:hidden flex items-center justify-between mt-3">
                       <div className="flex items-center space-x-4">
                         <button
-                          onClick={() => updateQuantity(product.id, quantity - 1)}
+                          onClick={() => updateQuantityHandler(product.id, -1)}
                           className={`p-1 sm:p-2 rounded-full ${quantity <= 1 ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}
-                          disabled={quantity <= 1}
+                          disabled={quantity <= 1 || isUpdating}
                         >
                           <FiMinus size={14} />
                         </button>
                         <span className="w-6 text-center text-sm">{quantity}</span>
                         <button
-                          onClick={() => updateQuantity(product.id, quantity + 1)}
+                          onClick={() => updateQuantityHandler(product.id, 1)}
                           className="p-1 sm:p-2 rounded-full text-gray-600 hover:bg-gray-100"
+                          disabled={isUpdating}
                         >
                           <FiPlus size={14} />
                         </button>
                       </div>
                       <button
-                        onClick={() => removeItem(product.id)}
+                        onClick={() => removeItemHandler(product.id)}
                         className="text-gray-400 hover:text-red-500 transition-colors"
+                        disabled={isUpdating}
                       >
                         <FiTrash2 size={16} />
                       </button>
@@ -102,16 +190,17 @@ const CartPage = () => {
                   {/* Desktop quantity controls */}
                   <div className="hidden sm:flex items-center space-x-4">
                     <button
-                      onClick={() => updateQuantity(product.id, quantity - 1)}
+                      onClick={() => updateQuantityHandler(product.id, -1)}
                       className={`p-2 rounded-full ${quantity <= 1 ? 'text-gray-300' : 'text-gray-600 hover:bg-gray-100'}`}
-                      disabled={quantity <= 1}
+                      disabled={quantity <= 1 || isUpdating}
                     >
                       <FiMinus size={16} />
                     </button>
                     <span className="w-8 text-center">{quantity}</span>
                     <button
-                      onClick={() => updateQuantity(product.id, quantity + 1)}
+                      onClick={() => updateQuantityHandler(product.id, 1)}
                       className="p-2 rounded-full text-gray-600 hover:bg-gray-100"
+                      disabled={isUpdating}
                     >
                       <FiPlus size={16} />
                     </button>
@@ -124,8 +213,9 @@ const CartPage = () => {
 
                   {/* Desktop remove */}
                   <button
-                    onClick={() => removeItem(product.id)}
+                    onClick={() => removeItemHandler(product.id)}
                     className="hidden sm:block text-gray-400 hover:text-red-500 transition-colors"
+                    disabled={isUpdating}
                   >
                     <FiTrash2 size={18} />
                   </button>
@@ -140,7 +230,7 @@ const CartPage = () => {
               {/* Clear Cart */}
               <div className="text-right">
                 <button
-                  onClick={clearCart}
+                  onClick={clearCartHandler}
                   className="text-sm text-gray-500 hover:text-red-500 transition-colors"
                 >
                   Clear Cart

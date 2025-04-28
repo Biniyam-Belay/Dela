@@ -1,135 +1,105 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useCart } from '../../contexts/CartContext';
-import { FiShoppingBag, FiHeart, FiEye } from 'react-icons/fi';
+"use client"
 
-// Define backend URL at the component level
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+import { useState } from "react"
+import { Link } from "react-router-dom"
+import { Heart, ShoppingCart, Star } from "lucide-react"
+import { Button } from "./button"
+import { Badge } from "./badge"
 
-const ProductCard = ({ product }) => {
-  const { addItem } = useCart();
-  const [isHovered, setIsHovered] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
-
-  // Construct image URL
-  const imageUrl = product.images?.[0] 
-    ? `${backendUrl}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
-    : `${backendUrl}/placeholder-image.jpg`;
-
-  const handleAddToCart = (e) => {
-    e.preventDefault();
-    if (product.stockQuantity > 0) {
-      addItem(product, 1);
-    }
-  };
-
-  const toggleWishlist = (e) => {
-    e.preventDefault();
-    setIsWishlisted(!isWishlisted);
-  };
+/**
+ * @param {{ 
+ *   product: { 
+ *     id: number, 
+ *     name: string, 
+ *     price: number, 
+ *     image: string, 
+ *     slug: string, 
+ *     discount?: number | null, 
+ *     rating?: string, 
+ *     reviewCount?: number 
+ *   }, 
+ *   featured?: boolean 
+ * }} props
+ */
+export default function ProductCard({ product, featured = false }) {
+  const [isHovered, setIsHovered] = useState(false)
 
   return (
-    <div 
-      className="group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300"
+    <div
+      className={`group relative ${featured ? "border border-neutral-200 rounded-lg overflow-hidden" : ""} w-full max-w-xs mx-auto sm:max-w-sm md:max-w-md lg:max-w-lg`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Product Image */}
-      <Link to={`/products/${product.slug || product.id}`} className="block relative aspect-[3/4]">
-        <img
-          src={imageUrl}
-          alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          loading="lazy"
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = `${backendUrl}/placeholder-image.jpg`;
-          }}
-        />
-        
-        {/* Quick Actions (appear on hover) */}
-        {isHovered && (
-          <div className="absolute inset-0 bg-black/10 flex items-center justify-center gap-4 transition-opacity duration-300">
-            <button 
-              onClick={toggleWishlist}
-              className="bg-white p-3 rounded-full shadow-md hover:bg-gray-100 transition-colors"
-              aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-            >
-              <FiHeart className={isWishlisted ? "text-red-500 fill-red-500" : "text-gray-700"} />
-            </button>
-            <button className="bg-white p-3 rounded-full shadow-md hover:bg-gray-100 transition-colors" aria-label="Quick view">
-              <FiEye className="text-gray-700" />
-            </button>
-          </div>
-        )}
-        
-        {/* Stock Status Badge */}
-        {product.stockQuantity <= 0 && (
-          <div className="absolute top-4 left-4 bg-white px-3 py-1 rounded-full text-xs font-medium shadow-sm">
-            Out of Stock
-          </div>
-        )}
-      </Link>
+      <div className="aspect-[3/4] relative overflow-hidden bg-neutral-100 h-64 sm:h-72 md:h-80 lg:h-96">
+        <Link to={`/products/${product.slug}`}>
+          <img
+            src={product.image || "/placeholder.svg"}
+            alt={product.name}
+            className="object-cover transition-transform duration-500 group-hover:scale-105 w-full h-full"
+            style={{ objectFit: "cover" }}
+            onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.jpg"; }}
+          />
+        </Link>
 
-      {/* Product Info */}
-      <div className="p-4">
-        <div className="flex justify-between items-start mb-1">
-          <Link to={`/products/${product.slug || product.id}`} className="hover:text-gray-900 transition-colors">
-            <h3 className="font-medium text-gray-800 line-clamp-2">{product.name}</h3>
-          </Link>
-          <button 
-            onClick={toggleWishlist}
-            className="text-gray-400 hover:text-red-500 transition-colors"
-            aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
-          >
-            <FiHeart className={isWishlisted ? "text-red-500 fill-red-500" : ""} />
-          </button>
-        </div>
-        
-        {product.category && (
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">{product.category.name}</p>
+        {product.discount && (
+          <Badge className="absolute top-3 left-3 bg-black text-white hover:bg-black">{product.discount}% OFF</Badge>
         )}
-        
-        <div className="flex justify-between items-center mt-2">
-          <span className="font-bold text-gray-900">
-            {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.price)}
-          </span>
-          
-          {/* Rating (if available) */}
-          {product.rating > 0 && (
-            <div className="flex items-center text-sm text-gray-600">
-              <span className="mr-1">{product.rating.toFixed(1)}</span>
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <svg
-                    key={i}
-                    className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-            </div>
-          )}
+
+        <div
+          className={`absolute right-3 top-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
+        >
+          <Button size="icon" variant="secondary" className="rounded-full h-9 w-9 bg-white hover:bg-white/90">
+            <Heart className="h-4 w-4" />
+            <span className="sr-only">Add to wishlist</span>
+          </Button>
         </div>
-        
-        {/* Add to Cart Button */}
-        <button
-          onClick={handleAddToCart}
-          disabled={product.stockQuantity <= 0}
-          className={`w-full mt-4 py-2 rounded-md flex items-center justify-center gap-2 text-sm font-medium transition-colors ${
-            product.stockQuantity > 0
-              ? 'bg-black text-white hover:bg-gray-800'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+
+        <div
+          className={`absolute bottom-0 left-0 right-0 bg-white p-3 transform transition-transform duration-300 ${
+            isHovered ? "translate-y-0" : "translate-y-full"
           }`}
         >
-          <FiShoppingBag />
-          {product.stockQuantity > 0 ? 'Add to Cart' : 'Out of Stock'}
-        </button>
+          <Button className="w-full bg-black hover:bg-black/90 text-white">
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Add to Cart
+          </Button>
+        </div>
+      </div>
+
+      <div className={`py-4 ${featured ? "px-4" : ""}`}>
+        {product.rating && (
+          <div className="flex items-center gap-1 mb-2">
+            <div className="flex">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-3 w-3 ${
+                    i < Number.parseInt(product.rating) ? "fill-amber-400 text-amber-400" : "text-neutral-300"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-neutral-500">({product.reviewCount})</span>
+          </div>
+        )}
+
+        <h3 className="font-medium text-sm">
+          <Link to={`/products/${product.slug}`} className="hover:underline">
+            {product.name}
+          </Link>
+        </h3>
+
+        <div className="mt-1 flex items-center gap-2">
+          {product.discount ? (
+            <>
+              <span className="font-medium">${(product.price * (1 - product.discount / 100)).toFixed(2)}</span>
+              <span className="text-neutral-500 line-through text-sm">${product.price.toFixed(2)}</span>
+            </>
+          ) : (
+            <span className="font-medium">${product.price.toFixed(2)}</span>
+          )}
+        </div>
       </div>
     </div>
-  );
-};
-
-export default ProductCard;
+  )
+}

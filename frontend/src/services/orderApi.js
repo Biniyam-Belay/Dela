@@ -2,38 +2,91 @@ import apiClient from './apiClient';
 
 // Create a new order
 export const createOrderApi = async (orderData) => {
-    // orderData should include { orderItems: [{ productId, quantity }], shippingAddress: {...} }
     try {
-        const response = await apiClient.post('/orders', orderData);
-        // Backend sends { success: true, message: '...', data: order }
-        return response.data;
+        const response = await fetch(import.meta.env.VITE_SUPABASE_CREATE_ORDER_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            },
+            body: JSON.stringify(orderData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
     } catch (error) {
-        console.error("Error creating order:", error.response?.data || error.message);
-        // Re-throw the specific error structure from the backend if possible
-        throw error.response?.data || new Error('Failed to create order');
+        console.error("Order API - Error creating order:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response,
+            requestData: orderData // Log the data sent
+        });
+        throw error.response?.data || new Error(`Failed to create order. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
 // Fetch user's orders (Add this for the profile page later)
 export const fetchMyOrdersApi = async () => {
     try {
-        const response = await apiClient.get('/orders/myorders');
+        const response = await fetch(import.meta.env.VITE_SUPABASE_GET_MY_ORDERS_URL, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
         // Backend sends { success: true, count: num, data: orders[] }
-        return response.data;
+        return data;
     } catch (error) {
-        console.error("Error fetching orders:", error.response?.data || error.message);
-        throw error.response?.data || new Error('Failed to fetch orders');
+        console.error("Order API - Error fetching orders:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to fetch orders. Status: ${error.response?.status || 'N/A'}`);
     }
 };
 
- // Fetch a single order by ID (Add this for order detail page later)
+// Fetch a single order by ID (Add this for order detail page later)
 export const fetchOrderByIdApi = async (orderId) => {
     try {
-        const response = await apiClient.get(`/orders/${orderId}`);
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_GET_ORDER_DETAIL_URL}?id=${orderId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
         // Backend sends { success: true, data: order }
-        return response.data;
+        return data;
     } catch (error) {
-         console.error(`Error fetching order ${orderId}:`, error.response?.data || error.message);
-         throw error.response?.data || new Error(`Failed to fetch order ${orderId}`);
+         console.error(`Order API - Error fetching order ${orderId}:`, {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+         });
+         throw error.response?.data || new Error(`Failed to fetch order ${orderId}. Status: ${error.response?.status || 'N/A'}`);
     }
  };

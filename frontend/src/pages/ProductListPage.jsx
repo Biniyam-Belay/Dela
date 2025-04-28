@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { fetchProducts, fetchCategories } from '../services/productApi';
 import ProductCard from '../components/ui/ProductCard';
 import Spinner from '../components/common/Spinner';
@@ -7,43 +8,38 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import { FiSearch, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 
 const ProductListPage = () => {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [totalPages, setTotalPages] = useState(1);
-  const [currentPage, setCurrentPage] = useState(1);
-
   const [searchParams, setSearchParams] = useSearchParams();
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const params = {
-          page: searchParams.get('page') || 1,
-          limit: searchParams.get('limit') || 12,
-          category: searchParams.get('category') || undefined,
-          search: searchParams.get('search') || undefined,
-        };
+  // Extract filter params
+  const page = Number(searchParams.get('page')) || 1;
+  const limit = Number(searchParams.get('limit')) || 12;
+  const category = searchParams.get('category') || undefined;
+  const search = searchParams.get('search') || undefined;
 
-        const productData = await fetchProducts(params);
-        const categoryData = await fetchCategories();
+  // Products query
+  const {
+    data: productsData,
+    isLoading: productsLoading,
+    error: productsError,
+  } = useQuery({
+    queryKey: ['products', { page, limit, category, search }],
+    queryFn: () => fetchProducts({ page, limit, category, search }),
+    keepPreviousData: true,
+    select: (data) => data || {},
+    staleTime: 1000 * 60 * 3,
+  });
 
-        setProducts(productData.data);
-        setCategories(categoryData.data);
-        setTotalPages(productData.totalPages);
-        setCurrentPage(productData.currentPage);
-      } catch (err) {
-        setError(err.message || 'Failed to load data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [searchParams]);
+  // Categories query
+  const {
+    data: categoriesData,
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+    select: (data) => data?.data || [],
+    staleTime: 1000 * 60 * 10,
+  });
 
   const handleCategoryFilter = (categorySlug) => {
     setSearchParams({ category: categorySlug, page: 1 });
@@ -59,6 +55,12 @@ const ProductListPage = () => {
     searchParams.set('page', newPage);
     setSearchParams(searchParams);
   };
+
+  // Extract product list and pagination info
+  const products = productsData?.data || [];
+  const totalPages = productsData?.totalPages || 1;
+  const currentPage = productsData?.currentPage || page;
+  const categories = categoriesData || [];
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -113,11 +115,11 @@ const ProductListPage = () => {
         </div>
 
         {/* Loading/Error State */}
-        {loading && <div className="flex justify-center py-20"><Spinner /></div>}
-        {error && <ErrorMessage message={error} />}
+        {(productsLoading || categoriesLoading) && <div className="flex justify-center py-20"><Spinner /></div>}
+        {(productsError || categoriesError) && <ErrorMessage message={productsError?.message || categoriesError?.message || 'Failed to load data.'} />}
 
         {/* No Products Found */}
-        {!loading && !error && products.length === 0 && (
+        {!productsLoading && !productsError && products.length === 0 && (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
             <p className="text-lg text-gray-600 mb-6">No products found matching your criteria.</p>
             <button
@@ -130,7 +132,7 @@ const ProductListPage = () => {
         )}
 
         {/* Product Grid */}
-        {!loading && !error && products.length > 0 && (
+        {!productsLoading && !productsError && products.length > 0 && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {products.map((product) => (

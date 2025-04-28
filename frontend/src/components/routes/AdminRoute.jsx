@@ -21,10 +21,10 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (user?.role !== 'ADMIN') {
-    // Logged in, but not an ADMIN - redirect to home or an unauthorized page
-    console.warn("Access denied: User is not an admin.");
-    // You could create a dedicated Unauthorized page later
+  // Check app_metadata for the role assigned in Supabase Auth UI
+  // Make sure the key ('user_role' here) matches what you set in the metadata
+  if (user?.app_metadata?.user_role !== 'ADMIN') { // This check is correct
+    console.warn("Access denied: User does not have ADMIN role in app_metadata.");
     return <Navigate to="/" replace />;
   }
 
