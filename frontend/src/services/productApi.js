@@ -22,7 +22,8 @@ export const fetchProducts = async (params = {}) => {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // No Authorization header needed for this public function
+        // Add the apikey header for Supabase function invocation
+        'apikey': supabaseAnonKey,
       },
     });
 
@@ -50,7 +51,8 @@ export const fetchProductByIdentifier = async (identifier) => {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // No Authorization needed for public product detail
+        // Add the apikey header here too
+        'apikey': supabaseAnonKey,
       },
     });
     if (!response.ok) {
@@ -73,10 +75,9 @@ export const fetchCategories = async () => {
     const response = await fetch(functionUrl, {
       method: "GET",
       headers: {
-        // Add the Authorization header with the anon key
+        // Keep existing headers for categories
         Authorization: `Bearer ${supabaseAnonKey}`,
         "Content-Type": "application/json",
-        // Supabase functions often also require the apikey header
         apikey: supabaseAnonKey,
       },
     });

@@ -1,153 +1,105 @@
 "use client"
 
 import { useState } from "react"
-import { useDispatch } from "react-redux"
 import { Link } from "react-router-dom"
-import { FiStar, FiShoppingBag, FiHeart } from "react-icons/fi"
-import { getImageUrl, placeholderImageUrl } from "../../utils/imageUrl"
-import { addItemOptimistic, addItemToCart, fetchCart } from "../../store/cartSlice"
-import toast from 'react-hot-toast';
+import { Heart, ShoppingCart, Star } from "lucide-react"
+import { Button } from "./button"
+import { Badge } from "./badge"
 
-const ProductCard = ({ product }) => {
-  const dispatch = useDispatch()
+/**
+ * @param {{ 
+ *   product: { 
+ *     id: number, 
+ *     name: string, 
+ *     price: number, 
+ *     image: string, 
+ *     slug: string, 
+ *     discount?: number | null, 
+ *     rating?: string, 
+ *     reviewCount?: number 
+ *   }, 
+ *   featured?: boolean 
+ * }} props
+ */
+export default function ProductCard({ product, featured = false }) {
   const [isHovered, setIsHovered] = useState(false)
-  const [isWishlist, setIsWishlist] = useState(false)
-  const [isAdding, setIsAdding] = useState(false)
-
-  if (!product) return null
-
-  const id = product.id || ""
-  const slug = product.slug || id
-  const displayName = typeof product.name === "object" ? product.name.name : product.name
-  const displayCategory = typeof product.category === "object" ? product.category.name : product.category
-  const imageUrl = getImageUrl(product.images?.[0])
-  const price = product.price || 0
-  const isNew = product.isNew || false
-  const discount = product.discount || 0
-  const rating = product.rating || 4.5
-  const reviewCount = product.reviewCount || 12
-
-  const renderStars = (rating) => {
-    const stars = []
-    const fullStars = Math.floor(rating)
-    const hasHalfStar = rating % 1 !== 0
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<FiStar key={`star-${i}`} className="w-3 h-3 fill-current text-yellow-500" />)
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <div key="half-star" className="relative">
-          <FiStar className="w-3 h-3 text-neutral-300" />
-          <div className="absolute inset-0 overflow-hidden w-1/2">
-            <FiStar className="w-3 h-3 fill-current text-yellow-500" />
-          </div>
-        </div>,
-      )
-    }
-
-    const emptyStars = 5 - Math.ceil(rating)
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(<FiStar key={`empty-${i}`} className="w-3 h-3 text-neutral-300" />)
-    }
-
-    return stars
-  }
-
-  const handleAddToCart = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (isAdding) return
-    setIsAdding(true)
-    const productToAdd = { id, name: displayName, price, images: product.images, slug }
-    dispatch(addItemOptimistic({ product: productToAdd, quantity: 1 }))
-    dispatch(addItemToCart({ product: productToAdd, quantity: 1 }))
-      .unwrap()
-      .then(() => toast.success(`${displayName} added to cart!`))
-      .catch((err) => {
-        toast.error(err || 'Failed to add to cart');
-        dispatch(fetchCart()); // Revert optimistic update by re-fetching cart
-      })
-      .finally(() => setIsAdding(false))
-  }
-
-  const toggleWishlist = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsWishlist(!isWishlist)
-  }
-
-  const handleImageError = (e) => {
-    e.target.onerror = null
-    e.target.src = placeholderImageUrl
-  }
 
   return (
-    <div className="group relative" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
-      <div className="relative overflow-hidden aspect-[3/4]">
-        <Link to={`/products/${slug}`} className="block w-full h-full">
+    <div
+      className={`group relative ${featured ? "border border-neutral-200 rounded-lg overflow-hidden" : ""} w-full max-w-xs mx-auto sm:max-w-sm md:max-w-md lg:max-w-lg`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="aspect-[3/4] relative overflow-hidden bg-neutral-100 h-64 sm:h-72 md:h-80 lg:h-96">
+        <Link to={`/products/${product.slug}`}>
           <img
-            src={imageUrl}
-            alt={displayName || "Product"}
-            className={`w-full h-full object-cover transition-transform duration-700 ${isHovered ? "scale-105" : "scale-100"}`}
-            onError={handleImageError}
-            loading="lazy"
+            src={product.image || "/placeholder.svg"}
+            alt={product.name}
+            className="object-cover transition-transform duration-500 group-hover:scale-105 w-full h-full"
+            style={{ objectFit: "cover" }}
+            onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.jpg"; }}
           />
         </Link>
 
-        {isNew && !discount && <div className="absolute top-3 left-3 bg-black text-white text-xs px-2 py-1 rounded">New</div>}
-        {discount > 0 && (
-          <div className="absolute top-3 left-3 bg-red-600 text-white text-xs px-2 py-1 rounded">{discount}% Off</div>
+        {product.discount && (
+          <Badge className="absolute top-3 left-3 bg-black text-white hover:bg-black">{product.discount}% OFF</Badge>
         )}
 
-        <button
-          onClick={toggleWishlist}
-          className="absolute top-3 right-3 h-8 w-8 bg-white/70 backdrop-blur-sm rounded-full flex items-center justify-center text-neutral-600 transition-colors duration-300 hover:bg-white hover:text-black"
-          aria-label="Toggle Wishlist"
+        <div
+          className={`absolute right-3 top-3 transition-opacity duration-300 ${isHovered ? "opacity-100" : "opacity-0"}`}
         >
-          <FiHeart className={`w-4 h-4 ${isWishlist ? "fill-red-500 text-red-500" : ""}`} />
-        </button>
-      </div>
-
-      <div className="mt-4">
-        <div>
-          {displayCategory && <p className="text-sm text-neutral-500 mb-1">{displayCategory}</p>}
-          <h3 className="font-light text-base mb-1">
-            <Link to={`/products/${slug}`} className="hover:text-black transition-colors">
-              {displayName || "Product"}
-            </Link>
-          </h3>
-
-          <div className="flex items-center gap-1 mb-2">
-            <div className="flex">{renderStars(rating)}</div>
-            <span className="text-xs text-neutral-500 ml-1">({reviewCount})</span>
-          </div>
-
-          <div className="flex items-center gap-2 mb-3">
-            {discount > 0 ? (
-              <>
-                <p className="font-medium">${(price * (1 - discount / 100)).toFixed(2)}</p>
-                <p className="text-sm text-neutral-500 line-through">${price.toFixed(2)}</p>
-              </>
-            ) : (
-              <p className="font-medium">${price.toFixed(2)}</p>
-            )}
-          </div>
+          <Button size="icon" variant="secondary" className="rounded-full h-9 w-9 bg-white hover:bg-white/90">
+            <Heart className="h-4 w-4" />
+            <span className="sr-only">Add to wishlist</span>
+          </Button>
         </div>
 
-        <button
-          onClick={handleAddToCart}
-          disabled={isAdding}
-          className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-black text-white text-sm font-medium rounded hover:bg-gray-800 transition-colors"
-          aria-label="Add to cart"
+        <div
+          className={`absolute bottom-0 left-0 right-0 bg-white p-3 transform transition-transform duration-300 ${
+            isHovered ? "translate-y-0" : "translate-y-full"
+          }`}
         >
-          <FiShoppingBag className="w-4 h-4" />
-          Add to Cart
-        </button>
+          <Button className="w-full bg-black hover:bg-black/90 text-white">
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Add to Cart
+          </Button>
+        </div>
+      </div>
+
+      <div className={`py-4 ${featured ? "px-4" : ""}`}>
+        {product.rating && (
+          <div className="flex items-center gap-1 mb-2">
+            <div className="flex">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-3 w-3 ${
+                    i < Number.parseInt(product.rating) ? "fill-amber-400 text-amber-400" : "text-neutral-300"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-neutral-500">({product.reviewCount})</span>
+          </div>
+        )}
+
+        <h3 className="font-medium text-sm">
+          <Link to={`/products/${product.slug}`} className="hover:underline">
+            {product.name}
+          </Link>
+        </h3>
+
+        <div className="mt-1 flex items-center gap-2">
+          {product.discount ? (
+            <>
+              <span className="font-medium">${(product.price * (1 - product.discount / 100)).toFixed(2)}</span>
+              <span className="text-neutral-500 line-through text-sm">${product.price.toFixed(2)}</span>
+            </>
+          ) : (
+            <span className="font-medium">${product.price.toFixed(2)}</span>
+          )}
+        </div>
       </div>
     </div>
   )
 }
-
-export default ProductCard
