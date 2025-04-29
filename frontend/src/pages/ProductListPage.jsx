@@ -37,7 +37,7 @@ import {
   Mail,
 } from "lucide-react"
 
-import { fetchProducts } from "../services/productApi.js"
+import { fetchProducts, fetchCategories } from "../services/productApi.js"
 import { addItemToCart } from "../store/cartSlice"
 
 const priceRanges = [
@@ -229,27 +229,42 @@ export default function ProductListPage() {
     tags: [],
     availability: [],
   })
+  const [selectedRating, setSelectedRating] = useState(null)
   const [products, setProducts] = useState([])
   const [totalProducts, setTotalProducts] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
+  const [categories, setCategories] = useState([])
+
+  // Fetch all categories on mount
+  useEffect(() => {
+    fetchCategories().then((res) => {
+      setCategories(res.data || [])
+    }).catch(() => setCategories([]))
+  }, [])
 
   // Extract filter params
   const page = Number(searchParams.get("page")) || 1
-  const category = searchParams.get("category") || undefined
   const search = searchParams.get("search") || undefined
 
   // Simulate loading
   useEffect(() => {
     setIsLoading(true)
-    // Use selectedPrice (from checkbox) for price filtering
     const params = {
       page,
       limit: 6,
       search,
-      category,
       sort,
+      ...(selectedFilters.categories.length === 1 ? { category: selectedFilters.categories[0] } : {}),
       ...(selectedPrice && selectedPrice.min !== null ? { price_gte: selectedPrice.min } : {}),
       ...(selectedPrice && selectedPrice.max !== null ? { price_lte: selectedPrice.max } : {}),
+      // Availability filter
+      ...(selectedFilters.availability.length === 1
+        ? selectedFilters.availability[0] === "in-stock"
+          ? { in_stock: true }
+          : { in_stock: false }
+        : {}),
+      // Rating filter
+      ...(selectedRating ? { min_rating: selectedRating } : {}),
     }
     fetchProducts(params).then((res) => {
       setProducts(res.data || [])
@@ -262,27 +277,83 @@ export default function ProductListPage() {
       setTotalPages(1)
       setIsLoading(false)
     })
-  }, [page, search, category, sort, selectedPrice])
+  }, [page, search, sort, selectedFilters.categories, selectedPrice, selectedFilters.availability, selectedRating])
 
-  // Initialize selected category from URL
-  useEffect(() => {
-    if (category) {
-      setSelectedFilters((prev) => ({
-        ...prev,
-        categories: [category],
-      }))
+  const updateFiltersInUrl = (newFilters) => {
+    const params = new URLSearchParams(searchParams.toString())
+    // Categories
+    if (newFilters.categories && newFilters.categories.length > 0) {
+      params.set("category", newFilters.categories[0]) // Only single category for now
+    } else {
+      params.delete("category")
     }
-  }, [category])
-
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      const params = new URLSearchParams(searchParams.toString())
-      params.set("page", newPage.toString())
-      navigate(`/products?${params.toString()}`)
-      window.scrollTo(0, 0)
+    // Price
+    if (newFilters.selectedPrice) {
+      params.set("price", newFilters.selectedPrice.label)
+    } else {
+      params.delete("price")
     }
+    // Availability (not in URL for now)
+    params.set("page", "1")
+    navigate(`/products?${params.toString()}`, { replace: true })
   }
 
+  const handleCategoryFilter = (categorySlug) => {
+    setSelectedFilters((prev) => {
+      const alreadySelected = prev.categories.includes(categorySlug)
+      const newCategories = alreadySelected ? [] : [categorySlug]
+      const newFilters = { ...prev, categories: newCategories }
+      updateFiltersInUrl({ ...newFilters, selectedPrice })
+      return newFilters
+    })
+  }
+
+  const handleAvailabilityFilter = (value) => {
+    setSelectedFilters((prev) => {
+      const newAvailability = prev.availability.includes(value)
+        ? prev.availability.filter((a) => a !== value)
+        : [...prev.availability, value]
+      const newFilters = { ...prev, availability: newAvailability }
+      return newFilters
+    })
+  }
+
+  const handlePriceFilter = (range) => {
+    setSelectedPrice((prev) => {
+      const newPrice = prev === range ? null : range
+      updateFiltersInUrl({ ...selectedFilters, selectedPrice: newPrice })
+      return newPrice
+    })
+  }
+
+  const handleSortChange = (value) => {
+    setSort(value)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("sort", value)
+    params.set("page", "1")
+    navigate(`/products?${params.toString()}`, { replace: true })
+  }
+
+  const handleRatingFilter = (rating) => {
+    setSelectedRating((prev) => (prev === rating ? null : rating))
+  }
+
+  const handleClearFilters = () => {
+    setSelectedFilters({
+      categories: [],
+      tags: [],
+      availability: [],
+    })
+    setSelectedPrice(null)
+    setSelectedRating(null)
+    setSort(sortOptions[0].value)
+
+    const params = new URLSearchParams()
+    params.set("page", "1")
+    navigate(`/products?${params.toString()}`)
+  }
+
+  // Add missing handleSearch function
   const handleSearch = (e) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
@@ -294,45 +365,7 @@ export default function ProductListPage() {
       params.delete("search")
     }
     params.set("page", "1")
-    navigate(`/products?${params.toString()}`)
-  }
-
-  const handleCategoryFilter = (categorySlug) => {
-    setSelectedFilters((prev) => {
-      const newCategories = prev.categories.includes(categorySlug)
-        ? prev.categories.filter((c) => c !== categorySlug)
-        : [...prev.categories, categorySlug]
-      return {
-        ...prev,
-        categories: newCategories,
-      }
-    })
-  }
-
-  const handleAvailabilityFilter = (value) => {
-    setSelectedFilters((prev) => {
-      const newAvailability = prev.availability.includes(value)
-        ? prev.availability.filter((a) => a !== value)
-        : [...prev.availability, value]
-      return {
-        ...prev,
-        availability: newAvailability,
-      }
-    })
-  }
-
-  const handleClearFilters = () => {
-    setSelectedFilters({
-      categories: [],
-      tags: [],
-      availability: [],
-    })
-    setSelectedPrice(null)
-    setSort(sortOptions[0].value)
-
-    const params = new URLSearchParams()
-    params.set("page", "1")
-    navigate(`/products?${params.toString()}`)
+    navigate(`/products?${params.toString()}`, { replace: true })
   }
 
   // Filter sidebar content
@@ -349,7 +382,7 @@ export default function ProductListPage() {
       </div>
 
       <ScrollArea className="h-[calc(100vh-220px)] py-2">
-        <Accordion type="multiple" defaultValue={["categories", "price", "availability"]} className="px-5">
+        <Accordion type="multiple" defaultValue={["categories", "price", "availability", "ratings"]} className="px-5">
           {/* Categories Filter */}
           <AccordionItem value="categories" className="border-b">
             <AccordionTrigger className="py-4 text-base hover:no-underline">
@@ -360,24 +393,24 @@ export default function ProductListPage() {
             </AccordionTrigger>
             <AccordionContent>
               <div className="space-y-2 pb-2">
-                {products
-                  .filter((product) => product.category && product.category.slug)
-                  .map((product) => (
-                    <div key={product.category.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`category-${product.category.slug}`}
-                        checked={selectedFilters.categories.includes(product.category.slug)}
-                        onCheckedChange={() => handleCategoryFilter(product.category.slug)}
-                      />
-                      <label
-                        htmlFor={`category-${product.category.slug}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex justify-between w-full"
-                      >
-                        <span>{product.category.name}</span>
-                        <span className="text-gray-500">({products.filter(p => p.category && p.category.slug === product.category.slug).length})</span>
-                      </label>
-                    </div>
-                  ))}
+                {categories.map((cat) => (
+                  <div key={cat.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`category-${cat.slug}`}
+                      checked={selectedFilters.categories.includes(cat.slug)}
+                      onCheckedChange={() => handleCategoryFilter(cat.slug)}
+                    />
+                    <label
+                      htmlFor={`category-${cat.slug}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex justify-between w-full"
+                    >
+                      <span>{cat.name}</span>
+                      <span className="text-gray-500">
+                        ({products.filter(p => p.category && p.category.slug === cat.slug).length})
+                      </span>
+                    </label>
+                  </div>
+                ))}
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -398,7 +431,7 @@ export default function ProductListPage() {
                       <Checkbox
                         id={`price-${i}`}
                         checked={selectedPrice === range}
-                        onCheckedChange={() => setSelectedPrice(selectedPrice === range ? null : range)}
+                        onCheckedChange={() => handlePriceFilter(range)}
                       />
                       <label
                         htmlFor={`price-${i}`}
@@ -465,7 +498,11 @@ export default function ProductListPage() {
               <div className="space-y-2 pb-2">
                 {[4, 3, 2, 1].map((rating) => (
                   <div key={rating} className="flex items-center space-x-2">
-                    <Checkbox id={`rating-${rating}`} />
+                    <Checkbox
+                      id={`rating-${rating}`}
+                      checked={selectedRating === rating}
+                      onCheckedChange={() => handleRatingFilter(rating)}
+                    />
                     <label
                       htmlFor={`rating-${rating}`}
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
@@ -518,11 +555,6 @@ export default function ProductListPage() {
                 <SheetDescription className="text-left">Refine your product search</SheetDescription>
               </SheetHeader>
               {FilterSidebar}
-              <div className="p-4 border-t">
-                <SheetClose asChild>
-                  <Button className="w-full">Apply Filters</Button>
-                </SheetClose>
-              </div>
             </SheetContent>
           </Sheet>
 
@@ -546,7 +578,7 @@ export default function ProductListPage() {
                 </Button>
               </form>
               <div className="flex items-center gap-3">
-                <Select value={sort} onValueChange={setSort}>
+                <Select value={sort} onValueChange={handleSortChange}>
                   <SelectTrigger className="w-[180px] h-11">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
@@ -612,11 +644,12 @@ export default function ProductListPage() {
             {(selectedFilters.categories.length > 0 ||
               selectedFilters.availability.length > 0 ||
               selectedPrice ||
+              selectedRating ||
               search) && (
               <div className="flex flex-wrap items-center gap-2 mb-6 p-3 bg-gray-50 border border-gray-100 rounded-lg">
                 <span className="text-sm font-medium text-gray-500 mr-1">Active Filters:</span>
                 {selectedFilters.categories.map((cat) => {
-                  const category = products.find((p) => p.category.slug === cat)?.category
+                  const category = categories.find((c) => c.slug === cat)
                   return (
                     <Badge key={cat} variant="secondary" className="flex items-center gap-1 px-3 py-1.5">
                       {category?.name}
@@ -633,7 +666,13 @@ export default function ProductListPage() {
                 {selectedPrice && (
                   <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1.5">
                     {selectedPrice.label}
-                    <X size={14} className="cursor-pointer" onClick={() => setSelectedPrice(null)} />
+                    <X size={14} className="cursor-pointer" onClick={() => handlePriceFilter(null)} />
+                  </Badge>
+                )}
+                {selectedRating && (
+                  <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1.5">
+                    {selectedRating} stars & up
+                    <X size={14} className="cursor-pointer" onClick={() => setSelectedRating(null)} />
                   </Badge>
                 )}
                 {search && (
@@ -808,7 +847,7 @@ export default function ProductListPage() {
       <section className="container mx-auto px-4 sm:px-6 lg:px-8 mb-16">
         <h2 className="text-2xl font-light mb-8">Shop by Category</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {[...new Map(products.filter(p => p.category && p.category.slug).map(p => [p.category.slug, p.category])).values()].map((category) => (
+          {categories.map((category) => (
             <Link
               key={category.slug}
               to={`/products?category=${category.slug}`}

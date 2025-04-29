@@ -30,23 +30,23 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white flex flex-col justify-center pt-28 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full mx-auto">
         {/* Back Button */}
         <button 
           onClick={() => navigate(-1)}
-          className="flex items-center text-gray-600 hover:text-black mb-6 transition-colors"
+          className="flex items-center text-neutral-400 hover:text-black mb-6 transition-colors text-sm font-medium"
         >
           <FiArrowLeft className="mr-2" />
           Back
         </button>
 
         {/* Login Card */}
-        <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-100">
+        <div className="bg-white rounded-2xl shadow border border-neutral-100 p-7 sm:p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-light text-gray-900 mb-2">Welcome back</h1>
-            <p className="text-gray-600">
-              Don't have an account?{' '}
+            <h1 className="text-2xl font-bold text-black mb-2 tracking-tight">Sign in to your account</h1>
+            <p className="text-neutral-500 text-sm">
+              Don&apos;t have an account?{' '}
               <Link 
                 to="/register" 
                 className="text-black hover:underline font-medium"
@@ -58,15 +58,15 @@ const LoginPage = () => {
 
           {error && <ErrorMessage message={error} className="mb-6" />}
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-5" onSubmit={handleSubmit}>
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="block text-xs font-medium text-neutral-500 mb-1">
                 Email address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiMail className="text-gray-400" />
+                  <FiMail className="text-neutral-300" />
                 </div>
                 <input
                   id="email"
@@ -74,7 +74,7 @@ const LoginPage = () => {
                   type="email"
                   autoComplete="email"
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black focus:border-black"
+                  className="block w-full pl-10 pr-3 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-black focus:border-black bg-neutral-50 text-black placeholder-neutral-400 text-sm"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -84,12 +84,12 @@ const LoginPage = () => {
 
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="password" className="block text-xs font-medium text-neutral-500 mb-1">
                 Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FiLock className="text-gray-400" />
+                  <FiLock className="text-neutral-300" />
                 </div>
                 <input
                   id="password"
@@ -97,7 +97,7 @@ const LoginPage = () => {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black focus:border-black"
+                  className="block w-full pl-10 pr-3 py-3 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-black focus:border-black bg-neutral-50 text-black placeholder-neutral-400 text-sm"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -112,16 +112,16 @@ const LoginPage = () => {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 border-gray-300 rounded text-black focus:ring-black"
+                  className="h-4 w-4 border-neutral-300 rounded text-black focus:ring-black"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                <label htmlFor="remember-me" className="ml-2 block text-xs text-neutral-500">
                   Remember me
                 </label>
               </div>
-              <div className="text-sm">
+              <div className="text-xs">
                 <Link 
                   to="/forgot-password" 
-                  className="text-gray-600 hover:text-black hover:underline"
+                  className="text-neutral-500 hover:text-black hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -132,8 +132,8 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full flex justify-center items-center py-3 px-4 rounded-lg text-white font-medium ${
-                isLoading ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'
+              className={`w-full flex justify-center items-center py-3 px-4 rounded-lg text-white font-semibold text-sm ${
+                isLoading ? 'bg-neutral-300' : 'bg-black hover:bg-neutral-800'
               } transition-colors`}
             >
               {isLoading ? (
@@ -151,10 +151,10 @@ const LoginPage = () => {
           <div className="mt-8">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
+                <div className="w-full border-t border-neutral-200" />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-white text-neutral-400">
                   Or continue with
                 </span>
               </div>
@@ -163,13 +163,13 @@ const LoginPage = () => {
             <div className="mt-6 grid grid-cols-2 gap-3">
               <button
                 type="button"
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="w-full inline-flex justify-center py-2 px-4 border border-neutral-200 rounded-lg shadow-sm bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50"
               >
                 Google
               </button>
               <button
                 type="button"
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-200 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="w-full inline-flex justify-center py-2 px-4 border border-neutral-200 rounded-lg shadow-sm bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50"
               >
                 Facebook
               </button>
