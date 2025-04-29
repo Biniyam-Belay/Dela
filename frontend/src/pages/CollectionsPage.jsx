@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from "react"; // Removed useQueryBase
+import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ShoppingBag, RefreshCw, Clock } from "lucide-react";
+import { ShoppingBag, RefreshCw, Clock, Loader2 } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 import { fetchProducts } from '../services/productApi';
 import ProductCard from '../components/ui/ProductCard';
-import PriceHighlightProductCard from '../components/ui/PriceHighlightProductCard';
-// Removed useQueryBase import as it's no longer needed
+import { Input } from "../components/ui/input"; // Import Input
+import { Button } from "../components/ui/button"; // Import Button
 
 const collections = [
   {
@@ -125,6 +125,18 @@ const CollectionsPage = () => {
     staleTime: 1000 * 60 * 5,
   });
 
+  // Fetch New Arrivals
+  const {
+    data: newArrivals,
+    isLoading: newArrivalsLoading,
+    error: newArrivalsError,
+  } = useQuery({
+    queryKey: ['new-arrivals'],
+    queryFn: () => fetchProducts({ sortBy: 'createdAt', order: 'desc', limit: 4 }),
+    select: (res) => res?.data || [],
+    staleTime: 1000 * 60 * 10, // Cache for 10 minutes
+  });
+
   return (
     <div className="bg-white min-h-screen text-neutral-900">
       <section className="container mx-auto px-4 sm:px-6 pt-32 pb-16">
@@ -187,38 +199,101 @@ const CollectionsPage = () => {
         </div>
       </section>
 
-      {/* Ad Banner */}
-      <section className="container mx-auto px-4 sm:px-6 mb-12">
-        <div className="relative rounded-2xl overflow-hidden bg-neutral-900 shadow-lg flex flex-col md:flex-row items-center justify-between p-8 md:p-12 gap-6">
-          <div className="flex-1">
-            <h2 className="text-2xl sm:text-3xl font-light text-white mb-2">Spring Sale: Up to 50% Off</h2>
-            <p className="text-white/80 mb-4 max-w-md">Refresh your style with exclusive deals on our best-selling collections. Limited time only!</p>
-            <Link to="/products" className="inline-block px-6 py-3 bg-white text-black font-medium rounded-full shadow hover:bg-neutral-100 transition-all">Shop Now</Link>
+      {/* Bold Fashionistic Ad Banner - Added bottom margin */}
+      <section className="container mx-auto px-4 sm:px-6 mb-24"> {/* Increased bottom margin */}
+        <div className="relative flex flex-col md:flex-row items-stretch rounded-none overflow-hidden border-y border-black bg-white shadow-none">
+          {/* Left: High-Fashion Image Placeholder */}
+          <div className="flex-1 md:w-1/2 relative min-h-[400px] md:min-h-[500px] bg-neutral-100 border-r border-black">
+            <img
+              src="/images/suriAddis-hero.jpg" // Replace with a high-fashion, edgy image
+              alt="Fashion Forward Collection"
+              className="absolute inset-0 w-full h-full object-cover object-center grayscale filter"
+              onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+            />
+            <div className="absolute inset-0 bg-black/10 pointer-events-none"></div>
           </div>
-          <img src="/images/hero-3.jpg" alt="Ad Banner" className="w-40 h-40 object-cover rounded-xl shadow-lg hidden md:block" />
+          {/* Content */}
+          <div className="flex-1 md:w-1/2 flex flex-col justify-center items-start px-8 py-16 md:py-24 md:pl-16 bg-white">
+            <span className="block mb-4 text-sm font-bold tracking-[0.2em] text-black uppercase">LIMITED EDITION</span>
+            <h2 className="text-5xl sm:text-7xl font-black mb-6 tracking-tighter text-black leading-none font-sans">
+              FUTURE<br />CLASSICS
+            </h2>
+            <p className="text-lg sm:text-xl text-black mb-10 max-w-md font-normal">
+              Define tomorrow's style. Explore avant-garde designs and statement pieces that challenge convention. Exclusivity is the new luxury.
+            </p>
+            <Link to="/collections/signature" className="inline-block px-12 py-4 rounded-none bg-transparent text-black font-bold text-base tracking-wider border-2 border-black hover:bg-black hover:text-white transition-all shadow-none uppercase">
+              Explore Now
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* Promo Grid */}
-      <section className="container mx-auto px-4 sm:px-6 mb-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-neutral-100 rounded-xl p-6 flex flex-col items-center text-center shadow">
-            <img src="/images/Headphones.jpg" alt="Headphones" className="w-20 h-20 object-cover mb-4 rounded-full" />
-            <h3 className="text-lg font-semibold mb-2">Audio Deals</h3>
-            <p className="text-neutral-500 mb-3">Top headphones and speakers for every music lover.</p>
-            <Link to="/products?category=audio" className="text-indigo-600 font-medium hover:underline">Shop Audio</Link>
+      {/* New Arrivals Section - Mobile-First Grid */}
+      <section className="container mx-auto px-4 sm:px-6 mb-20">
+        <div className="mb-10 text-center">
+          <h2 className="text-3xl font-light mb-2 tracking-tight">Fresh Off the Press</h2>
+          <p className="text-neutral-500 text-sm max-w-md mx-auto">Explore the latest styles landing in our collection.</p>
+        </div>
+        {newArrivalsLoading ? (
+          // Loading state: Match HomePage grid (2 cols base)
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="border border-neutral-200 rounded-lg p-4 animate-pulse">
+                <div className="aspect-square bg-neutral-200 rounded mb-4"></div>
+                <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2 mx-auto"></div>
+                <div className="h-6 bg-neutral-200 rounded w-1/4 mx-auto"></div>
+              </div>
+            ))}
           </div>
-          <div className="bg-neutral-100 rounded-xl p-6 flex flex-col items-center text-center shadow">
-            <img src="/images/smartwatch.jpg" alt="Smartwatch" className="w-20 h-20 object-cover mb-4 rounded-full" />
-            <h3 className="text-lg font-semibold mb-2">Wearable Tech</h3>
-            <p className="text-neutral-500 mb-3">Smartwatches and fitness bands for a connected lifestyle.</p>
-            <Link to="/products?category=wearables" className="text-indigo-600 font-medium hover:underline">Shop Wearables</Link>
+        ) : newArrivalsError ? (
+          <div className="text-center text-red-500 py-10">Could not load new arrivals. Please try again later.</div>
+        ) : newArrivals && newArrivals.length > 0 ? (
+          // Match HomePage grid: 2 cols base, 3 sm, 4 lg - with smaller gap
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+            {newArrivals.map(product => (
+              <div key={product.id} className="group">
+                <ProductCard product={product} className="transition-shadow duration-300 group-hover:shadow-xl" />
+              </div>
+            ))}
           </div>
-          <div className="bg-neutral-100 rounded-xl p-6 flex flex-col items-center text-center shadow">
-            <img src="/images/tshirt-blue.jpg" alt="T-shirt" className="w-20 h-20 object-cover mb-4 rounded-full" />
-            <h3 className="text-lg font-semibold mb-2">Fashion Picks</h3>
-            <p className="text-neutral-500 mb-3">Minimalist and signature apparel for every season.</p>
-            <Link to="/products?category=fashion" className="text-indigo-600 font-medium hover:underline">Shop Fashion</Link>
+        ) : (
+          <div className="text-center text-neutral-500 py-10">No new arrivals found. Check back soon!</div>
+        )}
+      </section>
+
+      {/* Typographic & Geometric Black/White Ad Banner */}
+      <section className="container mx-auto px-4 sm:px-6 mb-20">
+        <div className="relative flex flex-col md:flex-row items-stretch rounded-none overflow-hidden border border-black bg-white">
+          {/* Left: Geometric Pattern */}
+          <div className="hidden md:flex flex-col justify-center items-center w-1/3 bg-black p-12 relative border-r border-black">
+            <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="bwdots" patternUnits="userSpaceOnUse" width="10" height="10">
+                  <circle cx="5" cy="5" r="1" fill="white" />
+                </pattern>
+                <pattern id="bwlines" patternUnits="userSpaceOnUse" width="10" height="10">
+                  <path d="M0 0 L10 10 M10 0 L0 10" stroke="white" strokeWidth="0.5" />
+                </pattern>
+              </defs>
+              <rect width="50%" height="100%" fill="url(#bwdots)" />
+              <rect x="50%" width="50%" height="100%" fill="url(#bwlines)" />
+            </svg>
+          </div>
+          {/* Content */}
+          <div className="flex-1 flex flex-col justify-center items-start px-8 py-16 md:py-24 md:pl-16 bg-white">
+            <span className="block mb-4 text-sm font-bold tracking-[0.2em] text-black uppercase">ESSENTIALS REIMAGINED</span>
+            <h2 className="text-5xl sm:text-6xl font-black mb-6 tracking-tighter text-black leading-none font-sans">
+              FORM &<br />FUNCTION
+            </h2>
+            <p className="text-lg sm:text-xl text-black mb-10 max-w-md font-normal">
+              Where minimalist design meets maximum impact. Explore core pieces built for longevity and effortless style.
+            </p>
+            <Link
+              to="/collections/minimalist"
+              className="inline-block px-12 py-4 rounded-none bg-black text-white font-bold text-base tracking-wider border-2 border-black hover:bg-white hover:text-black transition-all shadow-none uppercase"
+            >
+              Shop Minimalist
+            </Link>
           </div>
         </div>
       </section>
@@ -244,72 +319,28 @@ const CollectionsPage = () => {
         </section>
       )}
 
-      {/* Shop by Price / Filter Bar */}
-      <section className="container mx-auto px-4 sm:px-6 mb-16">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <h2 className="text-xl font-light">Shop by Price</h2>
-          <div className="flex flex-wrap gap-2">
-            {priceRanges.map((range, i) => (
-              <button
-                key={i}
-                className={`px-4 py-2 rounded-full text-sm border transition ${selectedPrice === range ? 'bg-black text-white font-medium' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-neutral-200'}`}
-                onClick={() => setSelectedPrice(range)}
-              >
-                {range.label}
-              </button>
-            ))}
-            <button
-              className={`px-4 py-2 rounded-full text-sm font-medium transition ${!selectedPrice ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border border-neutral-200'}`}
-              onClick={() => setSelectedPrice(null)}
-            >
-              All
-            </button>
-          </div>
-        </div>
-        {/* Dynamic Product Grid for Shop by Price - Using the new card */}
-        {selectedPrice && (
-          <div className="mt-8"> {/* Added margin top */}
-            {filteredLoading ? (
-              // Use a slightly different pulse animation matching the new card's structure
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="bg-neutral-100 border border-neutral-200 rounded-lg shadow p-4 animate-pulse h-80"> {/* Adjusted height */}
-                    <div className="aspect-[4/3] bg-neutral-200 rounded mb-4"></div>
-                    <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-neutral-200 rounded w-1/2 mb-4"></div>
-                    <div className="flex justify-between items-end">
-                      <div className="h-6 bg-neutral-200 rounded w-1/4"></div>
-                      <div className="h-8 bg-neutral-200 rounded w-1/4"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : filteredError ? (
-              <div className="text-center text-red-500 py-10">Could not load products for this price range.</div>
-            ) : filteredProducts.length > 0 ? (
-              // Use a grid layout for the new cards
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map(product => (
-                  <PriceHighlightProductCard key={product.id} product={product} /> // Use the new component
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-neutral-500 py-10">No products found for selected price range.</div>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* Newsletter Section */}
-      <section className="py-16 bg-neutral-100">
-        <div className="container mx-auto px-4 sm:px-6 max-w-2xl text-center">
-          <h2 className="text-2xl sm:text-3xl font-light mb-4 tracking-tight">Join Our Community</h2>
+      {/* Newsletter Section - Styled like HomePage */}
+      <section className="py-16 sm:py-24 bg-neutral-100"> {/* Updated padding */}
+        <div className="container mx-auto px-4 sm:px-6 max-w-4xl text-center"> {/* Updated max-width */}
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 tracking-tight">Join Our Community</h2> {/* Added md:text-4xl */}
           <p className="text-neutral-600 mb-8 max-w-xl mx-auto text-sm sm:text-base">
             Subscribe for exclusive updates, early access to new collections, and personalized recommendations.
           </p>
           <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input type="email" placeholder="Your email address" className="h-12 border border-neutral-300 bg-white rounded px-4 flex-1" required />
-            <button type="submit" className="h-12 px-6 bg-black text-white rounded font-light hover:bg-neutral-900 transition">Subscribe</button>
+            {/* Use Input component */}
+            <Input 
+              type="email" 
+              placeholder="Your email address" 
+              className="h-12 border-neutral-300 bg-transparent flex-1" // Applied HomePage styles
+              required 
+            />
+            {/* Use Button component */}
+            <Button 
+              type="submit" 
+              className="h-12 px-6 bg-black text-white hover:bg-black/90 font-light" // Applied HomePage styles
+            >
+              Subscribe
+            </Button>
           </form>
           <p className="text-xs text-neutral-500 mt-4">
             By subscribing, you agree to our Privacy Policy and consent to receive updates from our company.

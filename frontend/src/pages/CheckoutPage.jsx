@@ -103,28 +103,24 @@ const CheckoutPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Navigation */}
+    <div className="min-h-screen bg-white py-10 px-4 sm:px-0 pt-28">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
         <button 
           onClick={() => navigate(-1)}
-          className="flex items-center text-gray-600 hover:text-black mb-6 transition-colors"
+          className="flex items-center text-neutral-500 hover:text-black mb-8 transition-colors text-base font-normal border-b border-transparent hover:border-black pb-0.5"
         >
           <FiChevronLeft className="mr-2" />
           Back to Cart
         </button>
-
-        <h1 className="text-3xl font-light text-gray-900 mb-8">Checkout</h1>
-
+        <h1 className="text-3xl sm:text-4xl font-sans font-semibold text-neutral-900 tracking-tight mb-10">Checkout</h1>
         {error && <ErrorMessage message={error} className="mb-6" />}
         {orderError && <ErrorMessage message={orderError} className="mb-6" />}
-
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-10">
           {/* Left Column - Shipping */}
           <div className="lg:w-2/3 space-y-8">
-            {/* Shipping Address */}
-            <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-gray-100">
-              <h2 className="text-xl font-medium text-gray-900 mb-6">Shipping Information</h2>
+            <div className="bg-white rounded-xl shadow p-6 sm:p-8 border border-neutral-200">
+              <h2 className="text-xl font-sans font-semibold text-neutral-900 mb-6">Shipping Information</h2>
               <form className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
@@ -227,12 +223,10 @@ const CheckoutPage = () => {
               </form>
             </div>
           </div>
-
           {/* Right Column - Order Summary */}
-          <div className="lg:w-1/3">
-            <div className="bg-white rounded-xl shadow-sm p-6 md:p-8 border border-gray-100 sticky top-8">
-              <h2 className="text-xl font-medium text-gray-900 mb-6">Order Summary</h2>
-              
+          <div className="lg:w-[40%] min-w-[320px]">
+            <div className="bg-neutral-50 rounded-xl shadow p-6 sm:p-8 border border-neutral-200 sticky top-8 flex flex-col gap-6">
+              <h2 className="text-xl font-sans font-semibold text-neutral-900 mb-6">Order Summary</h2>
               {/* Items List */}
               <div className="space-y-4 mb-6 max-h-72 overflow-y-auto pr-2">
                 {cartItems.map(({ product, quantity }) => (
@@ -265,9 +259,8 @@ const CheckoutPage = () => {
                   </div>
                 ))}
               </div>
-
               {/* Order Totals */}
-              <div className="space-y-3 border-t border-gray-200 pt-4">
+              <div className="space-y-3 border-t border-neutral-200 pt-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal ({cartCount} items)</span>
                   <span className="font-medium">{formatCurrency(cartTotal)}</span>
@@ -280,19 +273,15 @@ const CheckoutPage = () => {
                   <span className="text-gray-600">Tax</span>
                   <span className="text-gray-600">Calculated at checkout</span>
                 </div>
-                <div className="flex justify-between border-t border-gray-200 pt-4 text-lg font-bold">
+                <div className="flex justify-between border-t border-neutral-200 pt-4 text-lg font-bold">
                   <span>Total</span>
                   <span>{formatCurrency(cartTotal)}</span>
                 </div>
               </div>
-
-              {/* Place Order Button */}
               <button
                 onClick={handlePlaceOrder}
                 disabled={orderStatus === 'loading' || isPlacingOrder || cartItems.length === 0}
-                className={`w-full mt-6 py-4 rounded-lg text-white font-medium flex items-center justify-center gap-2 ${
-                  orderStatus === 'loading' || isPlacingOrder ? 'bg-gray-400' : 'bg-black hover:bg-gray-800'
-                }`}
+                className={`w-full mt-6 py-3 rounded-full text-white font-semibold flex items-center justify-center gap-2 ${orderStatus === 'loading' || isPlacingOrder ? 'bg-gray-400' : 'bg-black hover:bg-neutral-900'} transition-colors text-base shadow border border-black/10`}
               >
                 {(orderStatus === 'loading' || isPlacingOrder) ? (
                   <>
@@ -305,6 +294,21 @@ const CheckoutPage = () => {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+      {/* Trust Badges */}
+      <div className="max-w-4xl mx-auto mt-12 flex flex-wrap items-center justify-center gap-6 border-t pt-8">
+        <div className="flex items-center gap-2 text-neutral-500 text-sm">
+          <img src="/images/hero-2.jpg" alt="Secure Payment" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
+          Secure Payment
+        </div>
+        <div className="flex items-center gap-2 text-neutral-500 text-sm">
+          <img src="/images/hero-3.jpg" alt="Fast Delivery" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
+          Fast Delivery
+        </div>
+        <div className="flex items-center gap-2 text-neutral-500 text-sm">
+          <img src="/images/smartwatch.jpg" alt="Satisfaction Guarantee" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
+          Satisfaction Guarantee
         </div>
       </div>
     </div>
