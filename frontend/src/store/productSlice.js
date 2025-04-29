@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
-import { supabase } from "../utils/supabaseClient"
+import { supabase } from "../services/supabaseClient"
 
 export const fetchProducts = createAsyncThunk(
   "products/fetchProducts",

@@ -18,6 +18,7 @@ import {
   selectCartStatus,
   selectCartError
 } from '../store/cartSlice';
+import { addToWishlist } from '../store/wishlistSlice';
 
 const CartPage = () => {
   const dispatch = useDispatch();
@@ -101,8 +102,28 @@ const CartPage = () => {
   };
 
   const saveForLaterHandler = (productId) => {
-    // Placeholder logic for saving item for later
-    toast.success('Item saved for later!');
+    if (isUpdating) return;
+    setIsUpdating(true);
+    // Find the product in cartItems
+    const cartItem = cartItems.find(item => item.product.id === productId);
+    if (!cartItem) {
+      toast.error('Item not found in cart.');
+      setIsUpdating(false);
+      return;
+    }
+    // Remove from cart, then add to wishlist
+    dispatch(removeItemOptimistic(productId));
+    dispatch(removeItem(productId))
+      .unwrap()
+      .then(() => {
+        dispatch(addToWishlist(productId));
+        toast.success('Item saved for later!');
+      })
+      .catch((err) => {
+        toast.error(err || 'Failed to save for later');
+        dispatch(fetchCart());
+      })
+      .finally(() => setIsUpdating(false));
   };
 
   const applyPromoCodeHandler = (e) => {

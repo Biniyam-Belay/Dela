@@ -1,4 +1,4 @@
-import { supabase } from '../utils/supabaseClient'; // Assuming you have a supabaseClient configured
+import { supabase } from '../services/supabaseClient'; // Assuming you have a supabaseClient configured
 
 // --- Admin Product API Functions ---
 
