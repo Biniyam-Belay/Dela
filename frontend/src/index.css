@@ -3,3 +3,12 @@
 /* body {
     @apply bg-background text-gray-800;
 } */
+
+/* Hide vertical scrollbar globally */
+html, body {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}

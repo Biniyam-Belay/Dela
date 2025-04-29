@@ -53,6 +53,6 @@ export const { resetOrderState } = orderSlice.actions;
 export default orderSlice.reducer;
 
 // Selectors
-export const selectOrder = (state) => state.order.order;
-export const selectOrderStatus = (state) => state.order.status;
-export const selectOrderError = (state) => state.order.error;
+export const selectOrder = (state) => state.orders.order;
+export const selectOrderStatus = (state) => state.orders.status;
+export const selectOrderError = (state) => state.orders.error;

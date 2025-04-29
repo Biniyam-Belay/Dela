@@ -36,7 +36,7 @@ const HeroSection = () => {
   }, [])
 
   return (
-    <section className="relative h-screen max-h-[1000px] flex items-center overflow-hidden bg-black pt-16 md:pt-20">
+    <section className="relative h-screen min-h-[500px] flex items-center overflow-hidden bg-black pt-16 md:pt-20">
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent"></div>
         <img
@@ -47,33 +47,37 @@ const HeroSection = () => {
         />
       </div>
 
-      <div className="container mx-auto px-6 relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 relative z-10">
         <div className="max-w-2xl">
           <div className="inline-block px-3 py-1 mb-6 border border-white/30 text-xs uppercase tracking-widest text-white">
             Fall Collection 2025
           </div>
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-extralight text-white mb-6 leading-tight tracking-tight">
+          <h1 className="text-3xl sm:text-5xl lg:text-7xl xl:text-8xl font-extralight text-white mb-6 leading-tight tracking-tight">
             Redefine Your <span className="font-medium">Wardrobe</span>
           </h1>
-          <p className="text-lg lg:text-xl text-neutral-300 mb-10 font-light max-w-lg">
+          <p className="text-base sm:text-lg lg:text-xl text-neutral-300 mb-10 font-light max-w-lg">
             Curated essentials that transcend seasons and elevate your everyday style with timeless elegance.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
               to="/products"
-              className="px-8 py-4 bg-white text-black font-medium hover:bg-neutral-100 transition-all duration-300 hover:scale-105 inline-flex items-center justify-center"
+              className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-black font-medium hover:bg-neutral-100 transition-all duration-300 hover:scale-105 inline-flex items-center justify-center text-base sm:text-lg"
             >
               Shop Now
             </Link>
             <Link
               to="/new-arrivals"
-              className="px-8 py-4 border border-white text-white hover:bg-white/10 transition-all duration-300 hover:scale-105 inline-flex items-center justify-center"
+              className="px-6 sm:px-8 py-3 sm:py-4 border border-white text-white hover:bg-white/10 transition-all duration-300 hover:scale-105 inline-flex items-center justify-center text-base sm:text-lg"
             >
               New Arrivals
             </Link>
           </div>
         </div>
-
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce block md:hidden">
+          <div className="h-8 w-8 rounded-full border border-white/20 flex items-center justify-center text-white">
+            <ChevronDown />
+          </div>
+        </div>
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce hidden md:block">
           <div className="h-10 w-10 rounded-full border border-white/20 flex items-center justify-center text-white">
             <ChevronDown />
@@ -97,11 +101,11 @@ const CategoryShowcase = () => {
   })
 
   return (
-    <section className="py-24 bg-neutral-50">
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-light tracking-tight">Shop by Category</h2>
-          <p className="text-neutral-500 mt-4 max-w-xl mx-auto">
+    <section className="py-16 sm:py-24 bg-neutral-50">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-light tracking-tight">Shop by Category</h2>
+          <p className="text-neutral-500 mt-4 max-w-xl mx-auto text-sm sm:text-base">
             Explore our curated collections designed for every occasion
           </p>
         </div>
@@ -115,7 +119,7 @@ const CategoryShowcase = () => {
         ) : error ? (
           <ErrorMessage message="Could not load categories" />
         ) : categoriesData && categoriesData.length > 0 ? (
-          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide md:gap-6">
+          <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide md:gap-6">
             {categoriesData.map((category) => (
               <Link
                 to={`/products?category=${category.slug}`}
@@ -125,11 +129,17 @@ const CategoryShowcase = () => {
               >
                 <div className="aspect-[3/4] overflow-hidden relative rounded-t-xl">
                   <img
-                    src={category.image || "/placeholder.svg"}
+                    src={category.image || "/placeholder-image.jpg"} // Use local placeholder if image is missing
                     alt={category.name}
                     className="transition-transform duration-700 group-hover:scale-110 object-cover w-full h-full"
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-                    onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.jpg"; }}
+                    onError={e => { 
+                      // Prevent infinite loop if placeholder itself fails
+                      if (e.target.src !== '/placeholder-image.jpg') {
+                        e.target.onerror = null; 
+                        e.target.src = '/placeholder-image.jpg'; // Use local placeholder
+                      }
+                    }}
                   />
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4 rounded-xl">
@@ -164,23 +174,23 @@ const TrendingProducts = () => {
   })
 
   return (
-    <section className="container mx-auto px-6 py-24">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-16 gap-4">
+    <section className="container mx-auto px-4 sm:px-6 py-16 sm:py-24">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 sm:mb-16 gap-4">
         <div>
-          <h2 className="text-3xl md:text-4xl font-light text-neutral-800 tracking-tight">Trending Now</h2>
-          <p className="text-neutral-500 mt-2 max-w-md">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-light text-neutral-800 tracking-tight">Trending Now</h2>
+          <p className="text-neutral-500 mt-2 max-w-md text-sm sm:text-base">
             This season's most coveted pieces, curated for the modern wardrobe
           </p>
         </div>
         <Link
           to="/trending"
-          className="group flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+          className="group flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors text-sm sm:text-base"
         >
           View all <ArrowRight className="group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-8 w-full max-w-full">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : error ? (
@@ -197,22 +207,22 @@ const TrendingProducts = () => {
 
 // Featured Banner Section
 const FeaturedBanner = () => (
-  <section className="py-20 bg-neutral-950 text-white">
-    <div className="container mx-auto px-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+  <section className="py-12 sm:py-20 bg-neutral-950 text-white">
+    <div className="container mx-auto px-4 sm:px-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center">
         <div>
           <div className="inline-block px-3 py-1 mb-6 border border-white/30 text-xs uppercase tracking-widest">
             Limited Edition
           </div>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extralight mb-6 leading-tight tracking-tight">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extralight mb-6 leading-tight tracking-tight">
             Handcrafted Luxury <br />
             Essentials
           </h2>
-          <p className="text-neutral-400 mb-8 max-w-lg">
+          <p className="text-neutral-400 mb-8 max-w-lg text-sm sm:text-base">
             Our signature collection features ethically sourced materials and artisanal craftsmanship. Each piece tells
             a story of tradition and innovation, designed to last for generations.
           </p>
-          <div className="flex flex-wrap gap-6 mb-8">
+          <div className="flex flex-wrap gap-4 sm:gap-6 mb-8">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-full border border-white/20 flex items-center justify-center">
                 <ShoppingBag className="h-5 w-5" />
@@ -243,7 +253,7 @@ const FeaturedBanner = () => (
           </div>
           <Link
             to="/collections/signature"
-            className="inline-flex items-center px-8 py-3 bg-white text-black hover:bg-neutral-100 transition-colors"
+            className="inline-flex items-center px-6 sm:px-8 py-3 bg-white text-black hover:bg-neutral-100 transition-colors text-base sm:text-lg"
           >
             Explore Collection
           </Link>
@@ -253,14 +263,14 @@ const FeaturedBanner = () => (
             <img
               src={supabase.storage.from("public_assets").getPublicUrl("signature.jpg").data.publicUrl || "/placeholder.svg?height=800&width=600"}
               alt="Signature Collection"
-              className="object-cover w-full h-full"
+              className="object-cover w-full h-full rounded-lg"
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
               onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.jpg"; }}
             />
           </div>
-          <div className="absolute -bottom-6 -left-6 bg-white text-black py-3 px-6 shadow-lg">
-            <p className="text-sm font-medium">New Season</p>
-            <p className="text-2xl font-light">Up to 30% Off</p>
+          <div className="absolute -bottom-4 sm:-bottom-6 -left-2 sm:-left-6 bg-white text-black py-2 sm:py-3 px-4 sm:px-6 shadow-lg text-xs sm:text-base">
+            <p className="text-xs sm:text-sm font-medium">New Season</p>
+            <p className="text-lg sm:text-2xl font-light">Up to 30% Off</p>
           </div>
         </div>
       </div>
@@ -270,10 +280,10 @@ const FeaturedBanner = () => (
 
 // Brand Highlights
 const BrandHighlights = () => (
-  <section className="bg-neutral-950 text-white py-24">
-    <div className="container mx-auto px-6">
-      <h2 className="text-3xl md:text-4xl font-light text-center text-white mb-16 tracking-tight">Our Promise</h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+  <section className="bg-neutral-950 text-white py-16 sm:py-24">
+    <div className="container mx-auto px-4 sm:px-6">
+      <h2 className="text-2xl sm:text-3xl md:text-4xl font-light text-center text-white mb-10 sm:mb-16 tracking-tight">Our Promise</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12">
         <div className="text-center group">
           <div className="flex justify-center mb-6">
             <div className="p-6 rounded-full border border-white/20 text-white group-hover:border-white/50 transition-all duration-300">
@@ -319,16 +329,16 @@ const FeaturedProducts = () => {
   })
 
   return (
-    <section className="py-24 bg-white">
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-light tracking-tight">Featured Products</h2>
-          <p className="text-neutral-500 mt-4 max-w-xl mx-auto">
+    <section className="py-16 sm:py-24 bg-white">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-light tracking-tight">Featured Products</h2>
+          <p className="text-neutral-500 mt-4 max-w-xl mx-auto text-sm sm:text-base">
             Discover our most popular items loved by customers worldwide
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-8">
           {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
           ) : error ? (
@@ -346,10 +356,10 @@ const FeaturedProducts = () => {
 
 // Newsletter Section
 const NewsletterSection = () => (
-  <section className="py-24 bg-neutral-100">
-    <div className="container mx-auto px-6 max-w-4xl text-center">
-      <h2 className="text-3xl md:text-4xl font-light mb-4 tracking-tight">Join Our Community</h2>
-      <p className="text-neutral-600 mb-8 max-w-xl mx-auto">
+  <section className="py-16 sm:py-24 bg-neutral-100">
+    <div className="container mx-auto px-4 sm:px-6 max-w-4xl text-center">
+      <h2 className="text-2xl sm:text-3xl md:text-4xl font-light mb-4 tracking-tight">Join Our Community</h2>
+      <p className="text-neutral-600 mb-8 max-w-xl mx-auto text-sm sm:text-base">
         Subscribe to receive exclusive updates, early access to new collections, and personalized style recommendations.
       </p>
 
@@ -401,14 +411,14 @@ const CustomerReviews = () => {
   ]
 
   return (
-    <section className="py-24 bg-white">
-      <div className="container mx-auto px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-light tracking-tight">What Our Customers Say</h2>
-          <p className="text-neutral-500 mt-4 max-w-xl mx-auto">Real experiences from our valued customers</p>
+    <section className="py-16 sm:py-24 bg-white">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="text-center mb-10 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-light tracking-tight">What Our Customers Say</h2>
+          <p className="text-neutral-500 mt-4 max-w-xl mx-auto text-sm sm:text-base">Real experiences from our valued customers</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
           {reviews.map((review) => (
             <div key={review.id} className="border border-neutral-200 p-6 rounded-lg">
               <div className="flex items-center mb-4">
@@ -428,8 +438,8 @@ const CustomerReviews = () => {
           ))}
         </div>
 
-        <div className="text-center mt-10">
-          <Link to="/reviews" className="inline-flex items-center text-neutral-700 hover:text-neutral-900">
+        <div className="text-center mt-8 sm:mt-10">
+          <Link to="/reviews" className="inline-flex items-center text-neutral-700 hover:text-neutral-900 text-sm sm:text-base">
             View all reviews <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </div>
