@@ -238,13 +238,22 @@ const CheckoutPage = () => {
                 {cartItems.map(({ product, quantity }) => (
                   <div key={product.id} className="flex justify-between items-start">
                     <div className="flex items-center gap-4">
-                      <div className="h-16 w-16 bg-gray-100 rounded-lg overflow-hidden">
+                      <div className="h-16 w-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                         <img
-                          src={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${
-                            product.images?.[0]?.startsWith('/') ? '' : '/'
-                          }${product.images?.[0] || ''}`}
+                          src={
+                            product.images?.[0]
+                              ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
+                              : '/placeholder-image.jpg' // Use placeholder if no image path
+                          }
                           alt={product.name}
                           className="h-full w-full object-cover"
+                          onError={(e) => {
+                            // Prevent infinite loop if placeholder itself fails
+                            if (e.target.src !== '/placeholder-image.jpg') { 
+                              e.target.onerror = null; 
+                              e.target.src = '/placeholder-image.jpg';
+                            }
+                          }}
                         />
                       </div>
                       <div>
