@@ -1,11 +1,12 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { ShoppingCart, Star } from "lucide-react"
+import { ShoppingCart, Star, Heart } from "lucide-react"
 import { Button } from "./button"
 import { Badge } from "./badge"
-import { useDispatch } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import toast from "react-hot-toast"
 import { addItemToCart } from "../../store/cartSlice.js"
+import { addToWishlist, removeFromWishlist } from "../../store/wishlistSlice.js"
 
 const StarRating = ({ rating }) => (
   <div className="flex items-center">
@@ -26,7 +27,7 @@ const StarRating = ({ rating }) => (
 /**
  * @param {{ 
  *   product: { 
- *     id: number, 
+ *     id: number | string, 
  *     name: string, 
  *     price: number, 
  *     images?: string[],
@@ -42,6 +43,11 @@ const StarRating = ({ rating }) => (
 export default function ProductCard({ product, className = "" }) {
   const dispatch = useDispatch();
   const [isAdding, setIsAdding] = useState(false);
+  const [isWishlistProcessing, setIsWishlistProcessing] = useState(false);
+
+  const wishlistItems = useSelector((state) => state.wishlist.items);
+  const isInWishlist = wishlistItems.some(item => item.product_id === product.id);
+
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
   const imageUrl = product.images && product.images[0]
     ? `${backendUrl}${product.images[0].startsWith("/") ? "" : "/"}${product.images[0]}`
@@ -66,11 +72,42 @@ export default function ProductCard({ product, className = "" }) {
     }
   };
 
+  const handleToggleWishlist = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isWishlistProcessing) return;
+    setIsWishlistProcessing(true);
+
+    try {
+      if (isInWishlist) {
+        await dispatch(removeFromWishlist(product.id)).unwrap();
+        toast.success(`${product.name} removed from wishlist.`);
+      } else {
+        await dispatch(addToWishlist(product.id)).unwrap();
+        toast.success(`${product.name} added to wishlist!`);
+      }
+    } catch (err) {
+      toast.error(err || `Failed to update wishlist.`);
+    } finally {
+      setIsWishlistProcessing(false);
+    }
+  };
+
   return (
     <div
       className={`group relative flex flex-col bg-white rounded-lg overflow-hidden border border-neutral-200 hover:shadow-lg transition-all duration-300 ${className}`}
     >
-      {/* Product Image */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={`absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-white/70 text-neutral-500 hover:bg-white backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 ${isInWishlist ? 'text-red-500 hover:text-red-600' : 'hover:text-red-500'}`}
+        onClick={handleToggleWishlist}
+        disabled={isWishlistProcessing}
+        aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+      >
+        <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-red-500' : 'fill-none'}`} />
+      </Button>
+
       <Link to={`/products/${product.slug}`} className="relative block aspect-square overflow-hidden bg-neutral-100">
         <img
           src={imageUrl}
@@ -94,7 +131,6 @@ export default function ProductCard({ product, className = "" }) {
         )}
       </Link>
 
-      {/* Product Info - Clean & Minimal */}
       <div className="p-4 flex flex-col flex-grow">
         <div className="mb-auto">
           {product.category && (

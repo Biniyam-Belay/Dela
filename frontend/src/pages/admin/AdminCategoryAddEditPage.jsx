@@ -12,7 +12,7 @@ import {
 } from '../../services/adminApi';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
-import { supabase } from '../../utils/supabaseClient';
+import { supabase } from '../../services/supabaseClient';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Category name must be at least 2 characters'),

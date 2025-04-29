@@ -5,7 +5,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom"
 import { useAuth } from "../../contexts/authContext.jsx"
 import { useSelector } from 'react-redux';
 import { selectCartCount } from '../../store/cartSlice';
-import { supabase } from "../../utils/supabaseClient"
+import { supabase } from "../../services/supabaseClient"
 import { Search, ShoppingCart, User, Menu, X } from "lucide-react"
 
 // Font stacks for luxury, flowing look

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
-import { supabase } from '../utils/supabaseClient'; // Adjust path if needed
+import { supabase } from '../services/supabaseClient'; // Adjust path if needed
 import Spinner from '../components/common/Spinner'; // Assuming you have a Spinner
 import { store } from '../store/store';
 import { clearLocalCartAndState, mergeLocalCartWithBackend } from '../store/cartSlice';

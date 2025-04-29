@@ -1,4 +1,4 @@
-import { supabase } from '../utils/supabaseClient.js'; // Ensure supabase is imported
+import { supabase } from '../services/supabaseClient.js'; // Ensure supabase is imported
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { supabase } from '../utils/supabaseClient'; // Assuming supabase is used for auth token
+import { supabase } from '../services/supabaseClient'; // Assuming supabase is used for auth token
 
 // Define the base URL for your API - **VERIFY THIS IS CORRECT**
 // Is your backend running on localhost:8000? Does it require '/api'?
