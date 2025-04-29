@@ -21,8 +21,10 @@ serve(async (req) => {
     const searchTerm = url.searchParams.get('search');
     const sortBy = url.searchParams.get('sortBy') || 'name'; // Use 'name' as the default sort column (temporary fix)
     const sortOrder = url.searchParams.get('sortOrder') || 'asc'; // Default to 'asc' for name sorting
+    const price_gte = url.searchParams.get('price_gte');
+    const price_lte = url.searchParams.get('price_lte');
 
-    console.log(`Function called with params: page=${page}, limit=${limit}, category=${categorySlug}, search=${searchTerm}, sortBy=${sortBy}, sortOrder=${sortOrder}`); // Log entry params
+    console.log(`Function called with params: page=${page}, limit=${limit}, category=${categorySlug}, search=${searchTerm}, sortBy=${sortBy}, sortOrder=${sortOrder}, price_gte=${price_gte}, price_lte=${price_lte}`); // Log entry params
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -41,6 +43,23 @@ serve(async (req) => {
       console.log(`Applying search term: ${searchTerm}`);
       query = query.ilike('name', `%${searchTerm}%`);
     }
+
+    // --- Filter by price range ---
+    if (price_gte !== null) {
+      const gteValue = parseFloat(price_gte);
+      if (!isNaN(gteValue)) {
+        console.log(`Applying price filter: >= ${gteValue}`);
+        query = query.gte('price', gteValue);
+      }
+    }
+    if (price_lte !== null) {
+      const lteValue = parseFloat(price_lte);
+      if (!isNaN(lteValue)) {
+        console.log(`Applying price filter: <= ${lteValue}`);
+        query = query.lte('price', lteValue);
+      }
+    }
+    // ---------------------------
 
     // --- Filter by category slug ---
     if (categorySlug) {

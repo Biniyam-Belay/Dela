@@ -11,7 +11,7 @@ import AdminLayout from './components/layout/AdminLayout';
 // --- Pages ---
 import HomePage from './pages/HomePage';
 import ProductListPage from './pages/ProductListPage';
-import ProductDetailPage from './pages/ProductDetailPage';
+import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import CartPage from './pages/CartPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -19,6 +19,8 @@ import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
+import CollectionsPage from './pages/CollectionsPage';
+import WishlistPage from './pages/WishlistPage';
 
 // --- Admin Pages ---
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -60,6 +62,8 @@ const AppContent = () => {
                     <Route path="/cart" element={<CartPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/collections" element={<CollectionsPage />} />
+                    <Route path="/wishlist" element={<WishlistPage />} />
                     {/* Protected User Routes */}
                     <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                     <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />

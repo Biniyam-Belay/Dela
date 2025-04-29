@@ -39,7 +39,7 @@ const Header = () => {
     { name: "Home", path: "/" },
     { name: "Shop", path: "/products" },
     { name: "Collections", path: "/collections" },
-    { name: "About", path: "/about" },
+    { name: "Wishlist", path: "/wishlist" },
   ]
 
   const activeStyle = ({ isActive }) =>
@@ -58,14 +58,11 @@ const Header = () => {
             <Link to="/products" className="text-sm hover:text-neutral-500 transition-colors">
               All Products
             </Link>
-            <Link to="/categories" className="text-sm hover:text-neutral-500 transition-colors">
-              Categories
-            </Link>
             <Link to="/collections" className="text-sm hover:text-neutral-500 transition-colors">
               Collections
             </Link>
-            <Link to="/about" className="text-sm hover:text-neutral-500 transition-colors">
-              About
+            <Link to="/wishlist" className="text-sm hover:text-neutral-500 transition-colors">
+              Wishlist
             </Link>
           </nav>
           <div className="flex items-center space-x-4">
