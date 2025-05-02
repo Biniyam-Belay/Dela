@@ -10,11 +10,11 @@ type TabConfig = {
 };
 
 const TABS: TabConfig[] = [
-  { name: 'Home', icon: 'home' },
-  { name: 'Wallet', icon: 'account-balance-wallet' },
-  { name: 'Exchange', icon: 'swap-horiz' },
-  { name: 'Markets', icon: 'storefront' },
-  { name: 'Profile', icon: 'person' },
+  { name: 'Dashboard', icon: 'dashboard' },
+  { name: 'Products', icon: 'inventory' },
+  { name: 'Orders', icon: 'list-alt' },
+  { name: 'Users', icon: 'people' },
+  { name: 'Settings', icon: 'settings' },
 ];
 
 const getIconForRoute = (routeName: string): keyof typeof MaterialIcons.glyphMap => {
@@ -23,8 +23,6 @@ const getIconForRoute = (routeName: string): keyof typeof MaterialIcons.glyphMap
 };
 
 export default function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const middleIndex = Math.floor(TABS.length / 2);
-
   return (
     <View style={styles.outerContainer}>
       <View style={styles.container}>
@@ -38,7 +36,8 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
               : route.name;
 
           const isFocused = state.index === index;
-          const isMiddleButton = index === middleIndex;
+          const color = isFocused ? colors.primary : colors.textSecondary;
+          const iconName = getIconForRoute(route.name);
 
           const onPress = () => {
             const event = navigation.emit({
@@ -46,7 +45,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
               target: route.key,
               canPreventDefault: true,
             });
-
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name, route.params);
             }
@@ -59,14 +57,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
             });
           };
 
-          const activeColor = colors.white;
-          const inactiveColor = colors.textSecondary;
-          const color = isFocused ? activeColor : inactiveColor;
-          const iconName = getIconForRoute(route.name);
-
-          const middleButtonContainerStyle = isMiddleButton ? styles.middleButtonContainer : {};
-          const middleIconWrapperStyle = isMiddleButton ? styles.middleIconWrapper : {};
-
           return (
             <TouchableOpacity
               key={route.key}
@@ -76,20 +66,16 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
               testID={options.tabBarTestID}
               onPress={onPress}
               onLongPress={onLongPress}
-              style={[styles.tabButton, middleButtonContainerStyle]}
-              activeOpacity={0.8}
+              style={styles.tabButton}
+              activeOpacity={0.85}
             >
-              {isFocused && !isMiddleButton && <View style={styles.activeIndicator} />}
-              <View style={[styles.tabContent, middleIconWrapperStyle]}>
-                <MaterialIcons
-                  name={iconName}
-                  size={isMiddleButton ? 30 : 24}
-                  color={isMiddleButton ? colors.primary : color}
-                />
-                {!isMiddleButton && (
-                  <Text style={[styles.label, { color }]}>{label}</Text>
-                )}
-              </View>
+              <MaterialIcons
+                name={iconName}
+                size={24}
+                color={color}
+              />
+              <Text style={[styles.label, { color }]}>{label}</Text>
+              {isFocused && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           );
         })}
@@ -100,65 +86,48 @@ export default function CustomTabBar({ state, descriptors, navigation }: BottomT
 
 const styles = StyleSheet.create({
   outerContainer: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 10,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 8,
     marginHorizontal: spacing.md,
     marginBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
-    borderRadius: constants.borderRadiusXl,
+    borderRadius: constants.borderRadiusLg,
+    backgroundColor: colors.cardBackground,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   container: {
     flexDirection: 'row',
-    height: 70,
-    backgroundColor: colors.black,
-    justifyContent: 'space-around',
+    height: 64,
+    backgroundColor: colors.cardBackground,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    borderRadius: constants.borderRadiusXl,
+    borderRadius: constants.borderRadiusLg,
   },
   tabButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     height: '100%',
+    paddingVertical: spacing.sm,
     position: 'relative',
-  },
-  middleButtonContainer: {},
-  middleIconWrapper: {
-    backgroundColor: colors.primary,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: -35,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 8,
-    borderWidth: 3,
-    borderColor: colors.black,
-  },
-  tabContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   label: {
     fontSize: typography.fontSizeXs,
-    marginTop: spacing.xs,
+    marginTop: 2,
     fontFamily: typography.fontFamilyMedium,
     letterSpacing: 0.1,
   },
   activeIndicator: {
     position: 'absolute',
-    bottom: 5,
-    left: spacing.lg,
-    right: spacing.lg,
+    bottom: 6,
+    left: '25%',
+    right: '25%',
     height: 3,
-    backgroundColor: '#34D399',
+    backgroundColor: colors.primary,
     borderRadius: 1.5,
   },
 });
