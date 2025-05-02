@@ -15,6 +15,7 @@ const WishlistPage = () => {
   const { user } = useAuth(); // Use AuthContext for user
 
   useEffect(() => {
+    console.log('Wishlist useEffect:', { user, status });
     // Fetch wishlist only if user is logged in and status is idle
     if (user && status === 'idle') {
       dispatch(getWishlist());
