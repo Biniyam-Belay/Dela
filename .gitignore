@@ -1,1 +1,39 @@
 node_modules
+<<<<<<< HEAD
+=======
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE settings folders
+.idea/
+.vscode/
+
+# Logs
+logs
+*.log
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Supabase local development files
+# Adjust if you store sensitive info here and don't want it committed
+# supabase/.branches
+# supabase/.temp
+# supabase/db/dumps
+# supabase/volumes
+
+# Node modules in subdirectories (optional, if not handled within each project's .gitignore)
+# */node_modules
+
+# Build outputs from subdirectories (optional, if not handled within each project's .gitignore)
+# */dist
+# */build
+# */out
+
+# Installation script (assuming it's for local setup)
+# install.sh
+>>>>>>> mobileApp
