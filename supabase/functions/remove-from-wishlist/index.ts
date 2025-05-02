@@ -36,7 +36,7 @@ serve(async (req) => {
     const { error } = await supabase
       .from('wishlist_items')
       .delete()
-      .eq('user_id', user.id)
+      .eq('userId', user.id)
       .eq('product_id', product_id);
 
     if (error) {

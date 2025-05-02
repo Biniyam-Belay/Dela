@@ -35,7 +35,7 @@ serve(async (req) => {
 
     const { data, error } = await supabase
       .from('wishlist_items')
-      .insert({ user_id: user.id, product_id: product_id })
+      .insert({ userId: user.id, product_id: product_id })
       .select() // Optionally select the inserted item
       .single(); // Use single() if you expect only one item or handle potential duplicates
 
