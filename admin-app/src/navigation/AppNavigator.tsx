@@ -14,8 +14,27 @@ import UserDetailScreen from '../screens/UserDetailScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import CustomTabBar from '../components/CustomTabBar';
 import ControlPanelScreen from '../screens/ControlPanelScreen';
+import AnalyticsScreen from '../screens/AnalyticsScreen';
 
-const RootStack = createNativeStackNavigator();
+export type RootStackParamList = {
+  Login: undefined;
+  Dashboard: undefined;
+  Products: undefined;
+  ProductDetails: { productId: string };
+  AddEditProduct: { productId?: string };
+  Orders: undefined;
+  OrderDetails: { orderId: string };
+  Categories: undefined;
+  Users: undefined;
+  UserDetail: { userId: string };
+  UserAddEdit: { userId?: string };
+  Settings: undefined;
+  Notifications: undefined;
+  ControlPanel: undefined;
+  Analytics: undefined;
+};
+
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 const UserStack = createNativeStackNavigator();
 
@@ -37,15 +56,15 @@ function UserStackNavigator() {
 function MainTabs({ onLogout }: { onLogout: () => void }) {
   return (
     <Tab.Navigator
-      initialRouteName="Home"
+      initialRouteName="Dashboard"
       tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={DashboardScreen} />
-      <Tab.Screen name="Wallet" component={ControlPanelScreen} />
-      <Tab.Screen name="Exchange" component={NotificationsScreen} />
-      <Tab.Screen name="Markets" component={OrdersScreen} />
-      <Tab.Screen name="Profile" component={UserStackNavigator} />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="Products" component={ProductsScreen} />
+      <Tab.Screen name="Orders" component={OrdersScreen} />
+      <Tab.Screen name="Users" component={UserStackNavigator} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
@@ -81,6 +100,11 @@ export default function AppNavigator({ onLogout }: { onLogout: () => void }) {
           name="Settings"
           component={SettingsScreen}
           options={{ headerShown: true, title: 'Settings' }}
+        />
+        <RootStack.Screen
+          name="Analytics"
+          component={AnalyticsScreen}
+          options={{ headerShown: true, title: 'Analytics' }}
         />
       </RootStack.Navigator>
     </NavigationContainer>
