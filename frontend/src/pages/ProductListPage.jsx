@@ -39,6 +39,7 @@ import {
 
 import { fetchProducts, fetchCategories } from "../services/productApi.js"
 import { addItemToCart } from "../store/cartSlice"
+import { formatETB } from "../utils/utils"
 
 const priceRanges = [
   { label: "Under $100", min: 0, max: 100 },
@@ -171,13 +172,13 @@ const ProductCard = ({ product }) => {
               <>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-semibold text-gray-900">
-                    ${(product.price * (1 - product.discount / 100)).toFixed(2)}
+                    {formatETB(product.price * (1 - product.discount / 100))}
                   </span>
-                  <span className="text-sm text-gray-400 line-through">${product.price.toFixed(2)}</span>
+                  <span className="text-sm text-gray-400 line-through">{formatETB(product.price)}</span>
                 </div>
               </>
             ) : (
-              <span className="text-lg font-semibold text-gray-900">${product.price.toFixed(2)}</span>
+              <span className="text-lg font-semibold text-gray-900">{formatETB(product.price)}</span>
             )}
           </div>
           <Button

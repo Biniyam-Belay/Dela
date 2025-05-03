@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux"
 import toast from "react-hot-toast"
 import { addItemToCart } from "../../store/cartSlice.js"
 import { addToWishlist, removeFromWishlist } from "../../store/wishlistSlice.js"
+import { formatETB } from "../../utils/utils"
 
 const StarRating = ({ rating }) => (
   <div className="flex items-center">
@@ -153,12 +154,12 @@ export default function ProductCard({ product, className = "" }) {
             {product.discount ? (
               <>
                 <span className="text-lg font-semibold text-neutral-900">
-                  ${(product.price * (1 - product.discount / 100)).toFixed(2)}
+                  {formatETB(product.price * (1 - product.discount / 100))}
                 </span>
-                <span className="text-sm text-neutral-400 line-through">${product.price.toFixed(2)}</span>
+                <span className="text-sm text-neutral-400 line-through">{formatETB(product.price)}</span>
               </>
             ) : (
-              <span className="text-lg font-semibold text-neutral-900">${product.price.toFixed(2)}</span>
+              <span className="text-lg font-semibold text-neutral-900">{formatETB(product.price)}</span>
             )}
           </div>
           <Button

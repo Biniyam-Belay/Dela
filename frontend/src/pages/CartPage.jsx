@@ -19,6 +19,7 @@ import {
   selectCartError
 } from '../store/cartSlice';
 import { addToWishlist } from '../store/wishlistSlice';
+import { formatETB } from "../utils/utils";
 
 const CartPage = () => {
   const dispatch = useDispatch();
@@ -90,10 +91,6 @@ const CartPage = () => {
         toast.error(err || 'Failed to clear cart');
         dispatch(fetchCart());
       });
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
   const getEstimatedDelivery = () => {
@@ -206,7 +203,7 @@ const CartPage = () => {
                     )}
                     {/* Estimated Delivery */}
                     <div className="text-xs text-emerald-600 mb-2">Estimated Delivery: {getEstimatedDelivery()}</div>
-                    <p className="text-sm text-neutral-500 mb-2">{formatCurrency(product.price)}</p>
+                    <p className="text-sm text-neutral-500 mb-2">{formatETB(product.price)}</p>
                     {/* Save for Later / Wishlist */}
                     <button
                       className="text-xs text-indigo-500 hover:underline mb-2"
@@ -265,7 +262,7 @@ const CartPage = () => {
 
                   {/* Price */}
                   <div className="hidden sm:block w-24 text-right font-semibold text-base text-neutral-900">
-                    {formatCurrency(parseFloat(product.price) * quantity)}
+                    {formatETB(parseFloat(product.price) * quantity)}
                   </div>
 
                   {/* Desktop remove */}
@@ -279,7 +276,7 @@ const CartPage = () => {
 
                   {/* Mobile price */}
                   <div className="sm:hidden w-full text-right font-semibold text-base text-neutral-900 mt-2">
-                    {formatCurrency(parseFloat(product.price) * quantity)}
+                    {formatETB(parseFloat(product.price) * quantity)}
                   </div>
                 </div>
               ))}
@@ -319,7 +316,7 @@ const CartPage = () => {
                 <div className="space-y-4 mb-4">
                   <div className="flex justify-between text-base">
                     <span className="text-neutral-500">Subtotal <span className="font-normal">({cartCount} items)</span></span>
-                    <span className="font-semibold text-neutral-900">{formatCurrency(cartTotal)}</span>
+                    <span className="font-semibold text-neutral-900">{formatETB(cartTotal)}</span>
                   </div>
                   <div className="flex justify-between text-neutral-400 text-sm">
                     <span>Shipping</span>
@@ -332,7 +329,7 @@ const CartPage = () => {
                 </div>
                 <div className="flex justify-between border-t pt-4 text-lg font-bold">
                   <span>Estimated Total</span>
-                  <span>{formatCurrency(cartTotal)}</span>
+                  <span>{formatETB(cartTotal)}</span>
                 </div>
                 <Link
                   to="/checkout"

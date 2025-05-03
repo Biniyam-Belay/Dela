@@ -143,6 +143,12 @@ const AdminLayout = () => {
             </NavLink>
           </li>
           <li>
+            <NavLink to="/admin/analytics" className={getNavLinkClass}>
+              <FiBarChart className="h-5 w-5 flex-shrink-0" />
+              {!isCollapsed && <span>Analytics</span>}
+            </NavLink>
+          </li>
+          <li>
             <NavLink to="/admin/settings" className={getNavLinkClass}>
               <FiSettings className="h-5 w-5 flex-shrink-0" />
               {!isCollapsed && <span>Settings</span>}
