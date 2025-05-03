@@ -8,13 +8,10 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  console.log('--- Minimal Test Function Start ---');
-
   // --- Auth ---
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
-    console.error('Missing Authorization header');
-    return new Response(JSON.stringify({ success: false, error: 'Missing Authorization header' }), {
+    return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 401,
     });
@@ -25,56 +22,73 @@ serve(async (req) => {
     const jwtPayload = decodeJwt(accessToken);
     userId = jwtPayload.sub;
     if (!userId) throw new Error('No sub in JWT');
-    console.log('Decoded userId from JWT:', userId);
   } catch (e) {
-    console.error('Failed to decode JWT:', e);
-    return new Response(JSON.stringify({ success: false, error: 'Invalid access token' }), {
+    return new Response(JSON.stringify({ error: 'Invalid access token' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 401,
     });
   }
 
-  // --- Supabase Client (Service Role) ---
+  // --- Supabase Client (Anon Key, RLS enforced) ---
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!supabaseUrl || !serviceRoleKey) {
-    console.error('Missing Supabase environment variables');
-    return new Response(JSON.stringify({ success: false, error: 'Missing Supabase environment variables' }), {
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return new Response(JSON.stringify({ error: 'Missing Supabase environment variables' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
   }
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    db: { schema: 'public' }
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    },
+    db: { schema: 'public' },
   });
-  console.log('Supabase client created with service_role key.');
 
-  // --- Hardcoded Order Data ---
-  const testOrderData = {
-    userId: userId, // Use the decoded userId
-    shippingAddress: { test: '123 Test St' },
-    totalAmount: 99.99,
-    status: 'test-processing',
-  };
-  console.log('Attempting to insert test order:', testOrderData);
+  // --- Parse and Validate Order Data ---
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { headers: corsHeaders, status: 400 });
+  }
+  const { orderItems, shippingAddress, totalAmount } = body;
+  if (!Array.isArray(orderItems) || orderItems.length === 0 || !shippingAddress || typeof totalAmount !== 'number') {
+    return new Response(JSON.stringify({ error: 'Missing or invalid order data' }), { headers: corsHeaders, status: 400 });
+  }
 
   // --- Insert Order ---
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .insert(testOrderData)
+    .insert({ userId, shippingAddress, totalAmount, status: 'pending' })
     .select()
     .single();
 
   if (orderError || !order) {
-    console.error('Minimal Test - Order Insert Error:', JSON.stringify(orderError, null, 2));
-    return new Response(JSON.stringify({ success: false, error: `Minimal Test - Database error creating order: ${orderError?.message || 'Unknown error'}` }), {
+    console.error('Order Insert Error:', JSON.stringify(orderError, null, 2));
+    return new Response(JSON.stringify({ error: 'Database error creating order', details: orderError }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
   }
 
-  console.log('Minimal Test - Order Insert Success:', order);
-  return new Response(JSON.stringify({ success: true, data: order }), {
+  // --- Insert Order Items ---
+  const orderItemsData = orderItems.map(item => ({
+    orderId: order.id,
+    productId: item.productId,
+    quantity: item.quantity,
+    price: item.price,
+  }));
+  const { error: itemsError } = await supabase.from('order_items').insert(orderItemsData);
+  if (itemsError) {
+    console.error('Order Items Insert Error:', JSON.stringify(itemsError, null, 2));
+    return new Response(JSON.stringify({ error: 'Database error creating order items', details: itemsError }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    });
+  }
+
+  return new Response(JSON.stringify({ success: true, order }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     status: 201,
   });

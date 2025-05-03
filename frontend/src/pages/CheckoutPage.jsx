@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useCart } from '../contexts/CartContext.jsx';
 import { useAuth } from '../contexts/authContext.jsx';
 import { createOrder, selectOrderStatus, selectOrderError } from '../store/orderSlice';
+import { clearCart, clearLocalCartAndState } from '../store/cartSlice';
 import Spinner from '../components/common/Spinner.jsx';
 import ErrorMessage from '../components/common/ErrorMessage.jsx';
 import { FiChevronLeft } from 'react-icons/fi';
@@ -20,6 +21,7 @@ const CheckoutPage = () => {
   const [shippingAddress, setShippingAddress] = useState({
     firstName: '',
     lastName: '',
+    email: user?.email || '', // Prefill from signed-in user
     street: '',
     apartment: '',
     city: '',
@@ -46,11 +48,18 @@ const CheckoutPage = () => {
 
   // Prefill user data if available
   useEffect(() => {
+    if (user) {
+      setShippingAddress(prev => ({
+        ...prev,
+        email: user.email || '',
+      }));
+    }
     if (user?.address) {
       setShippingAddress(prev => ({
         ...prev,
         ...user.address,
-        country: user.address.country || 'Ethiopia'
+        country: user.address.country || 'Ethiopia',
+        email: user.email || prev.email || '',
       }));
     }
   }, [user]);
@@ -90,7 +99,6 @@ const CheckoutPage = () => {
     dispatch(createOrder(orderData))
       .unwrap()
       .then((order) => {
-        clearCart();
         navigate(`/order-success/${order.id}`);
       })
       .catch((err) => {
@@ -138,6 +146,17 @@ const CheckoutPage = () => {
                     value={shippingAddress.lastName}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black focus:border-black"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={shippingAddress.email}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-1 focus:ring-black focus:border-black"
+                    required
                   />
                 </div>
                 <div className="md:col-span-2">

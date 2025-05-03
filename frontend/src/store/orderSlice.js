@@ -10,7 +10,8 @@ export const createOrder = createAsyncThunk(
       if (!response.success) {
         throw new Error(response.error || 'Order creation failed');
       }
-      return response.data;
+      // Fix: support both { order } and { data } from backend
+      return response.order || response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'Order creation failed');
     }

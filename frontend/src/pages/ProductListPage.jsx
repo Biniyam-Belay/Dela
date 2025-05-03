@@ -39,6 +39,7 @@ import {
 
 import { fetchProducts, fetchCategories } from "../services/productApi.js"
 import { addItemToCart } from "../store/cartSlice"
+import { addToWishlist } from "../store/wishlistSlice"
 import { formatETB } from "../utils/utils"
 
 const priceRanges = [
@@ -80,6 +81,7 @@ const StarRating = ({ rating }) => {
 const ProductCard = ({ product }) => {
   const dispatch = useDispatch();
   const [isAdding, setIsAdding] = useState(false);
+  const [isWishlistProcessing, setIsWishlistProcessing] = useState(false);
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
   const imageUrl = product.images && product.images[0]
     ? `${backendUrl}${product.images[0].startsWith("/") ? "" : "/"}${product.images[0]}`
@@ -97,6 +99,19 @@ const ProductCard = ({ product }) => {
     }
   };
 
+  const handleAddToWishlist = async () => {
+    if (isWishlistProcessing) return;
+    setIsWishlistProcessing(true);
+    try {
+      await dispatch(addToWishlist(product.id)).unwrap();
+      toast.success(`${product.name} added to wishlist!`);
+    } catch (err) {
+      toast.error(err?.message || 'Failed to add to wishlist.');
+    } finally {
+      setIsWishlistProcessing(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -107,7 +122,7 @@ const ProductCard = ({ product }) => {
     >
       {/* Quick Action Buttons */}
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm">
+        <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm" onClick={handleAddToWishlist} disabled={isWishlistProcessing}>
           <Heart size={16} className="text-gray-700" />
           <span className="sr-only">Add to wishlist</span>
         </Button>

@@ -499,3 +499,37 @@ export const deleteUserApi = async (userId) => {
         throw error.response?.data || new Error(`Failed to delete user. Status: ${error.response?.status || 'N/A'}`);
     }
 };
+
+// --- Orders (Admin) ---
+export const fetchAdminOrders = async (params = {}) => {
+    try {
+        const functionUrl = new URL(import.meta.env.VITE_SUPABASE_GET_ADMIN_ORDERS_URL);
+        Object.keys(params).forEach(key => {
+            if (params[key] !== undefined && params[key] !== null) {
+                functionUrl.searchParams.append(key, params[key]);
+            }
+        });
+        const response = await fetch(functionUrl.toString(), {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            },
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        // Expects { success, data: { orders, totalPages, totalOrders, ... } }
+        return data;
+    } catch (error) {
+        console.error("Admin API - Error fetching orders:", {
+            message: error.message,
+            status: error.response?.status,
+            data: error.response?.data,
+            isNetworkError: !error.response
+        });
+        throw error.response?.data || new Error(`Failed to fetch orders. Status: ${error.response?.status || 'N/A'}`);
+    }
+};
