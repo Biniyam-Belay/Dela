@@ -18,11 +18,10 @@ serve(async (req) => {
   }
   const accessToken = authHeader.replace('Bearer ', '').trim();
 
-  // Supabase client
+  // Supabase client (use service role key for full access)
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
   // TODO: Add admin check here (e.g., query user role or use RLS)
