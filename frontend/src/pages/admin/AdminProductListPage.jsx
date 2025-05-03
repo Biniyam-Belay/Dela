@@ -6,13 +6,7 @@ import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiAlertCircle } from 'react-icons/fi';
 import Pagination from '../../components/common/Pagination';
-
-const formatCurrency = (amount) => {
-  const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
-  return isNaN(numericAmount) 
-    ? 'N/A' 
-    : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(numericAmount);
-};
+import { formatETB } from "../../utils/utils";
 
 const AdminProductListPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -189,7 +183,7 @@ const AdminProductListPage = () => {
                         {product.category?.name || <span className="italic text-slate-400">No category</span>}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                        {formatCurrency(product.price)}
+                        {formatETB(product.price)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden sm:table-cell">
                         {product.stock_quantity ?? product.stockQuantity ?? 0}

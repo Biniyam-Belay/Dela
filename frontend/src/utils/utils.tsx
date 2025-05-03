@@ -37,3 +37,10 @@ export const formatCurrency = (
     return `${currency} ${amount.toFixed(2)}`;
   }
 };
+
+/**
+ * Formats a number as Ethiopian Birr currency string (e.g., ETB 1,234.56).
+ * @param amount The number to format.
+ * @returns The formatted Ethiopian Birr currency string.
+ */
+export const formatETB = (amount: number): string => formatCurrency(amount, 'ETB', 'en-ET');

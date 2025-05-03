@@ -7,10 +7,7 @@ import { createOrder, selectOrderStatus, selectOrderError } from '../store/order
 import Spinner from '../components/common/Spinner.jsx';
 import ErrorMessage from '../components/common/ErrorMessage.jsx';
 import { FiChevronLeft } from 'react-icons/fi';
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-};
+import { formatETB } from "../utils/utils";
 
 const CheckoutPage = () => {
   const { clearCart } = useCart();
@@ -255,7 +252,7 @@ const CheckoutPage = () => {
                         <p className="text-sm text-gray-500">Qty: {quantity}</p>
                       </div>
                     </div>
-                    <p className="font-medium">{formatCurrency(product.price * quantity)}</p>
+                    <p className="font-medium">{formatETB(product.price * quantity)}</p>
                   </div>
                 ))}
               </div>
@@ -263,7 +260,7 @@ const CheckoutPage = () => {
               <div className="space-y-3 border-t border-neutral-200 pt-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal ({cartCount} items)</span>
-                  <span className="font-medium">{formatCurrency(cartTotal)}</span>
+                  <span className="font-medium">{formatETB(cartTotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Shipping</span>
@@ -275,7 +272,7 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between border-t border-neutral-200 pt-4 text-lg font-bold">
                   <span>Total</span>
-                  <span>{formatCurrency(cartTotal)}</span>
+                  <span>{formatETB(cartTotal)}</span>
                 </div>
               </div>
               <button
@@ -289,7 +286,7 @@ const CheckoutPage = () => {
                     Processing...
                   </>
                 ) : (
-                  `Pay ${formatCurrency(cartTotal)}`
+                  `Pay ${formatETB(cartTotal)}`
                 )}
               </button>
             </div>

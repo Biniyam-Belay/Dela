@@ -32,6 +32,7 @@ import AdminOrderListPage from './pages/admin/AdminOrderListPage';   // Ensure t
 import AdminUserListPage from './pages/admin/AdminUserListPage';     // Ensure this path is correct
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';   // Ensure this path is correct
 import AdminFinancePage from './pages/admin/AdminFinancePage'; // Import the new page
+import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'; // Import the analytics page
 
 // --- Route Protection ---
 import ProtectedRoute from './components/routes/ProtectedRoute';
@@ -89,6 +90,7 @@ const AppContent = () => {
                         <Route path="orders" element={<AdminOrderListPage />} />
                         <Route path="users" element={<AdminUserListPage />} />
                         <Route path="finance" element={<AdminFinancePage />} /> {/* Add Finance Route */}
+                        <Route path="analytics" element={<AdminAnalyticsPage />} /> {/* Add Analytics Route */}
                         <Route path="settings" element={<AdminSettingsPage />} />
                     </Route>
 

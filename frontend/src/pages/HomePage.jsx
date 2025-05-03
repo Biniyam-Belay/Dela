@@ -38,7 +38,7 @@ const HeroSection = () => {
   }, [])
 
   return (
-    <section className="relative min-h-[750px] flex items-center justify-center bg-black overflow-hidden border-b border-neutral-900">
+    <section className="relative min-h-screen h-screen flex items-center justify-center bg-black overflow-hidden border-b border-neutral-900">
       <img
         src={heroImageUrl}
         alt="Luxury essentials for you"

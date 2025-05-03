@@ -6,7 +6,7 @@ import { Badge } from './badge';
 import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
 import { addItemToCart, addItemOptimistic, fetchCart } from '../../store/cartSlice.js';
-import { formatCurrency } from '../../utils/utils';
+import { formatETB } from '../../utils/utils';
 
 /**
  * @param {{
@@ -124,15 +124,15 @@ export default function PriceHighlightProductCard({ product }) {
             {product.discount ? (
               <>
                 <span className="text-lg font-semibold text-red-600">
-                  {formatCurrency(finalPrice)}
+                  {formatETB(finalPrice)}
                 </span>
                 <span className="text-sm text-neutral-400 line-through -mt-1">
-                  {formatCurrency(product.price)}
+                  {formatETB(product.price)}
                 </span>
               </>
             ) : (
               <span className="text-lg font-semibold text-neutral-800">
-                {formatCurrency(product.price)}
+                {formatETB(product.price)}
               </span>
             )}
           </div>

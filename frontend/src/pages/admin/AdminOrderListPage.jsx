@@ -11,11 +11,7 @@ import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import Pagination from '../../components/common/Pagination';
 import { FiSearch, FiEye, FiFilter, FiAlertCircle, FiChevronDown } from 'react-icons/fi';
-
-// Helper to format currency (reuse if available globally)
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
-};
+import { formatETB } from "../../utils/utils";
 
 // Helper for status badge styling
 const getStatusBadgeClass = (status) => {
@@ -175,7 +171,7 @@ const AdminOrderListPage = () => {
                           {order.status || 'N/A'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatCurrency(order.total_amount || 0)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatETB(order.total_amount || 0)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                         <Link
                           to={`/admin/orders/${order.id}`}

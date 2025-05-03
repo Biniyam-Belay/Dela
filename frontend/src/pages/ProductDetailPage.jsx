@@ -9,14 +9,7 @@ import { useDispatch } from "react-redux"
 import { addItemToCart } from "../store/cartSlice.js"
 import { fetchProductByIdentifier } from "../services/productApi"
 import SkeletonCard from "../components/ui/SkeletonCard.jsx"
-
-// Format currency helper
-const formatCurrency = (amount) => {
-  const numericAmount = typeof amount === "string" ? Number.parseFloat(amount) : amount
-  return isNaN(numericAmount)
-    ? "N/A"
-    : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(numericAmount)
-}
+import { formatETB } from "../utils/utils"
 
 // Star Rating component
 const StarRating = ({ rating, reviewCount }) => {
@@ -205,10 +198,10 @@ export default function ProductDetailPage() {
 
             {/* Price */}
             <div className="mb-5 sm:mb-6">
-              <span className="text-2xl sm:text-3xl font-medium text-gray-900">{formatCurrency(product.price)}</span>
+              <span className="text-2xl sm:text-3xl font-medium text-gray-900">{formatETB(product.price)}</span>
               {product.originalPrice && product.price < product.originalPrice && (
                 <span className="text-base sm:text-lg text-gray-400 line-through ml-3">
-                  {formatCurrency(product.originalPrice)}
+                  {formatETB(product.originalPrice)}
                 </span>
               )}
             </div>
