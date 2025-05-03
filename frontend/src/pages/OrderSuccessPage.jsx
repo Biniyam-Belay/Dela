@@ -4,12 +4,16 @@ import { fetchOrderByIdApi } from '../services/orderApi'; // Optional: Fetch ord
 import Spinner from '../components/common/Spinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import { FaCheckCircle } from 'react-icons/fa';
+import { formatETB } from '../utils/utils'; // Import formatETB utility
+import { useDispatch } from 'react-redux';
+import { clearCart, clearLocalCartAndState } from '../store/cartSlice';
 
 const OrderSuccessPage = () => {
   const { orderId } = useParams(); // Get order ID from URL parameter
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -31,8 +35,15 @@ const OrderSuccessPage = () => {
     loadOrder();
   }, [orderId]);
 
+  useEffect(() => {
+    if (!loading && order && !error) {
+      dispatch(clearLocalCartAndState());
+      dispatch(clearCart());
+    }
+  }, [loading, order, error, dispatch]);
+
   return (
-    <div className="container mx-auto px-4 py-12 text-center">
+    <div className="container mx-auto px-4 py-12 pt-28 text-center">
       {/* Order Success Card */}
       <div className="max-w-lg mx-auto bg-white p-8 rounded-lg shadow-xl space-y-6">
         {/* Success Icon */}
@@ -62,11 +73,7 @@ const OrderSuccessPage = () => {
             </p>
             <p>
               <strong>Total Amount:</strong>{' '}
-              <span className="font-medium">
-                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
-                  order.totalAmount
-                )}
-              </span>
+              <span className="font-medium">{formatETB(order.totalAmount)}</span>
             </p>
             <p>
               <strong>Status:</strong>{' '}
@@ -87,7 +94,7 @@ const OrderSuccessPage = () => {
         {/* Action Buttons */}
         <div className="space-y-4 mt-6">
           <Link
-            to="/profile"
+            to="/orders"
             className="inline-block w-full px-6 py-3 border border-indigo-600 text-indigo-600 font-medium rounded-md hover:bg-indigo-50 transition duration-300"
           >
             View Order History

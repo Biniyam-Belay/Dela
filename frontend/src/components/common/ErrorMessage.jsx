@@ -3,7 +3,10 @@ import { FiAlertCircle } from 'react-icons/fi';
 
 const ErrorMessage = ({ message, className = '' }) => {
   if (!message) return null;
-
+  let displayMessage = message;
+  if (typeof message !== 'string') {
+    displayMessage = message?.message || String(message);
+  }
   return (
     <div className={`bg-red-50 border-l-4 border-red-500 p-4 ${className}`} role="alert">
       <div className="flex items-center">
@@ -12,7 +15,7 @@ const ErrorMessage = ({ message, className = '' }) => {
         </div>
         <div className="ml-3">
           <h3 className="text-sm font-medium text-red-800">
-            {message}
+            {displayMessage}
           </h3>
         </div>
       </div>

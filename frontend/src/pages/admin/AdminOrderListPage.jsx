@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-// import { fetchAdminOrders } from '../../services/adminApi.jsx'; // <-- Remove or comment out this line
-
-// If you have a correct fetchAdminOrders elsewhere, import it here.
-// Otherwise, implement or mock it for now:
-const fetchAdminOrders = async () => ({ data: { orders: [], totalPages: 1, totalOrders: 0 } });
+import { fetchAdminOrders } from '../../services/adminApi';
 
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -158,32 +154,46 @@ const AdminOrderListPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {orders.map((order) => (
-                    <tr key={order.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{order.order_number || order.id}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-900">{order.customer?.name || order.customer_email || 'N/A'}</div>
-                        <div className="text-sm text-slate-500 md:hidden mt-1">{new Date(order.created_at).toLocaleDateString()}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden md:table-cell">{new Date(order.created_at).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
-                          {order.status || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatETB(order.total_amount || 0)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                        <Link
-                          to={`/admin/orders/${order.id}`}
-                          className="text-slate-600 hover:text-slate-900 transition-colors inline-flex items-center gap-1"
-                          title="View Details"
-                        >
-                          <FiEye size={16} />
-                          <span className="hidden sm:inline">View</span>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                  {orders.map((order) => {
+                    // Extract customer name/email from shippingAddress JSON
+                    let customerName = 'N/A';
+                    let customerEmail = '';
+                    if (order.shippingAddress) {
+                      if (order.shippingAddress.firstName || order.shippingAddress.lastName) {
+                        customerName = `${order.shippingAddress.firstName || ''} ${order.shippingAddress.lastName || ''}`.trim();
+                      }
+                      if (order.shippingAddress.email) {
+                        customerEmail = order.shippingAddress.email;
+                      }
+                    }
+                    return (
+                      <tr key={order.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{order.order_number || order.id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-slate-900">{customerName || 'N/A'}</div>
+                          {customerEmail && <div className="text-xs text-slate-500">{customerEmail}</div>}
+                          <div className="text-sm text-slate-500 md:hidden mt-1">{new Date(order.created_at).toLocaleDateString()}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden md:table-cell">{new Date(order.created_at).toLocaleDateString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(order.status)}`}>
+                            {order.status || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">{formatETB(order.totalAmount || order.total_amount || 0)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                          <Link
+                            to={`/admin/orders/${order.id}`}
+                            className="text-slate-600 hover:text-slate-900 transition-colors inline-flex items-center gap-1"
+                            title="View Details"
+                          >
+                            <FiEye size={16} />
+                            <span className="hidden sm:inline">View</span>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

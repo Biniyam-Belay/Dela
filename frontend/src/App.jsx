@@ -21,6 +21,7 @@ import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 import CollectionsPage from './pages/CollectionsPage';
 import WishlistPage from './pages/WishlistPage';
+import MyOrdersPage from './pages/MyOrdersPage'; // Import MyOrdersPage
 
 // --- Admin Pages ---
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -69,6 +70,7 @@ const AppContent = () => {
                     <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                     <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
                     <Route path="/order-success/:orderId" element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>} />
+                    <Route path="/orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>} /> {/* Add MyOrdersPage Route */}
 
                     {/* --- Admin Routes --- */}
                     <Route
