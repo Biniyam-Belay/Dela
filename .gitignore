@@ -1,6 +1,5 @@
+# Node modules
 node_modules
-<<<<<<< HEAD
-=======
 
 # OS generated files
 .DS_Store
@@ -36,4 +35,3 @@ logs
 
 # Installation script (assuming it's for local setup)
 # install.sh
->>>>>>> mobileApp
