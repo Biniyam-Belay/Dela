@@ -7,6 +7,7 @@ import ErrorMessage from '../../components/common/ErrorMessage';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiAlertCircle } from 'react-icons/fi';
 import Pagination from '../../components/common/Pagination';
 import { formatETB } from "../../utils/utils";
+import toast from 'react-hot-toast';
 
 const AdminProductListPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -57,12 +58,11 @@ const AdminProductListPage = () => {
     if (window.confirm(`Delete "${productName}"? This cannot be undone.`)) {
       try {
         await deleteAdminProduct(productId);
-        // Invalidate and refetch products
         queryClient.invalidateQueries(['admin-products']);
         refetch();
+        toast.success('Product deleted successfully!');
       } catch (err) {
-        // Show error message (can use toast or set local error state if needed)
-        alert(err.error || err.message || 'Failed to delete product.');
+        toast.error(err.error || err.message || 'Failed to delete product.');
       }
     }
   };

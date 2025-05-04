@@ -16,8 +16,8 @@ serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
     global: { headers: { Authorization: authHeader } },
     db: { schema: 'public' }
   });
@@ -38,7 +38,10 @@ serve(async (req) => {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    let query = supabase.from('products').select('*', { count: 'exact' }).range(from, to);
+    let query = supabase
+      .from('products')
+      .select('*, category:categories(name, id)', { count: 'exact' })
+      .range(from, to);
     if (search) {
       query = query.ilike('name', `%${search}%`);
     }
