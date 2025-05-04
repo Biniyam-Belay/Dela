@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import {
   fetchAdminProductById,
   createAdminProduct,
@@ -96,29 +97,29 @@ const AdminProductAddEditPage = () => {
   });
 
   useEffect(() => {
-    // Only run if in edit mode AND productData has been successfully fetched
-    if (isEditMode && productData) {
-      console.log("Product Data for Reset:", productData); // Debugging line
+    if (isEditMode && productData && productData.data) {
+      const p = productData.data;
       reset({
-        name: productData.name || '',
-        description: productData.description || '',
-        price: productData.price ?? '',
-        stockQuantity: productData.stock_quantity ?? productData.stockQuantity ?? 0,
-        categoryId: productData.category_id || '',
-        isActive: productData.is_active !== undefined ? productData.is_active : true,
-        rating: productData.rating ?? '',
-        reviewCount: productData.review_count ?? '',
-        originalPrice: productData.original_price ?? '',
-        sellerName: productData.seller_name || '',
-        sellerLocation: productData.seller_location || '',
-        unitsSold: productData.units_sold ?? 0,
+        name: p.name || '',
+        description: p.description || '',
+        price: p.price ?? '',
+        stockQuantity: p.stock_quantity ?? p.stockQuantity ?? 0,
+        categoryId: p.category_id || '',
+        isActive: p.is_active !== undefined ? p.is_active : true,
+        rating: p.rating ?? '',
+        reviewCount: p.review_count ?? '',
+        originalPrice: p.original_price ?? '',
+        sellerName: p.seller_name || '',
+        sellerLocation: p.seller_location || '',
+        unitsSold: p.units_sold ?? 0,
       });
-      const currentImages = productData.images || [];
+      const currentImages = p.images || [];
       setExistingImages(currentImages);
-      setImagePreviews(currentImages.map(img => `${backendUrl}${img.image_url.startsWith('/') ? '' : '/'}${img.image_url}`));
-      setNewImageFiles([]); // Clear any potentially selected new files
+      setImagePreviews(currentImages.map(img =>
+        typeof img === 'string' ? img : `${backendUrl}${img.image_url?.startsWith('/') ? '' : '/'}${img.image_url}`
+      ));
+      setNewImageFiles([]);
     } else if (!isEditMode) {
-      // Reset form for add mode
       reset({
         name: '',
         description: '',
@@ -137,7 +138,6 @@ const AdminProductAddEditPage = () => {
       setImagePreviews([]);
       setNewImageFiles([]);
     }
-    // Dependencies: isEditMode, the fetched data (productData), and reset function
   }, [isEditMode, productData, reset]);
 
   const handleImageChange = (e) => {
@@ -209,18 +209,30 @@ const AdminProductAddEditPage = () => {
     try {
       if (isEditMode) {
         await updateAdminProduct(productId, formData);
+        toast.success('Product updated successfully!');
       } else {
         await createAdminProduct(formData);
+        toast.success('Product created successfully!');
       }
+      queryClient.invalidateQueries(['admin-products']);
       navigate('/admin/products');
     } catch (err) {
       const apiError = err.response?.data?.error || err.message || `Failed to ${isEditMode ? 'update' : 'create'} product.`;
       setFormError(apiError);
+      toast.error(apiError);
       console.error("Submit error:", err.response?.data || err);
     }
   };
 
   if (loading || categoriesLoading || productLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isEditMode && (productLoading || !productData)) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Spinner />

@@ -16,8 +16,8 @@ serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
     global: { headers: { Authorization: authHeader } },
     db: { schema: 'public' }
   });
@@ -28,6 +28,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, error: 'Authentication failed' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 401,
+      });
+    }
+
+    // Check if user is admin using the same logic as your is_admin() function
+    const { data: isAdminResult, error: isAdminError } = await supabase.rpc('is_admin');
+    if (isAdminError || !isAdminResult) {
+      return new Response(JSON.stringify({ success: false, error: 'Admin role required.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403,
       });
     }
 

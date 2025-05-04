@@ -2,23 +2,35 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts'; // Assuming a shared CORS config
 
-// Define expected user structure from your DB
-interface DbUser {
+// Define the structure returned by supabaseAdmin.auth.admin.listUsers()
+// Based on Supabase documentation
+interface AuthUser {
   id: string;
-  email: string | null;
-  name: string | null;
-  role: string | null; // Adjust type if using enum
-  createdAt: string | null; // Assuming timestamp without time zone maps to string initially
+  email?: string;
+  phone?: string;
+  created_at?: string;
+  last_sign_in_at?: string;
+  app_metadata?: {
+    provider?: string;
+    providers?: string[];
+    user_role?: string; // Assuming role is stored here
+    [key: string]: any; // Allow other metadata
+  };
+  user_metadata?: {
+    full_name?: string; // Assuming full name is stored here
+    [key: string]: any; // Allow other metadata
+  };
+  // ... other potential fields from auth.users
 }
 
-// Define the structure returned to the frontend
+// Define the structure returned to the frontend (matching AdminUserListPage.jsx expectations)
 interface FormattedUser {
   id: string;
   profile: {
     full_name: string | null;
   };
   email: string | null;
-  role: string | null;
+  role: string | null; // e.g., 'ADMIN', 'Customer'
   created_at: string | null;
 }
 
@@ -30,64 +42,44 @@ serve(async (req: Request) => {
 
   try {
     // Create Supabase Admin client (uses Service Role Key from environment)
-    // Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in your function's environment
     const supabaseAdmin: SupabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // --- Authentication/Authorization Check (Enhanced Logging) ---
-    console.log("Starting auth check..."); // Log start
+    // --- Authentication/Authorization Check ---
+    console.log("Starting auth check...");
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-        console.error("Auth check failed: Missing authorization header"); // Log failure reason
+        console.error("Auth check failed: Missing authorization header");
         return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
             status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user: callingUser }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
-    if (userError || !user) {
-        console.error('Auth check failed: Invalid token or user not found.', userError); // Log failure reason
-        return new Response(JSON.stringify({ error: 'Invalid token or user not found' }), {
+    if (userError || !callingUser) {
+        console.error('Auth check failed: Invalid token or calling user not found.', userError);
+        return new Response(JSON.stringify({ error: 'Invalid token or calling user not found' }), {
             status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
+    console.log(`Auth check: Calling User ID: ${callingUser.id}`);
 
-    console.log(`Auth check: User ID from token: ${user.id}`); // Log the user ID found
+    // Fetch calling user's role directly from auth.users app_metadata
+    const callingUserRole = callingUser.app_metadata?.user_role;
+    const expectedAdminRole = 'ADMIN';
 
-    // Fetch user role from your 'users' table using the authenticated user's ID
-    const { data: adminUserData, error: roleError } = await supabaseAdmin
-        .from('users')
-        .select('role')
-        .eq('id', user.id) // Ensure this 'id' column exists and matches auth.users.id
-        .single();
+    console.log(`Auth check: Comparing calling user role '${callingUserRole}' with expected role '${expectedAdminRole}'`);
 
-    if (roleError) {
-        // *** Log the specific error object ***
-        console.error(`Auth check failed: Error fetching role for user ${user.id}. Details:`, JSON.stringify(roleError, null, 2));
-        return new Response(JSON.stringify({ error: 'Could not verify user role' }), {
-            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-    }
-
-    console.log(`Auth check: Role data found for user ${user.id}:`, adminUserData); // Log the data found
-
-    // *** THE CRITICAL CHECK ***
-    const expectedAdminRole = 'ADMIN'; // Define the expected role value clearly
-    const userRole = adminUserData?.role; // Get the role from the fetched data
-
-    console.log(`Auth check: Comparing user role '${userRole}' with expected role '${expectedAdminRole}'`); // Log values being compared
-
-    if (userRole !== expectedAdminRole) {
-        console.error(`Auth check failed: User role '${userRole}' does not match expected '${expectedAdminRole}'`); // Log failure reason
+    if (callingUserRole !== expectedAdminRole) {
+        console.error(`Auth check failed: Calling user role '${callingUserRole}' does not match expected '${expectedAdminRole}'`);
         return new Response(JSON.stringify({ error: 'Forbidden: User is not an admin' }), {
             status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
     }
-
-    console.log(`Auth check successful for user ${user.id}`); // Log success
+    console.log(`Auth check successful for calling user ${callingUser.id}`);
     // --- End Authentication/Authorization Check ---
 
 
@@ -97,62 +89,68 @@ serve(async (req: Request) => {
     const limit = parseInt(url.searchParams.get('limit') || '10', 10);
     const search = url.searchParams.get('search') || '';
     const role = url.searchParams.get('role') || ''; // Role filter from query param
-    const offset = (page - 1) * limit;
 
-    // Query the custom public.users table using the Admin client
-    let query = supabaseAdmin
-      .from('users') // Querying 'public.users'
-      .select(`
-        id,
-        email,
-        name,
-        role,
-        createdAt
-      `, { count: 'exact' }); // Fetch count for pagination
+    // Fetch users using the admin API
+    // Note: listUsers pagination starts from 0, but our frontend uses 1-based pages
+    const { data: listUsersData, error: listUsersError } = await supabaseAdmin.auth.admin.listUsers({
+      page: page - 1, // Adjust page number for Supabase API (0-based)
+      perPage: limit,
+      // Note: listUsers doesn't have built-in search or role filtering like SQL.
+      // We will filter manually after fetching.
+    });
 
-    // Apply Search Filter
-    if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
+    if (listUsersError) {
+      console.error("Supabase auth.admin.listUsers error:", listUsersError);
+      throw listUsersError;
     }
 
-    // Apply Role Filter
+    let users: AuthUser[] = listUsersData.users;
+    let totalUsers = listUsersData.total ?? users.length; // Use total if available, otherwise count fetched
+
+    // --- Manual Filtering ---
+    // Filter by Role (case-insensitive)
     if (role) {
-      query = query.eq('role', role);
+      users = users.filter(user =>
+        user.app_metadata?.user_role?.toLowerCase() === role.toLowerCase()
+      );
+      // Adjust totalUsers based on the filtered list for simplicity here.
+      totalUsers = users.length;
     }
 
-    // Apply Pagination
-    query = query.range(offset, offset + limit - 1);
-
-    // Apply Sorting
-    query = query.order('name', { ascending: true });
-
-    // Execute the query
-    const { data: usersData, error, count } = await query;
-
-    if (error) {
-      console.error("Supabase fetch public.users error:", error);
-      throw error; // Let the main catch block handle it
+    // Filter by Search Term (case-insensitive, checks email and full_name)
+    if (search) {
+      const searchTermLower = search.toLowerCase();
+      users = users.filter(user =>
+        user.email?.toLowerCase().includes(searchTermLower) ||
+        user.user_metadata?.full_name?.toLowerCase().includes(searchTermLower)
+      );
+      // Adjust totalUsers based on the filtered list
+      totalUsers = users.length;
     }
+    // --- End Manual Filtering ---
 
-    // Format the data
-    const formattedUsers: FormattedUser[] = (usersData as DbUser[] || []).map(user => ({
+
+    // Format the data for the frontend
+    const formattedUsers: FormattedUser[] = users.map(user => ({
         id: user.id,
         profile: {
-            full_name: user.name,
+            // Extract full_name from user_metadata
+            full_name: user.user_metadata?.full_name || null,
         },
-        email: user.email,
-        role: user.role,
-        created_at: user.createdAt,
+        email: user.email || null,
+        // Extract role from app_metadata
+        role: user.app_metadata?.user_role || 'Customer', // Default to 'Customer' if not set
+        created_at: user.created_at || null,
     }));
 
-    const totalUsers = count || 0;
+    // Recalculate totalPages based on potentially filtered totalUsers
     const totalPages = Math.ceil(totalUsers / limit);
 
     // Return data in the expected format
     const responsePayload = {
       users: formattedUsers,
       totalPages: totalPages,
-      totalUsers: totalUsers,
+      totalUsers: totalUsers, // Return the count after filtering
     };
 
     return new Response(JSON.stringify(responsePayload), {

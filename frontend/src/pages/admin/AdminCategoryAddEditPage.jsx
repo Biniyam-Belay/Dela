@@ -84,22 +84,22 @@ const AdminCategoryAddEditPage = () => {
         description: categoryData.description || '',
       });
       // Set image preview if an image exists
-      if (categoryData.image) {
+      if (categoryData.image_url) {
         const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
-        const imageUrl = `${backendUrl}${categoryData.image.startsWith('/') ? '' : '/'}${categoryData.image}`;
+        const imageUrl = `${backendUrl}${categoryData.image_url.startsWith('/') ? '' : '/'}${categoryData.image_url}`;
         setExistingImageUrl(imageUrl);
         setImagePreview(imageUrl);
       } else {
         setExistingImageUrl(null);
         setImagePreview(null);
       }
-      setNewImageFile(null);
+      setImageFile(null);
     } else if (!isEditMode) {
       // Reset form for add mode or if data fetch fails in edit mode initially
       reset({ name: '', description: '' });
       setImagePreview(null);
       setExistingImageUrl(null);
-      setNewImageFile(null);
+      setImageFile(null);
     }
     // Ensure reset is included in dependencies if it's stable (which it should be from react-hook-form)
     // Key dependencies are isEditMode and the fetched data (categoryData)
@@ -122,8 +122,38 @@ const AdminCategoryAddEditPage = () => {
         }
 
         if (uploadData?.path) {
-          finalImageUrl = `/${uploadData.path}`;
+          // Always store the image_url as /categories/filename.png
+          finalImageUrl = `/categories/${fileName}`;
           console.log('Uploaded image relative path:', finalImageUrl);
+
+          // --- Delete previous image if it exists and is different ---
+          if (isEditMode && existingImageUrl) {
+            console.log('[DEBUG] existingImageUrl before deletion attempt:', existingImageUrl);
+            // Extract the relative path from the full URL
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+            let oldPath = existingImageUrl.replace(backendUrl, '');
+            if (oldPath.startsWith('/')) oldPath = oldPath.substring(1);
+            // If oldPath starts with 'categories/', keep it, else prepend
+            if (!oldPath.startsWith('categories/')) {
+              oldPath = `categories/${oldPath}`;
+            }
+            // Remove any query params (e.g., ?t=...) that Supabase adds for public URLs
+            oldPath = oldPath.split('?')[0];
+            // Only delete if the oldPath is not the same as the new file
+            if (oldPath && oldPath !== `categories/${fileName}`) {
+              console.log('[DEBUG] Attempting to delete old image path:', oldPath);
+              try {
+                const { data: removeData, error: removeError } = await supabase.storage.from('categories').remove([oldPath]);
+                if (removeError) {
+                  console.error('[DEBUG] Failed to delete old category image:', removeError);
+                } else {
+                  console.log('[DEBUG] Successfully deleted old category image:', oldPath, 'Response:', removeData);
+                }
+              } catch (e) {
+                console.error('[DEBUG] Exception while deleting old category image:', e);
+              }
+            }
+          }
         } else {
           console.warn('Upload successful but path not found in response.');
         }
@@ -252,7 +282,12 @@ const AdminCategoryAddEditPage = () => {
             <div className="flex items-center gap-4">
               <div className="relative h-24 w-24 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
                 {imagePreview ? (
-                  <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="h-full w-full object-cover"
+                    onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+                  />
                 ) : (
                   <FiImage className="h-8 w-8 text-slate-400" />
                 )}

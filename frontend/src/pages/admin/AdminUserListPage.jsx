@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-// import { fetchAdminUsers } from '../../services/adminApi.jsx'; // <-- Remove or comment out this line
-
-// If you have a correct fetchAdminUsers elsewhere, import it here.
-// Otherwise, implement or mock it for now:
-const fetchAdminUsers = async () => ({ data: { users: [], totalPages: 1, totalUsers: 0 } });
+// --- Import the real function ---
+import { fetchAdminUsers } from '../../services/adminApi.jsx';
 
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
