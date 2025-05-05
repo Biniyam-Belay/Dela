@@ -43,9 +43,10 @@ export const fetchCart = createAsyncThunk(
           'Authorization': `Bearer ${accessToken}`,
         },
       });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error('Invalid response from server: ' + text.slice(0, 100));
       }
       const data = await response.json();
       const cartItems = data.cart?.items || data.items || data || [];
@@ -72,9 +73,10 @@ export const addItemToCart = createAsyncThunk(
           },
           body: JSON.stringify({ productId: product.id, quantity }),
         });
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
-          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          throw new Error('Invalid response from server: ' + text.slice(0, 100));
         }
         const data = await response.json();
         const updatedItems = data.cart?.items || data.items || data || [];

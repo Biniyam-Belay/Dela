@@ -20,6 +20,7 @@ import {
 } from '../store/cartSlice';
 import { addToWishlist } from '../store/wishlistSlice';
 import { formatETB } from "../utils/utils";
+import { getImageUrl } from '../utils/imageUrl';
 
 const CartPage = () => {
   const dispatch = useDispatch();
@@ -179,11 +180,7 @@ const CartPage = () => {
                     className="flex-shrink-0 w-full sm:w-auto"
                   >
                     <img
-                      src={
-                        product.images?.[0]
-                          ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
-                          : '/placeholder-image.jpg'
-                      }
+                      src={getImageUrl(product.images?.[0])}
                       alt={product.name}
                       className="w-full sm:w-20 h-20 object-cover rounded-lg border border-neutral-200 shadow-sm group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
