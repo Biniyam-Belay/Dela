@@ -37,8 +37,10 @@ const OrderSuccessPage = () => {
 
   useEffect(() => {
     if (!loading && order && !error) {
-      dispatch(clearLocalCartAndState());
-      dispatch(clearCart());
+      // First clear backend cart, then local as fallback if needed
+      dispatch(clearCart())
+        .unwrap()
+        .catch(() => dispatch(clearLocalCartAndState()));
     }
   }, [loading, order, error, dispatch]);
 
