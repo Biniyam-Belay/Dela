@@ -9,6 +9,7 @@ import Spinner from '../components/common/Spinner.jsx';
 import ErrorMessage from '../components/common/ErrorMessage.jsx';
 import { FiChevronLeft } from 'react-icons/fi';
 import { formatETB } from "../utils/utils";
+import { Helmet } from 'react-helmet';
 
 const CheckoutPage = () => {
   const { clearCart } = useCart();
@@ -109,6 +110,10 @@ const CheckoutPage = () => {
 
   return (
     <div className="min-h-screen bg-white py-10 px-4 sm:px-0 pt-28">
+      <Helmet>
+        <title>Checkout | SuriAddis</title>
+        <meta name="description" content="Secure checkout for your order. Enter your shipping details and review your order summary before payment on SuriAddis." />
+      </Helmet>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <button 
@@ -313,17 +318,17 @@ const CheckoutPage = () => {
         </div>
       </div>
       {/* Trust Badges */}
-      <div className="max-w-4xl mx-auto mt-12 flex flex-wrap items-center justify-center gap-6 border-t pt-8">
+      <div className="max-w-4xl mx-auto mt-12 flex flex-wrap items-center justify-center gap-6 border-t pt-8" aria-label="Trust Badges">
         <div className="flex items-center gap-2 text-neutral-500 text-sm">
-          <img src="/images/hero-2.jpg" alt="Secure Payment" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
+          <img src="/images/hero-2.jpg" alt="Secure Payment badge" className="w-8 h-8 rounded-full object-cover border border-neutral-200" loading="lazy" />
           Secure Payment
         </div>
         <div className="flex items-center gap-2 text-neutral-500 text-sm">
-          <img src="/images/hero-3.jpg" alt="Fast Delivery" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
+          <img src="/images/hero-3.jpg" alt="Fast Delivery badge" className="w-8 h-8 rounded-full object-cover border border-neutral-200" loading="lazy" />
           Fast Delivery
         </div>
         <div className="flex items-center gap-2 text-neutral-500 text-sm">
-          <img src="/images/smartwatch.jpg" alt="Satisfaction Guarantee" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
+          <img src="/images/smartwatch.jpg" alt="Satisfaction Guarantee badge" className="w-8 h-8 rounded-full object-cover border border-neutral-200" loading="lazy" />
           Satisfaction Guarantee
         </div>
       </div>

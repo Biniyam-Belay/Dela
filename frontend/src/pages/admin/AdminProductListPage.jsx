@@ -8,6 +8,7 @@ import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiAlertCircle } from 'react-icons/
 import Pagination from '../../components/common/Pagination';
 import { formatETB } from "../../utils/utils";
 import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet';
 
 const AdminProductListPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -79,6 +80,10 @@ const AdminProductListPage = () => {
 
   return (
     <div className="space-y-6">
+      <Helmet>
+        <title>Admin Products | SuriAddis</title>
+        <meta name="description" content="Admin: View, search, and manage all products in the SuriAddis store." />
+      </Helmet>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

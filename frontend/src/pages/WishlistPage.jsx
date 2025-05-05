@@ -10,6 +10,7 @@ import { FaTrashAlt, FaShoppingCart } from 'react-icons/fa'; // Icons
 import { useAuth } from '../contexts/authContext'; // Use AuthContext for user
 import toast from 'react-hot-toast';
 import { formatETB } from '../utils/utils';
+import { Helmet } from 'react-helmet';
 
 const WishlistPage = () => {
   const dispatch = useDispatch();
@@ -58,6 +59,10 @@ const WishlistPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-20 pt-36 animate-fade-in">
+      <Helmet>
+        <title>Wishlist | SuriAddis</title>
+        <meta name="description" content="View and manage your wishlist. Save your favorite products for later on SuriAddis." />
+      </Helmet>
       <h1 className="text-3xl font-semibold mb-12 text-neutral-800 tracking-tight text-center">My Wishlist</h1>
 
       {status === 'loading' && <Spinner />}

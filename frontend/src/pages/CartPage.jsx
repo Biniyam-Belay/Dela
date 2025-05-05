@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FiTrash2, FiPlus, FiMinus, FiArrowLeft } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet';
 import {
   selectCartItems,
   selectCartCount,
@@ -138,6 +139,10 @@ const CartPage = () => {
 
   return (
     <div className="min-h-screen bg-white py-10 px-4 sm:px-0 pt-28">
+      <Helmet>
+        <title>Your Cart | SuriAddis</title>
+        <meta name="description" content="View and manage your shopping cart. Update quantities, remove items, and proceed to checkout on SuriAddis." />
+      </Helmet>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
@@ -183,6 +188,7 @@ const CartPage = () => {
                       src={getImageUrl(product.images?.[0])}
                       alt={product.name}
                       className="w-full sm:w-20 h-20 object-cover rounded-lg border border-neutral-200 shadow-sm group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = '/placeholder-image.jpg';
@@ -344,17 +350,17 @@ const CartPage = () => {
         )}
       </div>
       {/* Trust Badges */}
-      <div className="max-w-4xl mx-auto mt-12 flex flex-wrap items-center justify-center gap-6 border-t pt-8">
+      <div className="max-w-4xl mx-auto mt-12 flex flex-wrap items-center justify-center gap-6 border-t pt-8" aria-label="Trust Badges">
         <div className="flex items-center gap-2 text-neutral-500 text-sm">
-          <img src="/images/hero-2.jpg" alt="Secure Payment" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
+          <img src="/images/hero-2.jpg" alt="Secure Payment badge" className="w-8 h-8 rounded-full object-cover border border-neutral-200" loading="lazy" />
           Secure Payment
         </div>
         <div className="flex items-center gap-2 text-neutral-500 text-sm">
-          <img src="/images/hero-3.jpg" alt="Fast Delivery" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
+          <img src="/images/hero-3.jpg" alt="Fast Delivery badge" className="w-8 h-8 rounded-full object-cover border border-neutral-200" loading="lazy" />
           Fast Delivery
         </div>
         <div className="flex items-center gap-2 text-neutral-500 text-sm">
-          <img src="/images/smartwatch.jpg" alt="Satisfaction Guarantee" className="w-8 h-8 rounded-full object-cover border border-neutral-200" />
+          <img src="/images/smartwatch.jpg" alt="Satisfaction Guarantee badge" className="w-8 h-8 rounded-full object-cover border border-neutral-200" loading="lazy" />
           Satisfaction Guarantee
         </div>
       </div>
@@ -364,19 +370,19 @@ const CartPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full">
           {/* Example recommended products, replace with real data */}
           <div className="bg-white border border-neutral-200 rounded-xl shadow p-4 flex flex-col items-center text-center">
-            <img src="/images/hero-2.jpg" alt="Recommended 1" className="w-24 h-24 object-cover rounded-lg mb-3" />
+            <img src="/images/hero-2.jpg" alt="Signature Collection recommended product" className="w-24 h-24 object-cover rounded-lg mb-3" loading="lazy" />
             <h3 className="font-medium text-base mb-1">Signature Collection</h3>
             <p className="text-sm text-neutral-500 mb-2">Handcrafted luxury essentials.</p>
             <Link to="/products/1" className="inline-block px-4 py-2 bg-black text-white rounded-full text-xs font-medium hover:bg-neutral-900 transition">View Product</Link>
           </div>
           <div className="bg-white border border-neutral-200 rounded-xl shadow p-4 flex flex-col items-center text-center">
-            <img src="/images/tshirt-blue.jpg" alt="Recommended 2" className="w-24 h-24 object-cover rounded-lg mb-3" />
+            <img src="/images/tshirt-blue.jpg" alt="Minimalist Edit recommended product" className="w-24 h-24 object-cover rounded-lg mb-3" loading="lazy" />
             <h3 className="font-medium text-base mb-1">Minimalist Edit</h3>
             <p className="text-sm text-neutral-500 mb-2">Sleek, versatile, everyday elegance.</p>
             <Link to="/products/2" className="inline-block px-4 py-2 bg-black text-white rounded-full text-xs font-medium hover:bg-neutral-900 transition">View Product</Link>
           </div>
           <div className="bg-white border border-neutral-200 rounded-xl shadow p-4 flex flex-col items-center text-center">
-            <img src="/images/smartwatch.jpg" alt="Recommended 3" className="w-24 h-24 object-cover rounded-lg mb-3" />
+            <img src="/images/smartwatch.jpg" alt="Tech Essentials recommended product" className="w-24 h-24 object-cover rounded-lg mb-3" loading="lazy" />
             <h3 className="font-medium text-base mb-1">Tech Essentials</h3>
             <p className="text-sm text-neutral-500 mb-2">Smart accessories for a connected lifestyle.</p>
             <Link to="/products/3" className="inline-block px-4 py-2 bg-black text-white rounded-full text-xs font-medium hover:bg-neutral-900 transition">View Product</Link>

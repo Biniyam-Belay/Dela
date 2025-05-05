@@ -6,6 +6,7 @@ import { fetchProducts } from '../services/productApi';
 import ProductCard from '../components/ui/ProductCard';
 import { Input } from "../components/ui/input"; // Import Input
 import { Button } from "../components/ui/button"; // Import Button
+import { Helmet } from 'react-helmet';
 
 const collections = [
   {
@@ -139,6 +140,10 @@ const CollectionsPage = () => {
 
   return (
     <div className="bg-white min-h-screen text-neutral-900">
+      <Helmet>
+        <title>Collections | SuriAddis</title>
+        <meta name="description" content="Browse curated collections of premium products on SuriAddis." />
+      </Helmet>
       <section className="container mx-auto px-4 sm:px-6 pt-32 pb-16">
         <div className="max-w-2xl mb-12">
           <div className="inline-block px-3 py-1 mb-6 border border-neutral-200 text-xs uppercase tracking-widest text-neutral-500 bg-white">

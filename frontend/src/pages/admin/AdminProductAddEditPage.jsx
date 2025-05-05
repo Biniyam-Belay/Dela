@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { Helmet } from 'react-helmet';
 import {
   fetchAdminProductById,
   createAdminProduct,
@@ -248,6 +249,10 @@ const AdminProductAddEditPage = () => {
 
   return (
     <div className="space-y-6">
+      <Helmet>
+        <title>Admin Add/Edit Product | SuriAddis</title>
+        <meta name="description" content="Admin: Add or edit a product in the SuriAddis store." />
+      </Helmet>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">

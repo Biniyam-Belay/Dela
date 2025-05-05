@@ -10,6 +10,7 @@ import { addItemToCart } from "../store/cartSlice.js"
 import { fetchProductByIdentifier } from "../services/productApi"
 import SkeletonCard from "../components/ui/SkeletonCard.jsx"
 import { formatETB } from "../utils/utils"
+import { Helmet } from 'react-helmet'
 
 // Star Rating component
 const StarRating = ({ rating, reviewCount }) => {
@@ -121,6 +122,10 @@ export default function ProductDetailPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
+      <Helmet>
+        <title>{product ? `${product.name} | SuriAddis` : 'Product Details | SuriAddis'}</title>
+        <meta name="description" content={product ? product.description?.slice(0, 150) : 'View product details, images, price, and reviews.'} />
+      </Helmet>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation */}
         <div className="mb-6 sm:mb-8">
@@ -142,10 +147,11 @@ export default function ProductDetailPage() {
               <div className="relative w-full h-full">
                 <img
                   src={product.images && product.images[selectedImage] ? product.images[selectedImage] : "/placeholder-image.jpg"}
-                  alt={product.name}
+                  alt={product.name || 'Product image'}
                   className="object-contain p-4 sm:p-8 w-full h-full"
                   style={{ aspectRatio: 1 }}
                   onError={e => { e.target.src = "/placeholder-image.jpg"; }}
+                  loading="lazy"
                 />
               </div>
             </div>
@@ -170,6 +176,7 @@ export default function ProductDetailPage() {
                         className="object-cover w-full h-full"
                         style={{ aspectRatio: 1 }}
                         onError={e => { e.target.src = "/placeholder-image.jpg"; }}
+                        loading="lazy"
                       />
                     </div>
                   </button>
