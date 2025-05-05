@@ -369,7 +369,13 @@ export default function ProductListPage() {
     navigate(`/products?${params.toString()}`)
   }
 
-  // Add missing handleSearch function
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return; // Prevent invalid page changes
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    navigate(`/products?${params.toString()}`, { replace: true });
+  };
+
   const handleSearch = (e) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
