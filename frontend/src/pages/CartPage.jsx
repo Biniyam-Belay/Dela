@@ -54,7 +54,7 @@ const CartPage = () => {
     // Otherwise, proceed with the update action
     setIsUpdating(true);
     // Dispatch optimistic update with the delta
-    dispatch(updateQuantityOptimistic({ productId, delta })); 
+    dispatch(updateQuantityOptimistic({ productId, delta }));
     // Dispatch the async thunk with the delta
     dispatch(updateQuantity({ productId, delta }))
       .unwrap()
@@ -63,7 +63,7 @@ const CartPage = () => {
         toast.error(err || 'Failed to update cart');
         // Revert optimistic update by re-fetching cart state on error
         // Consider if a more targeted revert is needed, but fetchCart is simpler
-        dispatch(fetchCart()); 
+        dispatch(fetchCart());
       })
       .finally(() => setIsUpdating(false));
   };
@@ -141,8 +141,8 @@ const CartPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
           <h1 className="text-3xl sm:text-4xl font-sans font-semibold text-neutral-900 tracking-tight">Your Cart</h1>
-          <Link 
-            to="/products" 
+          <Link
+            to="/products"
             className="flex items-center text-neutral-500 hover:text-black transition-colors text-base font-normal border-b border-transparent hover:border-black pb-0.5"
           >
             <FiArrowLeft className="mr-2" />
@@ -174,16 +174,20 @@ const CartPage = () => {
                   className="flex flex-col sm:flex-row items-start sm:items-center bg-white p-5 sm:p-6 rounded-xl shadow border border-neutral-200 gap-6 group hover:shadow-md transition-shadow duration-200"
                 >
                   {/* Product Image */}
-                  <Link 
+                  <Link
                     to={`/products/${product.slug || product.id}`}
                     className="flex-shrink-0 w-full sm:w-auto"
                   >
                     <img
-                      src={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${product.images?.[0]?.startsWith('/') ? '' : '/'}${product.images?.[0] || ''}`}
+                      src={
+                        product.images?.[0]
+                          ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
+                          : '/placeholder-image.jpg'
+                      }
                       alt={product.name}
                       className="w-full sm:w-20 h-20 object-cover rounded-lg border border-neutral-200 shadow-sm group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => { 
-                        e.target.onerror = null; 
+                      onError={(e) => {
+                        e.target.onerror = null;
                         e.target.src = '/placeholder-image.jpg';
                       }}
                     />
