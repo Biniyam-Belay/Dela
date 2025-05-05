@@ -1,7 +1,7 @@
 "use client"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { supabase } from "../services/supabaseClient"
 import {
   ArrowRight,
@@ -14,7 +14,10 @@ import {
   Search,
   ShoppingCart,
   User,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
+import useEmblaCarousel from 'embla-carousel-react'
 
 import { Button } from "../components/ui/button"
 import ProductCard from "../components/ui/ProductCard.jsx"
@@ -23,6 +26,7 @@ import ErrorMessage from "../components/common/ErrorMessage.jsx"
 import { Input } from "../components/ui/input"
 import { fetchProducts, fetchCategories } from "../services/productApi"
 import Header from '../components/layout/Header'
+import CategorySkeletonCard from "../components/ui/CategorySkeletonCard.jsx"
 
 // Font stack for flowing, harmonious look
 const flowingSerif = '"Playfair Display", "Georgia", serif';
@@ -125,81 +129,133 @@ const AdBanner = () => (
   </section>
 )
 
-// White-themed, seamless Category Showcase Section
+// White-themed, seamless Category Showcase Section with Carousel
 const CategoryShowcase = () => {
   const {
     data: categoriesData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["categories", { limit: 3 }],
-    queryFn: () => fetchCategories({ limit: 3 }),
-    select: (data) => (data?.data || []).slice(0, 3),
+    queryKey: ["categories"],
+    queryFn: () => fetchCategories(),
+    select: (data) => data?.data || [],
   })
 
+  // Embla Carousel setup
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    loop: false,
+    align: 'start',
+    containScroll: 'trimSnaps',
+    slidesToScroll: 1,
+  })
+
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev()
+  }, [emblaApi])
+
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext()
+  }, [emblaApi])
+
+  // Helper function to get the public URL from Supabase storage
+  const getCategoryImageUrl = (imagePath) => {
+    if (!imagePath) {
+      return '/placeholder-image.jpg';
+    }
+    // Remove leading slash if present
+    let path = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+    // Remove leading 'categories/' if present, as getPublicUrl adds the bucket name
+    if (path.startsWith('categories/')) {
+      path = path.substring('categories/'.length);
+    }
+    const { data } = supabase.storage.from('categories').getPublicUrl(path);
+    return data?.publicUrl || '/placeholder-image.jpg';
+  };
+
   return (
-    <section className="py-24 bg-white border-b border-neutral-200 transition-colors duration-500">
+    <section className="py-20 bg-white border-b border-neutral-200 transition-colors duration-500">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="mb-14 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+        <div className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
           <div>
-            <h2 className="text-4xl sm:text-5xl font-thin text-neutral-900 mb-2 tracking-tight text-left" style={{letterSpacing: '-0.04em', fontFamily: 'serif', textTransform: 'uppercase', lineHeight: 1.1}}>Shop by Category</h2>
-            <p className="text-lg text-neutral-500 font-light max-w-xl text-left">
+            <h2 className="text-3xl sm:text-4xl font-thin text-neutral-900 mb-2 tracking-tight text-left" style={{letterSpacing: '-0.04em', fontFamily: 'serif', textTransform: 'uppercase', lineHeight: 1.1}}>Shop by Category</h2>
+            <p className="text-base text-neutral-500 font-light max-w-xl text-left">
               Discover our signature collections—each curated for those who demand distinction.
             </p>
           </div>
-          <div className="hidden sm:block text-right">
-            <span className="inline-block px-4 py-2 bg-black text-white rounded-full text-xs tracking-widest font-light opacity-80" style={{letterSpacing: '0.18em'}}>EXCLUSIVE SELECTION</span>
+          <div className="hidden sm:flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={scrollPrev}
+              className="rounded-full border-neutral-300 hover:bg-neutral-100"
+              aria-label="Previous category"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={scrollNext}
+              className="rounded-full border-neutral-300 hover:bg-neutral-100"
+              aria-label="Next category"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
           </div>
         </div>
-        {isLoading ? (
-          <div className="flex gap-8">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-60 w-48 bg-neutral-100 rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : error ? (
-          <ErrorMessage message="Could not load categories" />
-        ) : categoriesData && categoriesData.length > 0 ? (
-          <div className="flex flex-row overflow-x-auto gap-6 pb-4 sm:flex-wrap sm:overflow-x-visible sm:pb-0">
-            {categoriesData.map((category) => (
-              <Link
-                to={`/products?category=${category.slug}`}
-                key={category.id}
-                className="group flex-shrink-0 w-[160px] sm:w-auto sm:flex-1 sm:min-w-[140px] sm:max-w-[180px] h-56 rounded-xl overflow-hidden relative shadow-lg border border-neutral-200 bg-white hover:shadow-2xl hover:border-black/20 transition-all duration-300"
-                style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', boxShadow: '0 6px 32px 0 rgba(0,0,0,0.10)' }}
-              >
-                <img
-                  src={category.image || "/placeholder-image.jpg"}
-                  alt={category.name}
-                  className="absolute inset-0 w-full h-full object-cover object-center opacity-80 group-hover:opacity-95 transition-opacity duration-300 scale-105 group-hover:scale-110"
-                  style={{ zIndex: 0, transition: 'transform 0.5s cubic-bezier(.4,0,.2,1)' }}
-                  onError={e => {
-                    if (e.target.src !== '/placeholder-image.jpg') {
-                      e.target.onerror = null;
-                      e.target.src = '/placeholder-image.jpg';
-                    }
-                  }}
-                />
-                <div className="absolute inset-0" style={{zIndex:1, background: 'linear-gradient(90deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.48) 60%, rgba(0,0,0,0.01) 100%)'}} />
-                <div className="relative z-10 flex flex-col justify-center h-full pl-5 pr-2 py-5">
-                  <h3 className="text-lg font-thin text-white mb-1 tracking-tight" style={{fontFamily: 'serif', letterSpacing: '-0.03em', textShadow: '0 2px 12px rgba(0,0,0,0.32)', textTransform: 'uppercase'}}>{category.name}</h3>
-                  <span className="text-neutral-100 text-xs font-light mb-1" style={{textShadow: '0 1px 8px rgba(0,0,0,0.22)'}}>
-                    {category.description || 'Curated selection'}
-                  </span>
-                  <span className="inline-block text-[10px] text-neutral-200 font-light mt-1" style={{textShadow: '0 1px 6px rgba(0,0,0,0.18)'}}>
-                    {category.productCount ? `${category.productCount} products` : ''}
-                  </span>
-                  <span className="mt-3 inline-flex items-center gap-2 text-white text-xs font-medium border-b border-white/30 pb-0.5 group-hover:border-white transition-colors" style={{textShadow: '0 1px 8px rgba(0,0,0,0.18)'}}>
-                    Explore <ArrowRight className="ml-1 h-3 w-3 group-hover:translate-x-1 transition-transform" />
-                  </span>
+
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className="flex gap-4 -ml-2 pl-2">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex-shrink-0 w-48 md:w-52 lg:w-56">
+                  <CategorySkeletonCard />
                 </div>
-                <div className="absolute top-3 right-3 bg-white/80 text-black text-[10px] font-semibold px-3 py-1 rounded-full shadow border border-neutral-200 tracking-widest" style={{backdropFilter:'blur(2px)', letterSpacing:'0.15em'}}>LUXURY</div>
-              </Link>
-            ))}
+              ))
+            ) : error ? (
+              <div className="w-full">
+                <ErrorMessage message="Could not load categories" />
+              </div>
+            ) : categoriesData && categoriesData.length > 0 ? (
+              categoriesData.map((category) => (
+                <div key={category.id} className="flex-shrink-0 w-48 md:w-52 lg:w-56">
+                  <Link
+                    to={`/products?category=${category.slug}`}
+                    className="group block h-64 rounded-xl overflow-hidden relative shadow-md border border-neutral-200 bg-white hover:shadow-xl hover:border-black/15 transition-all duration-300"
+                    style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', boxShadow: '0 4px 20px 0 rgba(0,0,0,0.08)' }}
+                  >
+                    <img
+                      src={getCategoryImageUrl(category.image_url)}
+                      alt={category.name}
+                      className="absolute inset-0 w-full h-full object-cover object-center opacity-80 group-hover:opacity-90 transition-opacity duration-300 scale-100 group-hover:scale-105"
+                      style={{ zIndex: 0, transition: 'transform 0.4s cubic-bezier(.4,0,.2,1)' }}
+                      onError={e => {
+                        if (e.target.src !== '/placeholder-image.jpg') {
+                          e.target.onerror = null;
+                          e.target.src = '/placeholder-image.jpg';
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0" style={{zIndex:1, background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.0) 100%)'}} />
+                    <div className="relative z-10 flex flex-col justify-end h-full p-4">
+                      <h3 className="text-base font-thin text-white mb-1 tracking-tight" style={{fontFamily: 'serif', letterSpacing: '-0.03em', textShadow: '0 1px 8px rgba(0,0,0,0.4)', textTransform: 'uppercase'}}>{category.name}</h3>
+                      <span className="text-neutral-100 text-xs font-light mb-2" style={{textShadow: '0 1px 6px rgba(0,0,0,0.3)'}}>
+                        {category.description ? category.description.substring(0, 40) + (category.description.length > 40 ? '...' : '') : 'Curated selection'}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-white text-[11px] font-medium border-b border-white/30 pb-0.5 group-hover:border-white transition-colors w-fit" style={{textShadow: '0 1px 6px rgba(0,0,0,0.2)'}}>
+                        Explore <ArrowRight className="ml-0.5 h-2.5 w-2.5 group-hover:translate-x-0.5 transition-transform" />
+                      </span>
+                    </div>
+                  </Link>
+                </div>
+              ))
+            ) : (
+              <div className="w-full">
+                <p className="text-left text-neutral-500">No categories found.</p>
+              </div>
+            )}
           </div>
-        ) : (
-          <p className="text-left text-neutral-500">No categories found.</p>
-        )}
+        </div>
       </div>
     </section>
   )
