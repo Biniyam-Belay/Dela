@@ -1,10 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FiArrowLeft } from 'react-icons/fi';
+import { Helmet } from 'react-helmet';
 
 const NotFoundPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8">
+      <Helmet>
+        <title>404 Not Found | SuriAddis</title>
+        <meta
+          name="description"
+          content="Sorry, the page you are looking for does not exist. Return to the homepage or browse our products."
+        />
+      </Helmet>
       <div className="max-w-md w-full">
         {/* 404 Illustration */}
         <div className="text-center mb-8">

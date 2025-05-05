@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/authContext.jsx';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Helmet } from 'react-helmet';
 import Spinner from '../components/common/Spinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import { FiLogIn, FiMail, FiLock, FiArrowLeft } from 'react-icons/fi';
@@ -31,6 +32,10 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col justify-center pt-28 pb-12 px-4 sm:px-6 lg:px-8">
+      <Helmet>
+        <title>Login | SuriAddis</title>
+        <meta name="description" content="Sign in to your SuriAddis account to shop, track orders, and manage your profile." />
+      </Helmet>
       <div className="max-w-md w-full mx-auto">
         {/* Back Button */}
         <button 

@@ -486,6 +486,7 @@ const NewsletterSection = () => (
 
 // Customer Reviews Section
 const CustomerReviews = () => {
+  // TODO: Replace hardcoded reviews with real data from backend in production
   const reviews = [
     {
       id: 1,

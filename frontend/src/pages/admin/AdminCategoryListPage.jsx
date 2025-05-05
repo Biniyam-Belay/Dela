@@ -5,6 +5,7 @@ import { fetchAdminCategories, deleteAdminCategory } from '../../services/adminA
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiAlertCircle } from 'react-icons/fi';
+import { Helmet } from 'react-helmet';
 
 const AdminCategoryListPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,6 +49,10 @@ const AdminCategoryListPage = () => {
 
   return (
     <div className="space-y-6">
+      <Helmet>
+        <title>Admin Categories | SuriAddis</title>
+        <meta name="description" content="Admin: View and manage product categories in the SuriAddis store." />
+      </Helmet>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

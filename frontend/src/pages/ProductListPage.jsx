@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { useDispatch } from "react-redux"
 import toast from "react-hot-toast"
+import { Helmet } from "react-helmet"
 
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
@@ -122,24 +123,25 @@ const ProductCard = ({ product }) => {
     >
       {/* Quick Action Buttons */}
       <div className="absolute top-3 right-3 z-10 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm" onClick={handleAddToWishlist} disabled={isWishlistProcessing}>
+        <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm" onClick={handleAddToWishlist} disabled={isWishlistProcessing} aria-label={`Add ${product.name} to wishlist`}>
           <Heart size={16} className="text-gray-700" />
           <span className="sr-only">Add to wishlist</span>
         </Button>
-        <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm">
+        <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm" aria-label={`Quick view of ${product.name}`}>
           <Eye size={16} className="text-gray-700" />
           <span className="sr-only">Quick view</span>
         </Button>
       </div>
 
       {/* Product Image */}
-      <Link to={`/products/${product.slug}`} className="relative block aspect-square overflow-hidden bg-gray-100">
+      <Link to={`/products/${product.slug}`} className="relative block aspect-square overflow-hidden bg-gray-100" aria-label={`View details for ${product.name}`}> 
         <img
           src={imageUrl}
-          alt={product.name}
+          alt={product.name || 'Product image'}
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
           style={{ width: '100%', height: '100%' }}
           onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+          loading="lazy"
         />
         {product.discount > 0 && (
           <Badge
@@ -552,6 +554,10 @@ export default function ProductListPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen">
+      <Helmet>
+        <title>Shop Products | SuriAddis</title>
+        <meta name="description" content="Discover our curated collection of premium products. Filter, search, and shop the best items for your needs." />
+      </Helmet>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 md:pt-32">
         {/* Page Header */}
         <div className="mb-8">

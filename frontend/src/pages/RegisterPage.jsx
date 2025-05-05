@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import Spinner from '../components/common/Spinner';
 import ErrorMessage from '../components/common/ErrorMessage';
 import { FiUser, FiMail, FiLock, FiArrowLeft } from 'react-icons/fi';
+import { Helmet } from 'react-helmet';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -50,6 +51,10 @@ const RegisterPage = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col justify-center pt-28 pb-12 px-4 sm:px-6 lg:px-8">
+      <Helmet>
+        <title>Register | SuriAddis</title>
+        <meta name="description" content="Create a new account on SuriAddis. Register to shop, track orders, and manage your profile." />
+      </Helmet>
       <div className="max-w-md w-full mx-auto">
         {/* Back Button */}
         <button 

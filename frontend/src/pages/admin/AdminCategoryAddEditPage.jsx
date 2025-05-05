@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiArrowLeft, FiSave, FiImage, FiX } from 'react-icons/fi';
+import { Helmet } from 'react-helmet';
 import {
   fetchAdminCategoryById,
   createAdminCategory,
@@ -219,6 +220,10 @@ const AdminCategoryAddEditPage = () => {
 
   return (
     <div className="space-y-6">
+      <Helmet>
+        <title>Admin Add/Edit Category | SuriAddis</title>
+        <meta name="description" content="Admin: Add or edit a product category in the SuriAddis store." />
+      </Helmet>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">

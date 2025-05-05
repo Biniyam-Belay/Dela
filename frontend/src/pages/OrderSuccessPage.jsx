@@ -7,6 +7,7 @@ import { FaCheckCircle } from 'react-icons/fa';
 import { formatETB } from '../utils/utils'; // Import formatETB utility
 import { useDispatch } from 'react-redux';
 import { clearCart, clearLocalCartAndState } from '../store/cartSlice';
+import { Helmet } from 'react-helmet';
 
 const OrderSuccessPage = () => {
   const { orderId } = useParams(); // Get order ID from URL parameter
@@ -46,6 +47,10 @@ const OrderSuccessPage = () => {
 
   return (
     <div className="container mx-auto px-4 py-12 pt-28 text-center">
+      <Helmet>
+        <title>Order Success | SuriAddis</title>
+        <meta name="description" content="Your order was placed successfully! View your order details and track your shipment on SuriAddis." />
+      </Helmet>
       {/* Order Success Card */}
       <div className="max-w-lg mx-auto bg-white p-8 rounded-lg shadow-xl space-y-6">
         {/* Success Icon */}

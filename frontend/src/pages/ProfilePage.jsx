@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../contexts/authContext.jsx';
 import { Link } from 'react-router-dom';
 import { FiUser, FiMail, FiAward, FiCalendar, FiLogOut, FiShoppingBag, FiMapPin } from 'react-icons/fi';
+import { Helmet } from 'react-helmet';
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
@@ -19,6 +20,10 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-white py-16 px-4 sm:px-0 pt-32">
+      <Helmet>
+        <title>Profile | SuriAddis</title>
+        <meta name="description" content="Manage your profile, update your information, and view your account details on SuriAddis." />
+      </Helmet>
       <div className="max-w-2xl mx-auto">
         {/* Profile Header */}
         <div className="text-center mb-10">

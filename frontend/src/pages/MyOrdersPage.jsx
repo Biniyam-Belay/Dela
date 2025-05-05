@@ -5,6 +5,7 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import { Link } from 'react-router-dom';
 import { formatETB } from '../utils/utils';
 import { FiChevronRight, FiPackage, FiAlertCircle } from 'react-icons/fi';
+import { Helmet } from 'react-helmet';
 
 const getStatusBadgeClass = (status) => {
   switch ((status || '').toLowerCase()) {
@@ -39,6 +40,10 @@ const MyOrdersPage = () => {
 
   return (
     <div className="min-h-screen bg-white py-16 px-4 sm:px-0 pt-32">
+      <Helmet>
+        <title>My Orders | SuriAddis</title>
+        <meta name="description" content="Track your orders, view order history, and manage your purchases on SuriAddis." />
+      </Helmet>
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-semibold mb-10 text-center text-neutral-900 tracking-tight">My Orders</h1>
         {loading && <Spinner />}
