@@ -30,13 +30,18 @@ const initialState = {
 export const fetchCart = createAsyncThunk(
   'cart/fetchCart',
   async (_, { rejectWithValue }) => {
+    const getCartUrl = import.meta.env.VITE_SUPABASE_GET_CART_URL;
+    if (!getCartUrl) {
+      console.error("VITE_SUPABASE_GET_CART_URL is not set!");
+      return rejectWithValue("Cart API URL not configured");
+    }
     const accessToken = localStorage.getItem('accessToken');
     if (!accessToken) {
-      // Not logged in, return localStorage cart
       return getInitialCartState().items;
     }
     try {
-      const response = await fetch(import.meta.env.VITE_SUPABASE_GET_CART_URL, {
+      console.log("Cart API URL:", getCartUrl);
+      const response = await fetch(getCartUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -46,6 +51,7 @@ export const fetchCart = createAsyncThunk(
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
+        console.error('Cart API non-JSON response:', text.slice(0, 200));
         throw new Error('Invalid response from server: ' + text.slice(0, 100));
       }
       const data = await response.json();
