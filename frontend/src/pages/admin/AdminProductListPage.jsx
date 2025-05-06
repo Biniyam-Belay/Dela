@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchAdminProducts, deleteAdminProduct } from '../../services/adminApi';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchProducts, deleteProduct } from '../../store/productSlice';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiAlertCircle } from 'react-icons/fi';
@@ -15,6 +15,10 @@ const AdminProductListPage = () => {
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
   const currentSearch = searchParams.get('search') || '';
   const [searchTerm, setSearchTerm] = useState(currentSearch);
+  const dispatch = useDispatch();
+  const { items: products = [], loading, error } = useSelector((state) => state.products);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   // Debounce search input
   useEffect(() => {
@@ -33,43 +37,32 @@ const AdminProductListPage = () => {
     return () => clearTimeout(handler);
   }, [searchTerm, setSearchParams]);
 
-  // --- React Query for Products ---
-  const queryClient = useQueryClient();
-  const {
-    data,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['admin-products', { page: currentPage, search: currentSearch }],
-    queryFn: () => fetchAdminProducts({
+  useEffect(() => {
+    dispatch(fetchProducts({
       page: currentPage,
       limit: 10,
       search: currentSearch || undefined,
-    }),
-    keepPreviousData: true,
-    staleTime: 1000 * 60 * 3, // 3 minutes
-  });
-
-  const products = data?.data || [];
-  const totalPages = data?.totalPages || 1;
-  const totalProducts = data?.totalProducts || 0;
+    }));
+  }, [dispatch, currentPage, currentSearch]);
 
   const handleDelete = async (productId, productName) => {
     if (window.confirm(`Delete "${productName}"? This cannot be undone.`)) {
+      setDeletingId(productId);
+      setDeleteError(null);
       try {
-        await deleteAdminProduct(productId);
-        queryClient.invalidateQueries(['admin-products']);
-        refetch();
+        await dispatch(deleteProduct(productId)).unwrap();
         toast.success('Product deleted successfully!');
       } catch (err) {
-        toast.error(err.error || err.message || 'Failed to delete product.');
+        setDeleteError(err?.message || err || 'Failed to delete product.');
+        toast.error(err?.message || err || 'Failed to delete product.');
+      } finally {
+        setDeletingId(null);
       }
     }
   };
 
   const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
+    if (newPage >= 1) {
       setSearchParams((prev) => {
         const newParams = new URLSearchParams(prev);
         newParams.set('page', newPage.toString());
@@ -77,6 +70,17 @@ const AdminProductListPage = () => {
       }, { replace: true });
     }
   };
+
+  // Pagination and total count logic (Redux version: count from products.length or add to slice if needed)
+  const totalPages = 1; // Placeholder: update if you add total count to Redux
+  const totalProducts = products.length;
+
+  // Filter products by search term (if needed)
+  const filteredProducts = searchTerm
+    ? products.filter(product =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : products;
 
   return (
     <div className="space-y-6">
@@ -89,7 +93,7 @@ const AdminProductListPage = () => {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Products</h1>
           <p className="text-slate-500 mt-1">
-            {isLoading ? 'Loading...' : `${totalProducts} products found`}
+            {loading ? 'Loading...' : `${totalProducts} products found`}
           </p>
         </div>
         <Link
@@ -114,20 +118,21 @@ const AdminProductListPage = () => {
       </div>
 
       {/* Error Message */}
-      {error && <ErrorMessage message={error.error || error.message || 'Failed to load products.'} />}
+      {error && <ErrorMessage message={error} />}
+      {deleteError && <ErrorMessage message={deleteError} />}
 
       {/* Content Area */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {isLoading ? (
+        {loading ? (
           <div className="flex justify-center items-center p-12">
             <Spinner />
           </div>
-        ) : products.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center p-12 text-slate-500">
             <FiAlertCircle className="mx-auto h-10 w-10 text-slate-400 mb-4" />
             <p className="font-medium">No products found</p>
-            {currentSearch && <p className="text-sm mt-1">Try adjusting your search.</p>}
-            {!currentSearch && (
+            {searchTerm && <p className="text-sm mt-1">Try adjusting your search.</p>}
+            {!searchTerm && (
               <Link
                 to="/admin/products/new"
                 className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-slate-900 text-white hover:bg-slate-800 text-sm"
@@ -161,7 +166,7 @@ const AdminProductListPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {products.map((product) => (
+                  {filteredProducts.map((product) => (
                     <tr key={product.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
@@ -204,10 +209,13 @@ const AdminProductListPage = () => {
                           </Link>
                           <button
                             onClick={() => handleDelete(product.id, product.name)}
-                            className="text-slate-600 hover:text-red-600 transition-colors"
+                            disabled={deletingId === product.id || loading}
+                            className={`text-slate-600 hover:text-red-600 transition-colors ${
+                              deletingId === product.id || loading ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                             title="Delete"
                           >
-                            <FiTrash2 size={16} />
+                            {deletingId === product.id ? <Spinner size="xs" /> : <FiTrash2 size={16} />}
                           </button>
                         </div>
                       </td>

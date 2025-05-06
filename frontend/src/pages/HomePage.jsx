@@ -1,6 +1,5 @@
 "use client"
 import { Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState, useCallback } from "react"
 import { supabase } from "../services/supabaseClient"
 import {
@@ -18,13 +17,15 @@ import {
   ChevronRight,
 } from "lucide-react"
 import useEmblaCarousel from 'embla-carousel-react'
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchProducts } from '../store/productSlice';
+import { fetchCategories } from '../store/categorySlice';
 
 import { Button } from "../components/ui/button"
 import ProductCard from "../components/ui/ProductCard.jsx"
 import SkeletonCard from "../components/ui/SkeletonCard.jsx"
 import ErrorMessage from "../components/common/ErrorMessage.jsx"
 import { Input } from "../components/ui/input"
-import { fetchProducts, fetchCategories } from "../services/productApi"
 import Header from '../components/layout/Header'
 import CategorySkeletonCard from "../components/ui/CategorySkeletonCard.jsx"
 
@@ -37,7 +38,7 @@ const HeroSection = () => {
   const [heroImageUrl, setHeroImageUrl] = useState("/placeholder.svg?height=1200&width=2000")
 
   useEffect(() => {
-    const { data } = supabase.storage.from("public_assets").getPublicUrl("landing.jpg")
+    const { data } = supabase.storage.from("public_assets").getPublicUrl("landing.webp")
     if (data?.publicUrl) setHeroImageUrl(data.publicUrl)
   }, [])
 
@@ -131,15 +132,12 @@ const AdBanner = () => (
 
 // White-themed, seamless Category Showcase Section with Carousel
 const CategoryShowcase = () => {
-  const {
-    data: categoriesData,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => fetchCategories(),
-    select: (data) => data?.data || [],
-  })
+  const dispatch = useDispatch();
+  const { items: categoriesData = [], loading: categoriesLoading, error: categoriesError } = useSelector((state) => state.categories);
+
+  useEffect(() => {
+    dispatch(fetchCategories());
+  }, [dispatch]);
 
   // Embla Carousel setup
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -206,13 +204,13 @@ const CategoryShowcase = () => {
 
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex gap-4 -ml-2 pl-2">
-            {isLoading ? (
+            {categoriesLoading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <div key={index} className="flex-shrink-0 w-48 md:w-52 lg:w-56">
                   <CategorySkeletonCard />
                 </div>
               ))
-            ) : error ? (
+            ) : categoriesError ? (
               <div className="w-full">
                 <ErrorMessage message="Could not load categories" />
               </div>
@@ -263,15 +261,12 @@ const CategoryShowcase = () => {
 
 // Trending Products Section
 const TrendingProducts = () => {
-  const {
-    data: productsData,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["products", { limit: 8, page: 1 }],
-    queryFn: () => fetchProducts({ limit: 8 }),
-    select: (data) => data?.data || [],
-  })
+  const dispatch = useDispatch();
+  const { items: productsData = [], loading, error } = useSelector((state) => state.products);
+
+  useEffect(() => {
+    dispatch(fetchProducts({ limit: 8 }));
+  }, [dispatch]);
 
   return (
     <section className="container mx-auto px-4 sm:px-6 py-16 sm:py-24">
@@ -293,7 +288,7 @@ const TrendingProducts = () => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 w-full max-w-full">
-        {isLoading ? (
+        {loading ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : error ? (
           <ErrorMessage message="Could not load products" />
@@ -363,7 +358,7 @@ const FeaturedBanner = () => (
         <div className="relative">
           <div className="aspect-[3/4] relative">
             <img
-              src={supabase.storage.from("public_assets").getPublicUrl("signature.jpg").data.publicUrl || "/placeholder.svg?height=800&width=600"}
+              src={supabase.storage.from("public_assets").getPublicUrl("signature.webp").data.publicUrl || "/placeholder.svg?height=800&width=600"}
               alt="Signature Collection"
               className="object-cover w-full h-full rounded-lg"
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
@@ -420,15 +415,12 @@ const BrandHighlights = () => (
 
 // Featured Products Section
 const FeaturedProducts = () => {
-  const {
-    data: productsData,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["products", { limit: 4, featured: true }],
-    queryFn: () => fetchProducts({ limit: 4 }),
-    select: (data) => data?.data || [],
-  })
+  const dispatch = useDispatch();
+  const { items: productsData = [], loading, error } = useSelector((state) => state.products);
+
+  useEffect(() => {
+    dispatch(fetchProducts({ limit: 4, featured: true }));
+  }, [dispatch]);
 
   return (
     <section className="py-16 sm:py-24 bg-white">
@@ -441,7 +433,7 @@ const FeaturedProducts = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
-          {isLoading ? (
+          {loading ? (
             Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
           ) : error ? (
             <ErrorMessage message="Could not load featured products" />

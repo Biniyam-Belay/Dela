@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchAdminCategories, deleteAdminCategory } from '../../services/adminApi';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchCategories, deleteCategory } from '../../store/categorySlice';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiAlertCircle } from 'react-icons/fi';
@@ -9,36 +9,26 @@ import { Helmet } from 'react-helmet';
 
 const AdminCategoryListPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+  const { items: categories = [], loading, error } = useSelector((state) => state.categories);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
-  // Fetch categories using useQuery
-  const {
-    data: categories = [],
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ['adminCategories'],
-    queryFn: fetchAdminCategories,
-    select: (data) => data?.data || [],
-    staleTime: 1000 * 60 * 3,
-  });
+  useEffect(() => {
+    dispatch(fetchCategories());
+  }, [dispatch]);
 
-  // Delete category mutation
-  const deleteMutation = useMutation({
-    mutationFn: deleteAdminCategory,
-    onSuccess: () => {
-      // Invalidate and refetch the categories query after deletion
-      queryClient.invalidateQueries({ queryKey: ['adminCategories'] });
-    },
-    onError: (err) => {
-      console.error("Delete error:", err);
-      alert(err.error || err.message || 'Failed to delete category.');
-    },
-  });
-
-  const handleDelete = (categoryId, categoryName) => {
+  const handleDelete = async (categoryId, categoryName) => {
     if (window.confirm(`Are you sure you want to delete "${categoryName}"?`)) {
-      deleteMutation.mutate(categoryId);
+      setDeletingId(categoryId);
+      setDeleteError(null);
+      try {
+        await dispatch(deleteCategory(categoryId)).unwrap();
+      } catch (err) {
+        setDeleteError(err || 'Failed to delete category.');
+      } finally {
+        setDeletingId(null);
+      }
     }
   };
 
@@ -81,12 +71,12 @@ const AdminCategoryListPage = () => {
       </div>
 
       {/* Error Message */}
-      {error && <ErrorMessage message={error.error || error.message || 'Failed to load categories.'} />}
-      {deleteMutation.isError && <ErrorMessage message={deleteMutation.error.message || 'Failed to delete category.'} />}
+      {error && <ErrorMessage message={error} />}
+      {deleteError && <ErrorMessage message={deleteError} />}
 
       {/* Content Area */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {isLoading ? (
+        {loading ? (
           <div className="flex justify-center items-center p-12">
             <Spinner />
           </div>
@@ -148,13 +138,13 @@ const AdminCategoryListPage = () => {
                         </Link>
                         <button
                           onClick={() => handleDelete(category.id, category.name)}
-                          disabled={deleteMutation.isLoading && deleteMutation.variables === category.id}
+                          disabled={deletingId === category.id || loading}
                           className={`text-slate-600 hover:text-red-600 transition-colors ${
-                            deleteMutation.isLoading && deleteMutation.variables === category.id ? 'opacity-50 cursor-not-allowed' : ''
+                            deletingId === category.id || loading ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                           title="Delete"
                         >
-                          {deleteMutation.isLoading && deleteMutation.variables === category.id ? <Spinner size="xs" /> : <FiTrash2 size={16} />}
+                          {deletingId === category.id ? <Spinner size="xs" /> : <FiTrash2 size={16} />}
                         </button>
                       </div>
                     </td>

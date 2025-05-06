@@ -3,14 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FiArrowLeft, FiSave, FiImage, FiX } from 'react-icons/fi';
 import { Helmet } from 'react-helmet';
-import {
-  fetchAdminCategoryById,
-  createAdminCategory,
-  updateAdminCategory,
-} from '../../services/adminApi';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchCategoryById, createCategory, updateCategory } from '../../store/categorySlice';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { supabase } from '../../services/supabaseClient';
@@ -23,7 +19,6 @@ const categorySchema = z.object({
 const AdminCategoryAddEditPage = () => {
   const { categoryId } = useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const isEditMode = Boolean(categoryId);
 
   const [imageFile, setImageFile] = useState(null);
@@ -43,51 +38,24 @@ const AdminCategoryAddEditPage = () => {
     },
   });
 
-  const {
-    data: categoryData,
-    isLoading: isLoadingCategory,
-    error: fetchError,
-  } = useQuery({
-    queryKey: ['adminCategoryDetail', categoryId],
-    queryFn: () => fetchAdminCategoryById(categoryId),
-    enabled: isEditMode,
-    select: (data) => data?.data || null,
-    onSuccess: (data) => {
-      if (data) {
-        reset({
-          name: data.name || '',
-          description: data.description || '',
-        });
-        if (data.image_url) {
-          const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
-          const imageUrl = `${backendUrl}${data.image_url.startsWith('/') ? '' : '/'}${data.image_url}`;
-          setExistingImageUrl(imageUrl);
-          setImagePreview(imageUrl);
-        } else {
-          setExistingImageUrl(null);
-          setImagePreview(null);
-        }
-        setImageFile(null);
-      }
-    },
-    onError: (err) => {
-      console.error('Error loading category:', err);
-    },
-  });
+  const dispatch = useDispatch();
+  const { currentCategory, loading, error, mutationStatus, mutationError } = useSelector((state) => state.categories);
 
-  // Effect to populate form in edit mode
   useEffect(() => {
-    // Only run if in edit mode AND categoryData has been successfully fetched
-    if (isEditMode && categoryData) {
-      console.log("Category Data for Reset:", categoryData); // Debugging line
+    if (isEditMode) {
+      dispatch(fetchCategoryById(categoryId));
+    }
+  }, [dispatch, isEditMode, categoryId]);
+
+  useEffect(() => {
+    if (isEditMode && currentCategory) {
       reset({
-        name: categoryData.name || '',
-        description: categoryData.description || '',
+        name: currentCategory.name || '',
+        description: currentCategory.description || '',
       });
-      // Set image preview if an image exists
-      if (categoryData.image_url) {
+      if (currentCategory.image_url) {
         const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
-        const imageUrl = `${backendUrl}${categoryData.image_url.startsWith('/') ? '' : '/'}${categoryData.image_url}`;
+        const imageUrl = `${backendUrl}${currentCategory.image_url.startsWith('/') ? '' : '/'}${currentCategory.image_url}`;
         setExistingImageUrl(imageUrl);
         setImagePreview(imageUrl);
       } else {
@@ -96,95 +64,12 @@ const AdminCategoryAddEditPage = () => {
       }
       setImageFile(null);
     } else if (!isEditMode) {
-      // Reset form for add mode or if data fetch fails in edit mode initially
       reset({ name: '', description: '' });
       setImagePreview(null);
       setExistingImageUrl(null);
       setImageFile(null);
     }
-    // Ensure reset is included in dependencies if it's stable (which it should be from react-hook-form)
-    // Key dependencies are isEditMode and the fetched data (categoryData)
-  }, [isEditMode, categoryData, reset]);
-
-  const categoryMutation = useMutation({
-    mutationFn: async (formData) => {
-      let finalImageUrl = existingImageUrl;
-
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `category-${Date.now()}.${fileExt}`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('categories')
-          .upload(fileName, imageFile, { cacheControl: '3600', upsert: false });
-
-        if (uploadError) {
-          console.error('Supabase Storage Upload Error:', uploadError);
-          throw new Error('Image upload failed');
-        }
-
-        if (uploadData?.path) {
-          // Always store the image_url as /categories/filename.png
-          finalImageUrl = `/categories/${fileName}`;
-          console.log('Uploaded image relative path:', finalImageUrl);
-
-          // --- Delete previous image if it exists and is different ---
-          if (isEditMode && existingImageUrl) {
-            console.log('[DEBUG] existingImageUrl before deletion attempt:', existingImageUrl);
-            // Extract the relative path from the full URL
-            const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
-            let oldPath = existingImageUrl.replace(backendUrl, '');
-            if (oldPath.startsWith('/')) oldPath = oldPath.substring(1);
-            // If oldPath starts with 'categories/', keep it, else prepend
-            if (!oldPath.startsWith('categories/')) {
-              oldPath = `categories/${oldPath}`;
-            }
-            // Remove any query params (e.g., ?t=...) that Supabase adds for public URLs
-            oldPath = oldPath.split('?')[0];
-            // Only delete if the oldPath is not the same as the new file
-            if (oldPath && oldPath !== `categories/${fileName}`) {
-              console.log('[DEBUG] Attempting to delete old image path:', oldPath);
-              try {
-                const { data: removeData, error: removeError } = await supabase.storage.from('categories').remove([oldPath]);
-                if (removeError) {
-                  console.error('[DEBUG] Failed to delete old category image:', removeError);
-                } else {
-                  console.log('[DEBUG] Successfully deleted old category image:', oldPath, 'Response:', removeData);
-                }
-              } catch (e) {
-                console.error('[DEBUG] Exception while deleting old category image:', e);
-              }
-            }
-          }
-        } else {
-          console.warn('Upload successful but path not found in response.');
-        }
-      } else if (existingImageUrl && !imagePreview) {
-        finalImageUrl = null;
-      }
-
-      const categoryPayload = {
-        name: formData.name,
-        description: formData.description || null,
-        image_url: finalImageUrl,
-      };
-
-      console.log('Sending category payload:', categoryPayload);
-
-      if (isEditMode) {
-        return updateAdminCategory(categoryId, categoryPayload);
-      } else {
-        return createAdminCategory(categoryPayload);
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminCategories'] });
-      queryClient.invalidateQueries({ queryKey: ['adminCategoryDetail', categoryId] });
-      navigate('/admin/categories');
-    },
-    onError: (err) => {
-      console.error(`Error ${isEditMode ? 'updating' : 'creating'} category:`, err);
-    },
-  });
+  }, [isEditMode, currentCategory, reset]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -201,11 +86,66 @@ const AdminCategoryAddEditPage = () => {
     setImagePreview(null);
   };
 
-  const onSubmit = (data) => {
-    categoryMutation.mutate(data);
+  const onSubmit = async (data) => {
+    let finalImageUrl = existingImageUrl;
+
+    if (imageFile) {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `category-${Date.now()}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('categories')
+        .upload(fileName, imageFile, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) {
+        console.error('Supabase Storage Upload Error:', uploadError);
+        throw new Error('Image upload failed');
+      }
+
+      if (uploadData?.path) {
+        finalImageUrl = `/categories/${fileName}`;
+
+        if (isEditMode && existingImageUrl) {
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+          let oldPath = existingImageUrl.replace(backendUrl, '');
+          if (oldPath.startsWith('/')) oldPath = oldPath.substring(1);
+          if (!oldPath.startsWith('categories/')) {
+            oldPath = `categories/${oldPath}`;
+          }
+          oldPath = oldPath.split('?')[0];
+          if (oldPath && oldPath !== `categories/${fileName}`) {
+            try {
+              const { data: removeData, error: removeError } = await supabase.storage.from('categories').remove([oldPath]);
+              if (removeError) {
+                console.error('Failed to delete old category image:', removeError);
+              }
+            } catch (e) {
+              console.error('Exception while deleting old category image:', e);
+            }
+          }
+        }
+      }
+    } else if (existingImageUrl && !imagePreview) {
+      finalImageUrl = null;
+    }
+
+    const categoryPayload = {
+      name: data.name,
+      description: data.description || null,
+      image_url: finalImageUrl,
+    };
+
+    if (isEditMode) {
+      await dispatch(updateCategory({ categoryId, categoryData: categoryPayload }));
+    } else {
+      await dispatch(createCategory(categoryPayload));
+    }
+
+    if (!mutationError) {
+      navigate('/admin/categories');
+    }
   };
 
-  if (isLoadingCategory && isEditMode) {
+  if (loading && isEditMode) {
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner />
@@ -244,9 +184,9 @@ const AdminCategoryAddEditPage = () => {
 
       <div className="bg-white rounded-lg shadow-sm p-6 md:p-8 border border-slate-200">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {fetchError && <ErrorMessage message={fetchError.message || 'Failed to load category data.'} />}
-          {categoryMutation.isError && (
-            <ErrorMessage message={categoryMutation.error?.message || `Failed to ${isEditMode ? 'update' : 'create'} category.`} />
+          {error && <ErrorMessage message={error.message || 'Failed to load category data.'} />}
+          {mutationError && (
+            <ErrorMessage message={mutationError.message || `Failed to ${isEditMode ? 'update' : 'create'} category.`} />
           )}
 
           <div>
@@ -334,12 +274,12 @@ const AdminCategoryAddEditPage = () => {
             </Link>
             <button
               type="submit"
-              disabled={categoryMutation.isPending}
+              disabled={mutationStatus === 'pending'}
               className={`px-5 py-2 rounded-md text-sm text-white flex items-center gap-2 ${
-                categoryMutation.isPending ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'
+                mutationStatus === 'pending' ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'
               } transition-colors`}
             >
-              {categoryMutation.isPending ? (
+              {mutationStatus === 'pending' ? (
                 <Spinner size="sm" />
               ) : (
                 <FiSave size={16} />

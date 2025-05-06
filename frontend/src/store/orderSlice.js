@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { createOrderApi } from '../services/orderApi';
+import { fetchAdminOrders } from '../services/adminApi';
 
 // Async thunk for creating an order
 export const createOrder = createAsyncThunk(
@@ -18,12 +19,35 @@ export const createOrder = createAsyncThunk(
   }
 );
 
+// Async thunk for fetching orders
+export const fetchOrders = createAsyncThunk(
+  'orders/fetchOrders',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await fetchAdminOrders(params);
+      if (response.data) {
+        return response.data;
+      } else if (response.success) {
+        return response;
+      } else {
+        throw new Error(response.error || 'Failed to fetch orders');
+      }
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to fetch orders');
+    }
+  }
+);
+
 const orderSlice = createSlice({
   name: 'order',
   initialState: {
     order: null,
     status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
     error: null,
+    orders: [],
+    totalPages: 1,
+    totalOrders: 0,
+    loading: false,
   },
   reducers: {
     resetOrderState: (state) => {
@@ -46,6 +70,20 @@ const orderSlice = createSlice({
       .addCase(createOrder.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload || action.error.message;
+      })
+      .addCase(fetchOrders.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchOrders.fulfilled, (state, action) => {
+        state.loading = false;
+        state.orders = action.payload.orders || [];
+        state.totalPages = action.payload.totalPages || 1;
+        state.totalOrders = action.payload.totalOrders || 0;
+      })
+      .addCase(fetchOrders.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || 'Failed to fetch orders';
       });
   },
 });

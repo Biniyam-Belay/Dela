@@ -4,6 +4,7 @@ import orderReducer from "./orderSlice.js"
 import productReducer from "./productSlice.js"
 import categoryReducer from "./categorySlice.js"
 import wishlistReducer from "./wishlistSlice.js" // Import the new wishlist reducer
+import userReducer from "./userSlice.js" // Import the new user reducer
 
 const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ const store = configureStore({
     products: productReducer,
     categories: categoryReducer,
     wishlist: wishlistReducer, // Add the wishlist reducer here
+    users: userReducer, // Add the user reducer here
   },
 })
 

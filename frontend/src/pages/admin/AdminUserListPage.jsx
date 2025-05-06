@@ -1,15 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-// --- Import the real function ---
-import { fetchAdminUsers } from '../../services/adminApi.jsx';
-
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchUsers, deleteUser } from '../../store/userSlice';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import Pagination from '../../components/common/Pagination';
 import { FiSearch, FiEdit2, FiUserPlus, FiAlertCircle, FiChevronDown } from 'react-icons/fi';
 
-// Helper for role badge styling
 const getRoleBadgeClass = (role) => {
     switch (role?.toLowerCase()) {
         case 'admin': return 'bg-purple-100 text-purple-800';
@@ -23,32 +20,23 @@ const AdminUserListPage = () => {
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState(searchParams.get('role') || '');
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
+  const userRoles = ['Admin', 'Customer'];
+  const dispatch = useDispatch();
+  const { items: users = [], loading, error } = useSelector((state) => state.users);
+  const [deleteError, setDeleteError] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
-  const userRoles = ['Admin', 'Customer']; // Example roles
-
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ['admin-users', { page: currentPage, search: searchTerm, role: roleFilter }],
-    queryFn: () =>
-      fetchAdminUsers({
-        page: currentPage,
-        search: searchTerm,
-        role: roleFilter,
-        limit: 10,
-      }),
-    keepPreviousData: true,
-    staleTime: 1000 * 60 * 3,
-  });
-
-  const users = data?.data?.users || [];
-  const totalPages = data?.data?.totalPages || 1;
-  const totalUsers = data?.data?.totalUsers || 0;
+  useEffect(() => {
+    dispatch(fetchUsers({
+      page: currentPage,
+      limit: 10,
+      search: searchTerm,
+      role: roleFilter,
+    }));
+  }, [dispatch, currentPage, searchTerm, roleFilter]);
 
   const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= totalPages) {
+    if (newPage >= 1) {
       setSearchParams(prev => {
         const newParams = new URLSearchParams(prev);
         newParams.set('page', newPage.toString());
@@ -87,6 +75,10 @@ const AdminUserListPage = () => {
       }, { replace: true });
   };
 
+  // Placeholder for pagination/total count
+  const totalPages = 1;
+  const totalUsers = users.length;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -94,7 +86,7 @@ const AdminUserListPage = () => {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Users</h1>
           <p className="text-slate-500 mt-1">
-            {isLoading ? 'Loading users...' : `${totalUsers} user${totalUsers !== 1 ? 's' : ''} found`}
+            {loading ? 'Loading users...' : `${totalUsers} user${totalUsers !== 1 ? 's' : ''} found`}
           </p>
         </div>
         <Link
@@ -134,11 +126,12 @@ const AdminUserListPage = () => {
       </div>
 
       {/* Error Message */}
-      {error && <ErrorMessage message={error.error || error.message || 'Failed to load users.'} />}
+      {error && <ErrorMessage message={error} />}
+      {deleteError && <ErrorMessage message={deleteError} />}
 
       {/* Content Area */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {isLoading ? (
+        {loading ? (
           <div className="flex justify-center items-center p-12 min-h-[200px]">
             <Spinner />
           </div>

@@ -1,19 +1,20 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ShoppingBag, RefreshCw, Clock, Loader2 } from "lucide-react";
-import { useQuery } from '@tanstack/react-query';
-import { fetchProducts } from '../services/productApi';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchProducts } from '../store/productSlice';
 import ProductCard from '../components/ui/ProductCard';
 import { Input } from "../components/ui/input"; // Import Input
 import { Button } from "../components/ui/button"; // Import Button
 import { Helmet } from 'react-helmet';
+import { supabase } from '../services/supabaseClient';
 
-const collections = [
+const initialCollections = [
   {
     id: "signature",
     name: "Signature Collection",
     description: "Handcrafted luxury essentials. Timeless pieces for the modern wardrobe.",
-    image: "/images/hero-2.jpg",
+    image: "signature-collection.jpg",
     highlight: "New Season",
     cta: "Explore Collection",
     url: "/collections/signature",
@@ -23,7 +24,7 @@ const collections = [
     id: "minimalist",
     name: "Minimalist Edit",
     description: "Sleek, versatile, and designed for everyday elegance.",
-    image: "/images/tshirt-blue.jpg",
+    image: "minimalist-edit.jpg",
     highlight: "Minimalist",
     cta: "Shop Minimalist",
     url: "/collections/minimalist",
@@ -33,7 +34,7 @@ const collections = [
     id: "tech",
     name: "Tech Essentials",
     description: "Smart accessories for a connected lifestyle.",
-    image: "/images/smartwatch.jpg",
+    image: "tech-essentials.jpg",
     highlight: "Tech",
     cta: "Shop Tech",
     url: "/collections/tech",
@@ -62,25 +63,52 @@ const priceRanges = [
 ];
 
 const CollectionsPage = () => {
-  // Fetch flash deals (products with flash_deal=true and not expired)
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['flash-deals'],
-    queryFn: () => fetchProducts({ flash_deal: true, limit: 8 }),
-    select: (res) => res?.data?.filter(
-      p => p.flash_deal && (!p.flash_deal_end || new Date(p.flash_deal_end) > new Date())
-    ) || [],
-    staleTime: 1000 * 60 * 5,
-  });
+  const dispatch = useDispatch();
+  const { items: allProducts = [], loading, error } = useSelector((state) => state.products);
+
+  // Flash deals
+  useEffect(() => {
+    dispatch(fetchProducts({ flash_deal: true, limit: 8 }));
+  }, [dispatch]);
+  const flashDeals = allProducts.filter(
+    p => p.flash_deal && (!p.flash_deal_end || new Date(p.flash_deal_end) > new Date())
+  );
+
+  // Shop by price
+  const [selectedPrice, setSelectedPrice] = useState(null);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  useEffect(() => {
+    if (selectedPrice) {
+      dispatch(fetchProducts({
+        ...(selectedPrice.min !== null ? { price_gte: selectedPrice.min } : {}),
+        ...(selectedPrice.max !== null ? { price_lte: selectedPrice.max } : {}),
+        limit: 8,
+      }));
+      setFilteredProducts(
+        allProducts.filter(p => {
+          const price = p.price || 0;
+          return (!selectedPrice.min || price >= selectedPrice.min) &&
+                 (!selectedPrice.max || price <= selectedPrice.max);
+        })
+      );
+    }
+  }, [dispatch, selectedPrice, allProducts]);
+
+  // New arrivals
+  useEffect(() => {
+    dispatch(fetchProducts({ sortBy: 'createdAt', order: 'desc', limit: 4 }));
+  }, [dispatch]);
+  const newArrivals = allProducts.slice(0, 4);
 
   // Find soonest-ending deal for countdown
   const soonestEnd = useMemo(() => {
-    if (!data?.length) return null;
-    return data.reduce((min, p) => {
+    if (!flashDeals?.length) return null;
+    return flashDeals.reduce((min, p) => {
       if (!p.flash_deal_end) return min;
       const end = new Date(p.flash_deal_end);
       return (!min || end < min) ? end : min;
     }, null);
-  }, [data]);
+  }, [flashDeals]);
 
   // Countdown timer state
   const [timer, setTimer] = useState('');
@@ -102,41 +130,22 @@ const CollectionsPage = () => {
     return () => clearInterval(interval);
   }, [soonestEnd]);
 
-  const [selectedPrice, setSelectedPrice] = useState(null);
+  const [collections, setCollections] = useState(initialCollections);
 
-  const {
-    data: filteredProducts,
-    isLoading: filteredLoading,
-    error: filteredError,
-  } = useQuery({
-    queryKey: [
-      'shop-by-price',
-      selectedPrice?.min,
-      selectedPrice?.max,
-    ],
-    queryFn: () => fetchProducts({
-      ...(selectedPrice ? {
-        ...(selectedPrice.min !== null ? { price_gte: selectedPrice.min } : {}),
-        ...(selectedPrice.max !== null ? { price_lte: selectedPrice.max } : {}),
-      } : {}),
-      limit: 8,
-    }),
-    enabled: !!selectedPrice,
-    select: (res) => res?.data || [],
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // Fetch New Arrivals
-  const {
-    data: newArrivals,
-    isLoading: newArrivalsLoading,
-    error: newArrivalsError,
-  } = useQuery({
-    queryKey: ['new-arrivals'],
-    queryFn: () => fetchProducts({ sortBy: 'createdAt', order: 'desc', limit: 4 }),
-    select: (res) => res?.data || [],
-    staleTime: 1000 * 60 * 10, // Cache for 10 minutes
-  });
+  useEffect(() => {
+    // Fetch public URLs for each collection image from Supabase Storage
+    const fetchCollectionImages = async () => {
+      const updated = await Promise.all(initialCollections.map(async (col) => {
+        const { data } = supabase.storage.from('public_assets').getPublicUrl(col.image);
+        return {
+          ...col,
+          imageUrl: data?.publicUrl || '/placeholder-image.jpg',
+        };
+      }));
+      setCollections(updated);
+    };
+    fetchCollectionImages();
+  }, []);
 
   return (
     <div className="bg-white min-h-screen text-neutral-900">
@@ -174,7 +183,7 @@ const CollectionsPage = () => {
             <div key={col.id} className="relative group rounded-2xl overflow-hidden shadow-lg border border-neutral-100 bg-white">
               <div className="aspect-[3/4] relative overflow-hidden">
                 <img
-                  src={col.image}
+                  src={col.imageUrl}
                   alt={col.name}
                   className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
@@ -207,13 +216,13 @@ const CollectionsPage = () => {
       {/* Bold Fashionistic Ad Banner - Added bottom margin */}
       <section className="container mx-auto px-4 sm:px-6 mb-24"> {/* Increased bottom margin */}
         <div className="relative flex flex-col md:flex-row items-stretch rounded-none overflow-hidden border-y border-black bg-white shadow-none">
-          {/* Left: High-Fashion Image Placeholder */}
+          {/* Left: High-Fashion Image from Supabase Storage */}
           <div className="flex-1 md:w-1/2 relative min-h-[400px] md:min-h-[500px] bg-neutral-100 border-r border-black">
             <img
-              src="/images/suriAddis-hero.jpg" // Replace with a high-fashion, edgy image
-              alt="Fashion Forward Collection"
-              className="absolute inset-0 w-full h-full object-cover object-center grayscale filter"
-              onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+              src={supabase.storage.from("public_assets").getPublicUrl("signature.webp").data.publicUrl || "/placeholder.svg?height=800&width=600"}
+              alt="Signature Collection"
+              className="absolute inset-0 w-full h-full object-cover object-center grayscale filter rounded-lg"
+              onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.jpg"; }}
             />
             <div className="absolute inset-0 bg-black/10 pointer-events-none"></div>
           </div>
@@ -239,7 +248,7 @@ const CollectionsPage = () => {
           <h2 className="text-3xl font-light mb-2 tracking-tight">Fresh Off the Press</h2>
           <p className="text-neutral-500 text-sm max-w-md mx-auto">Explore the latest styles landing in our collection.</p>
         </div>
-        {newArrivalsLoading ? (
+        {loading ? (
           // Loading state: Match HomePage grid (2 cols base)
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -250,7 +259,7 @@ const CollectionsPage = () => {
               </div>
             ))}
           </div>
-        ) : newArrivalsError ? (
+        ) : error ? (
           <div className="text-center text-red-500 py-10">Could not load new arrivals. Please try again later.</div>
         ) : newArrivals && newArrivals.length > 0 ? (
           // Match HomePage grid: 2 cols base, 3 sm, 4 lg - with smaller gap
@@ -304,7 +313,7 @@ const CollectionsPage = () => {
       </section>
 
       {/* Flash Deals / Limited Time Offers */}
-      {!isLoading && data && data.length > 0 && (
+      {!loading && flashDeals && flashDeals.length > 0 && (
         <section className="container mx-auto px-4 sm:px-6 mb-16">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-8 gap-4">
             <div>
@@ -317,7 +326,7 @@ const CollectionsPage = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {data.map(product => (
+            {flashDeals.map(product => (
               <ProductCard key={product.id} product={product} featured />
             ))}
           </div>

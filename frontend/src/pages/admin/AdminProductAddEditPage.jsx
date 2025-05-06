@@ -3,15 +3,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Helmet } from 'react-helmet';
-import {
-  fetchAdminProductById,
-  createAdminProduct,
-  updateAdminProduct,
-  fetchAdminCategories,
-} from '../../services/adminApi';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchProductById, createProduct, updateProduct } from '../../store/productSlice';
+import { fetchCategories } from '../../store/categorySlice';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { FiTrash2, FiSave, FiX, FiPlus, FiChevronLeft, FiUploadCloud } from 'react-icons/fi';
@@ -36,9 +32,10 @@ const AdminProductAddEditPage = () => {
   const navigate = useNavigate();
   const isEditMode = Boolean(productId);
 
-  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+  const { currentProduct, loading: productLoading, error: productError, mutationStatus, mutationError } = useSelector((state) => state.products);
+  const { items: categoriesData = [], loading: categoriesLoading, error: categoriesError } = useSelector((state) => state.categories);
 
-  const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState(null);
   const [existingImages, setExistingImages] = useState([]);
   const [newImageFiles, setNewImageFiles] = useState([]);
@@ -73,33 +70,16 @@ const AdminProductAddEditPage = () => {
 
   const isActiveValue = watch('isActive');
 
-  // Fetch categories with caching
-  const {
-    data: categoriesData,
-    isLoading: categoriesLoading,
-    error: categoriesError,
-  } = useQuery({
-    queryKey: ['adminCategories'],
-    queryFn: fetchAdminCategories,
-    select: (data) => data?.data || [],
-    staleTime: 1000 * 60 * 3,
-  });
-
-  // Fetch product detail for edit mode with caching
-  const {
-    data: productData,
-    isLoading: productLoading,
-    error: productError,
-  } = useQuery({
-    queryKey: ['admin-product', productId],
-    queryFn: () => fetchAdminProductById(productId),
-    enabled: !!isEditMode && !!productId,
-    staleTime: 1000 * 60 * 3,
-  });
+  useEffect(() => {
+    dispatch(fetchCategories());
+    if (isEditMode) {
+      dispatch(fetchProductById(productId));
+    }
+  }, [dispatch, isEditMode, productId]);
 
   useEffect(() => {
-    if (isEditMode && productData && productData.data) {
-      const p = productData.data;
+    if (isEditMode && currentProduct) {
+      const p = currentProduct;
       reset({
         name: p.name || '',
         description: p.description || '',
@@ -139,7 +119,7 @@ const AdminProductAddEditPage = () => {
       setImagePreviews([]);
       setNewImageFiles([]);
     }
-  }, [isEditMode, productData, reset]);
+  }, [isEditMode, currentProduct, reset]);
 
   const handleImageChange = (e) => {
     if (e.target.files) {
@@ -209,31 +189,22 @@ const AdminProductAddEditPage = () => {
 
     try {
       if (isEditMode) {
-        await updateAdminProduct(productId, formData);
-        toast.success('Product updated successfully!');
+        await dispatch(updateProduct({ productId, productData: formData }));
       } else {
-        await createAdminProduct(formData);
-        toast.success('Product created successfully!');
+        await dispatch(createProduct(formData));
       }
-      queryClient.invalidateQueries(['admin-products']);
-      navigate('/admin/products');
+      if (!mutationError) {
+        toast.success(`Product ${isEditMode ? 'updated' : 'created'} successfully!`);
+        navigate('/admin/products');
+      }
     } catch (err) {
-      const apiError = err.response?.data?.error || err.message || `Failed to ${isEditMode ? 'update' : 'create'} product.`;
+      const apiError = err?.message || `Failed to ${isEditMode ? 'update' : 'create'} product.`;
       setFormError(apiError);
       toast.error(apiError);
-      console.error("Submit error:", err.response?.data || err);
     }
   };
 
-  if (loading || categoriesLoading || productLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-[400px]">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isEditMode && (productLoading || !productData)) {
+  if (productLoading || categoriesLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Spinner />

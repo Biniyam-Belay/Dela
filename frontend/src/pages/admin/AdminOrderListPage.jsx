@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { fetchAdminOrders } from '../../services/adminApi';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchOrders } from '../../store/orderSlice';
 
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -28,26 +28,17 @@ const AdminOrderListPage = () => {
 
   const orderStatuses = ['Processing', 'Shipped', 'Delivered', 'Cancelled', 'Pending']; // Example
 
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ['admin-orders', { page: currentPage, search: searchTerm, status: statusFilter }],
-    queryFn: () =>
-      fetchAdminOrders({
-        page: currentPage,
-        search: searchTerm,
-        status: statusFilter,
-        limit: 10,
-      }),
-    keepPreviousData: true,
-    staleTime: 1000 * 60 * 3,
-  });
+  const dispatch = useDispatch();
+  const { orders, loading, error, totalPages, totalOrders } = useSelector((state) => state.orders);
 
-  const orders = data?.data?.orders || [];
-  const totalPages = data?.data?.totalPages || 1;
-  const totalOrders = data?.data?.totalOrders || 0;
+  React.useEffect(() => {
+    dispatch(fetchOrders({
+      page: currentPage,
+      search: searchTerm,
+      status: statusFilter,
+      limit: 10,
+    }));
+  }, [dispatch, currentPage, searchTerm, statusFilter]);
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -95,7 +86,7 @@ const AdminOrderListPage = () => {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Orders</h1>
           <p className="text-slate-500 mt-1">
-            {isLoading ? 'Loading orders...' : `${totalOrders} order${totalOrders !== 1 ? 's' : ''} found`}
+            {loading ? 'Loading orders...' : `${totalOrders} order${totalOrders !== 1 ? 's' : ''} found`}
           </p>
         </div>
       </div>
@@ -129,7 +120,7 @@ const AdminOrderListPage = () => {
       {error && <ErrorMessage message={error.error || error.message || 'Failed to load orders.'} />}
 
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {isLoading ? (
+        {loading ? (
           <div className="flex justify-center items-center p-12 min-h-[200px]">
             <Spinner />
           </div>
