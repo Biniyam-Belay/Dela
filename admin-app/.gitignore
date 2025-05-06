@@ -1,3 +1,4 @@
+HEAD
 # Logs
 logs
 *.log
@@ -22,3 +23,72 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+=======
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+yarn.lock
+package-lock.json
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native Build Artifacts (Android)
+android/app/build/
+android/.gradle/
+android/gradle/wrapper/gradle-wrapper.jar
+android/gradlew
+android/gradlew.bat
+*.apk
+*.ap_
+*.aab
+
+# Native Build Artifacts (iOS)
+ios/build/
+ios/Pods/
+*.ipa
+*.app
+
+# Native Secrets (already present but good to keep)
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Metro
+.metro-health-check*
+
+# Debugging
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Local environment files
+.env
+.env*.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Test / Coverage reports
+coverage/
+# End of file
+46db406 (Mobile app basic structure and functionality)
