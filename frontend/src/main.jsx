@@ -11,7 +11,6 @@ import { store } from './store/store.js';
 import { useEffect } from 'react';
 import { fetchCart } from './store/cartSlice';
 import { Toaster } from 'react-hot-toast';
-import { CartProvider } from './contexts/CartContext.jsx';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,11 +36,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <Provider store={store}>
         <BrowserRouter>
           <AuthProvider>
-            <CartProvider>
-              <CartInitializer />
-              <Toaster position="top-right" />
-              <App />
-            </CartProvider>
+            <CartInitializer />
+            <Toaster position="top-right" />
+            <App />
           </AuthProvider>
         </BrowserRouter>
       </Provider>

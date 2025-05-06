@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { useCart } from '../contexts/CartContext.jsx';
 import { useAuth } from '../contexts/authContext.jsx';
 import { createOrder, selectOrderStatus, selectOrderError } from '../store/orderSlice';
 import { clearCart, clearLocalCartAndState } from '../store/cartSlice';
@@ -12,7 +11,6 @@ import { formatETB } from "../utils/utils";
 import { Helmet } from 'react-helmet';
 
 const CheckoutPage = () => {
-  const { clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const dispatch = useDispatch();
