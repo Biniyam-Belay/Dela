@@ -231,7 +231,7 @@ const AdminCategoryAddEditPage = () => {
                     src={imagePreview}
                     alt="Preview"
                     className="h-full w-full object-cover"
-                    onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+                    onError={e => { e.target.onerror = null; e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'; }}
                   />
                 ) : (
                   <FiImage className="h-8 w-8 text-slate-400" />

@@ -71,7 +71,7 @@ const WishlistPage = () => {
         <>
           {wishlistItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32">
-              <img src="/placeholder-image.jpg" alt="Empty wishlist" className="w-36 h-36 opacity-20 mb-8 rounded-full border-4 border-dashed border-primary/20" />
+              <img src="https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp" alt="Empty wishlist" className="w-36 h-36 opacity-20 mb-8 rounded-full border-4 border-dashed border-primary/20" />
               <p className="text-gray-400 text-xl font-medium">Your wishlist is currently empty.</p>
             </div>
           ) : (
@@ -84,7 +84,7 @@ const WishlistPage = () => {
                   >
                     <Link to={`/products/${item.product_id}`} className="block relative">
                       <img
-                        src={item.product.image_url || '/placeholder-image.jpg'}
+                        src={item.product.image_url || 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'}
                         alt={item.product.name}
                         className="w-full h-56 object-cover object-center transition-transform duration-300 group-hover:scale-105 bg-neutral-100 rounded-t-2xl"
                       />

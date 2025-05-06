@@ -455,7 +455,7 @@ const AdminProductAddEditPage = () => {
                         src={preview.url}
                         alt={`Preview ${index + 1}`}
                         className="h-full w-full object-cover rounded-lg border border-slate-200"
-                        onError={(e) => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'; }}
                       />
                       <button
                         type="button"

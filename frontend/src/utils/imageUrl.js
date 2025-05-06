@@ -1,5 +1,5 @@
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-const placeholderImage = '/placeholder-image.jpg'; // Define a default placeholder
+const placeholderImage = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'; // Use Supabase bucket placeholder
 
 /**
  * Constructs the full URL for a product image.

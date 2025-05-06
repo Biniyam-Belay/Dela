@@ -28,7 +28,7 @@ export default function PriceHighlightProductCard({ product }) {
 
   const imageUrl = product.images?.[0]
     ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
-    : '/placeholder-image.jpg';
+    : 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
 
   const isOutOfStock = product.stockQuantity !== undefined && product.stockQuantity <= 0;
 
@@ -95,9 +95,9 @@ export default function PriceHighlightProductCard({ product }) {
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-105"
           onError={(e) => {
-            if (e.target.src !== '/placeholder-image.jpg') {
+            if (e.target.src !== 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp') {
               e.target.onerror = null;
-              e.target.src = '/placeholder-image.jpg';
+              e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
             }
           }}
           loading="lazy"

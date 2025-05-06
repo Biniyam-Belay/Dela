@@ -10,7 +10,6 @@ export const getWishlist = createAsyncThunk(
       // Ensure items is always an array, even if API returns null/undefined
       return items || []; 
     } catch (error) {
-      console.error("Error fetching wishlist in slice:", error);
       return rejectWithValue(error.message || 'Failed to fetch wishlist');
     }
   }
@@ -27,7 +26,6 @@ export const addToWishlist = createAsyncThunk(
       dispatch(getWishlist()); 
       return { productId }; // Return productId for potential optimistic updates
     } catch (error) {
-      console.error("Error adding to wishlist in slice:", error);
       return rejectWithValue(error.message || 'Failed to add item to wishlist');
     }
   }
@@ -43,7 +41,6 @@ export const removeFromWishlist = createAsyncThunk(
       dispatch(getWishlist());
       return { productId }; // Return productId for potential optimistic updates
     } catch (error) {
-      console.error("Error removing from wishlist in slice:", error);
       return rejectWithValue(error.message || 'Failed to remove item from wishlist');
     }
   }
@@ -80,10 +77,10 @@ const wishlistSlice = createSlice({
         state.error = action.payload;
       })
       // Add To Wishlist (handles potential optimistic updates if needed later)
-      .addCase(addToWishlist.pending, (state) => {
+      .addCase(addToWishlist.pending, () => {
         // Optionally set a specific status like 'adding'
       })
-      .addCase(addToWishlist.fulfilled, (state, action) => {
+      .addCase(addToWishlist.fulfilled, () => {
         // State is updated via getWishlist dispatch, no direct mutation here needed
         // unless doing optimistic updates.
       })
@@ -91,10 +88,10 @@ const wishlistSlice = createSlice({
         state.error = action.payload; // Store specific add error if needed
       })
       // Remove From Wishlist (handles potential optimistic updates if needed later)
-      .addCase(removeFromWishlist.pending, (state) => {
+      .addCase(removeFromWishlist.pending, () => {
         // Optionally set a specific status like 'removing'
       })
-      .addCase(removeFromWishlist.fulfilled, (state, action) => {
+      .addCase(removeFromWishlist.fulfilled, () => {
         // State is updated via getWishlist dispatch, no direct mutation here needed
         // unless doing optimistic updates.
       })

@@ -172,12 +172,12 @@ const AdminProductListPage = () => {
                         <div className="flex items-center gap-3">
                           <div className="flex-shrink-0 h-10 w-10 bg-slate-100 rounded-md overflow-hidden">
                             <img
-                              src={`${import.meta.env.VITE_BACKEND_URL || ''}${product.images?.[0] || '/placeholder-image.jpg'}`}
+                              src={`${import.meta.env.VITE_BACKEND_URL || ''}${product.images?.[0] || 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'}`}
                               alt={product.name}
                               className="h-full w-full object-cover"
                               onError={(e) => {
                                 e.target.onerror = null;
-                                e.target.src = '/placeholder-image.jpg';
+                                e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
                               }}
                             />
                           </div>

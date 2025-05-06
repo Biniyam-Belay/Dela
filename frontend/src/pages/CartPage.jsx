@@ -191,7 +191,7 @@ const CartPage = () => {
                       loading="lazy"
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = '/placeholder-image.jpg';
+                        e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
                       }}
                     />
                   </Link>

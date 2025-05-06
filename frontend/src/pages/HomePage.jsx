@@ -158,7 +158,7 @@ const CategoryShowcase = () => {
   // Helper function to get the public URL from Supabase storage
   const getCategoryImageUrl = (imagePath) => {
     if (!imagePath) {
-      return '/placeholder-image.jpg';
+      return 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
     }
     // Remove leading slash if present
     let path = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
@@ -167,7 +167,7 @@ const CategoryShowcase = () => {
       path = path.substring('categories/'.length);
     }
     const { data } = supabase.storage.from('categories').getPublicUrl(path);
-    return data?.publicUrl || '/placeholder-image.jpg';
+    return data?.publicUrl || 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
   };
 
   return (
@@ -228,9 +228,9 @@ const CategoryShowcase = () => {
                       className="absolute inset-0 w-full h-full object-cover object-center opacity-80 group-hover:opacity-90 transition-opacity duration-300 scale-100 group-hover:scale-105"
                       style={{ zIndex: 0, transition: 'transform 0.4s cubic-bezier(.4,0,.2,1)' }}
                       onError={e => {
-                        if (e.target.src !== '/placeholder-image.jpg') {
+                        if (e.target.src !== 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp') {
                           e.target.onerror = null;
-                          e.target.src = '/placeholder-image.jpg';
+                          e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
                         }
                       }}
                     />
@@ -362,7 +362,7 @@ const FeaturedBanner = () => (
               alt="Signature Collection"
               className="object-cover w-full h-full rounded-lg"
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-              onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.jpg"; }}
+              onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"; }}
             />
           </div>
           <div className="absolute -bottom-4 sm:-bottom-6 -left-2 sm:-left-6 bg-white text-black py-2 sm:py-3 px-4 sm:px-6 shadow-lg text-xs sm:text-base">

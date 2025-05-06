@@ -139,7 +139,7 @@ const CollectionsPage = () => {
         const { data } = supabase.storage.from('public_assets').getPublicUrl(col.image);
         return {
           ...col,
-          imageUrl: data?.publicUrl || '/placeholder-image.jpg',
+          imageUrl: data?.publicUrl || 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp',
         };
       }));
       setCollections(updated);
@@ -187,7 +187,7 @@ const CollectionsPage = () => {
                   alt={col.name}
                   className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-                  onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+                  onError={e => { e.target.onerror = null; e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'; }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex items-end p-6">
                   <div>
@@ -222,7 +222,7 @@ const CollectionsPage = () => {
               src={supabase.storage.from("public_assets").getPublicUrl("signature.webp").data.publicUrl || "/placeholder.svg?height=800&width=600"}
               alt="Signature Collection"
               className="absolute inset-0 w-full h-full object-cover object-center grayscale filter rounded-lg"
-              onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.jpg"; }}
+              onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"; }}
             />
             <div className="absolute inset-0 bg-black/10 pointer-events-none"></div>
           </div>
