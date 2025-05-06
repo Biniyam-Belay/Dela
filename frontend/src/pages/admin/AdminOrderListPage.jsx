@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchOrders } from '../../store/orderSlice';
+import { useQuery } from '@tanstack/react-query';
+import { fetchAdminOrders } from '../../services/adminApi';
 
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';

@@ -1,5 +1,6 @@
 "use client"
 import { Link } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState, useCallback } from "react"
 import { supabase } from "../services/supabaseClient"
 import {
@@ -17,15 +18,13 @@ import {
   ChevronRight,
 } from "lucide-react"
 import useEmblaCarousel from 'embla-carousel-react'
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchProducts } from '../store/productSlice';
-import { fetchCategories } from '../store/categorySlice';
 
 import { Button } from "../components/ui/button"
 import ProductCard from "../components/ui/ProductCard.jsx"
 import SkeletonCard from "../components/ui/SkeletonCard.jsx"
 import ErrorMessage from "../components/common/ErrorMessage.jsx"
 import { Input } from "../components/ui/input"
+import { fetchProducts, fetchCategories } from "../services/productApi"
 import Header from '../components/layout/Header'
 import CategorySkeletonCard from "../components/ui/CategorySkeletonCard.jsx"
 
@@ -38,7 +37,7 @@ const HeroSection = () => {
   const [heroImageUrl, setHeroImageUrl] = useState("/placeholder.svg?height=1200&width=2000")
 
   useEffect(() => {
-    const { data } = supabase.storage.from("public_assets").getPublicUrl("landing.webp")
+    const { data } = supabase.storage.from("public_assets").getPublicUrl("landing.jpg")
     if (data?.publicUrl) setHeroImageUrl(data.publicUrl)
   }, [])
 
@@ -132,12 +131,15 @@ const AdBanner = () => (
 
 // White-themed, seamless Category Showcase Section with Carousel
 const CategoryShowcase = () => {
-  const dispatch = useDispatch();
-  const { items: categoriesData = [], loading: categoriesLoading, error: categoriesError } = useSelector((state) => state.categories);
-
-  useEffect(() => {
-    dispatch(fetchCategories());
-  }, [dispatch]);
+  const {
+    data: categoriesData,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => fetchCategories(),
+    select: (data) => data?.data || [],
+  })
 
   // Embla Carousel setup
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -158,7 +160,7 @@ const CategoryShowcase = () => {
   // Helper function to get the public URL from Supabase storage
   const getCategoryImageUrl = (imagePath) => {
     if (!imagePath) {
-      return 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
+      return '/placeholder-image.jpg';
     }
     // Remove leading slash if present
     let path = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
@@ -167,7 +169,7 @@ const CategoryShowcase = () => {
       path = path.substring('categories/'.length);
     }
     const { data } = supabase.storage.from('categories').getPublicUrl(path);
-    return data?.publicUrl || 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
+    return data?.publicUrl || '/placeholder-image.jpg';
   };
 
   return (
@@ -204,13 +206,13 @@ const CategoryShowcase = () => {
 
         <div className="overflow-hidden" ref={emblaRef}>
           <div className="flex gap-4 -ml-2 pl-2">
-            {categoriesLoading ? (
+            {isLoading ? (
               Array.from({ length: 5 }).map((_, index) => (
                 <div key={index} className="flex-shrink-0 w-48 md:w-52 lg:w-56">
                   <CategorySkeletonCard />
                 </div>
               ))
-            ) : categoriesError ? (
+            ) : error ? (
               <div className="w-full">
                 <ErrorMessage message="Could not load categories" />
               </div>
@@ -228,9 +230,9 @@ const CategoryShowcase = () => {
                       className="absolute inset-0 w-full h-full object-cover object-center opacity-80 group-hover:opacity-90 transition-opacity duration-300 scale-100 group-hover:scale-105"
                       style={{ zIndex: 0, transition: 'transform 0.4s cubic-bezier(.4,0,.2,1)' }}
                       onError={e => {
-                        if (e.target.src !== 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp') {
+                        if (e.target.src !== '/placeholder-image.jpg') {
                           e.target.onerror = null;
-                          e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
+                          e.target.src = '/placeholder-image.jpg';
                         }
                       }}
                     />
@@ -288,7 +290,7 @@ const TrendingProducts = () => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 w-full max-w-full">
-        {loading ? (
+        {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : error ? (
           <ErrorMessage message="Could not load products" />
@@ -433,7 +435,7 @@ const FeaturedProducts = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
-          {loading ? (
+          {isLoading ? (
             Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
           ) : error ? (
             <ErrorMessage message="Could not load featured products" />

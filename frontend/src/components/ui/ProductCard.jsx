@@ -52,7 +52,11 @@ export default function ProductCard({ product, className = "" }) {
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
   const imageUrl = product.images && product.images[0]
     ? `${backendUrl}${product.images[0].startsWith("/") ? "" : "/"}${product.images[0]}`
+<<<<<<< HEAD
     : 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
+=======
+    : "/placeholder-image.jpg";
+>>>>>>> mergeFix
 
   const handleAddToCart = async (e) => {
     e?.preventDefault?.();
@@ -115,7 +119,11 @@ export default function ProductCard({ product, className = "" }) {
           alt={product.name}
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
           style={{ width: '100%', height: '100%' }}
+<<<<<<< HEAD
           onError={e => { e.target.onerror = null; e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'; }}
+=======
+          onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+>>>>>>> mergeFix
         />
         {product.discount > 0 && (
           <Badge

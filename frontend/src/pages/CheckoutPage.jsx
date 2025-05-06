@@ -256,15 +256,15 @@ const CheckoutPage = () => {
                           src={
                             product.images?.[0]
                               ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
-                              : 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp' // Use placeholder if no image path
+                              : '/placeholder-image.jpg' // Use placeholder if no image path
                           }
                           alt={product.name}
                           className="h-full w-full object-cover"
                           onError={(e) => {
                             // Prevent infinite loop if placeholder itself fails
-                            if (e.target.src !== 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp') { 
+                            if (e.target.src !== '/placeholder-image.jpg') { 
                               e.target.onerror = null; 
-                              e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
+                              e.target.src = '/placeholder-image.jpg';
                             }
                           }}
                         />

@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
 import { supabase } from "../services/supabaseClient"
-import { fetchAdminProductById, createAdminProduct, updateAdminProduct } from '../services/adminApi';
 
 export const fetchProducts = createAsyncThunk(
   "products/fetchProducts",

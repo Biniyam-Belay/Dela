@@ -3,11 +3,15 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Helmet } from 'react-helmet';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchProductById, createProduct, updateProduct } from '../../store/productSlice';
-import { fetchCategories } from '../../store/categorySlice';
+import {
+  fetchAdminProductById,
+  createAdminProduct,
+  updateAdminProduct,
+  fetchAdminCategories,
+} from '../../services/adminApi';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { FiTrash2, FiSave, FiX, FiPlus, FiChevronLeft, FiUploadCloud } from 'react-icons/fi';
@@ -78,8 +82,8 @@ const AdminProductAddEditPage = () => {
   }, [dispatch, isEditMode, productId]);
 
   useEffect(() => {
-    if (isEditMode && currentProduct) {
-      const p = currentProduct;
+    if (isEditMode && productData && productData.data) {
+      const p = productData.data;
       reset({
         name: p.name || '',
         description: p.description || '',
@@ -119,7 +123,7 @@ const AdminProductAddEditPage = () => {
       setImagePreviews([]);
       setNewImageFiles([]);
     }
-  }, [isEditMode, currentProduct, reset]);
+  }, [isEditMode, productData, reset]);
 
   const handleImageChange = (e) => {
     if (e.target.files) {
@@ -189,22 +193,31 @@ const AdminProductAddEditPage = () => {
 
     try {
       if (isEditMode) {
-        await dispatch(updateProduct({ productId, productData: formData }));
+        await updateAdminProduct(productId, formData);
+        toast.success('Product updated successfully!');
       } else {
-        await dispatch(createProduct(formData));
+        await createAdminProduct(formData);
+        toast.success('Product created successfully!');
       }
-      if (!mutationError) {
-        toast.success(`Product ${isEditMode ? 'updated' : 'created'} successfully!`);
-        navigate('/admin/products');
-      }
+      queryClient.invalidateQueries(['admin-products']);
+      navigate('/admin/products');
     } catch (err) {
       const apiError = err?.message || `Failed to ${isEditMode ? 'update' : 'create'} product.`;
       setFormError(apiError);
       toast.error(apiError);
+      console.error("Submit error:", err.response?.data || err);
     }
   };
 
-  if (productLoading || categoriesLoading) {
+  if (loading || categoriesLoading || productLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isEditMode && (productLoading || !productData)) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Spinner />

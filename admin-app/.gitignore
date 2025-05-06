@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+HEAD
 # Logs
 logs
 *.log
@@ -90,4 +90,5 @@ Thumbs.db
 
 # Test / Coverage reports
 coverage/
->>>>>>> mobileApp
+# End of file
+46db406 (Mobile app basic structure and functionality)

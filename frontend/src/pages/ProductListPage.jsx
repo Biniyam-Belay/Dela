@@ -86,7 +86,7 @@ const ProductCard = ({ product }) => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
   const imageUrl = product.images && product.images[0]
     ? `${backendUrl}${product.images[0].startsWith("/") ? "" : "/"}${product.images[0]}`
-    : "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp";
+    : "/placeholder-image.jpg";
 
   const handleAddToCart = async () => {
     setIsAdding(true);
@@ -140,7 +140,7 @@ const ProductCard = ({ product }) => {
           alt={product.name || 'Product image'}
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
           style={{ width: '100%', height: '100%' }}
-          onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"; }}
+          onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
           loading="lazy"
         />
         {product.discount > 0 && (
@@ -883,11 +883,11 @@ export default function ProductListPage() {
             >
               <div className="relative w-16 h-16 mx-auto mb-3 bg-gray-100 rounded-full overflow-hidden">
                 <img
-                  src={category.image_url ? `${import.meta.env.VITE_BACKEND_URL || ''}${category.image_url.startsWith('/') ? '' : '/'}${category.image_url}` : "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"}
+                  src={category.image_url ? `${import.meta.env.VITE_BACKEND_URL || ''}${category.image_url.startsWith('/') ? '' : '/'}${category.image_url}` : '/placeholder-image.jpg'}
                   alt={category.name}
                   className="object-cover group-hover:scale-110 transition-transform"
                   style={{ width: '100%', height: '100%' }}
-                  onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"; }}
+                  onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
                 />
               </div>
               <h3 className="font-medium text-sm group-hover:text-indigo-600 transition-colors">{category.name}</h3>

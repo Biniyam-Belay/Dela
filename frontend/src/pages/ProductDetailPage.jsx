@@ -146,11 +146,11 @@ export default function ProductDetailPage() {
             <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 mb-4 aspect-square">
               <div className="relative w-full h-full">
                 <img
-                  src={product.images && product.images[selectedImage] ? product.images[selectedImage] : "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"}
+                  src={product.images && product.images[selectedImage] ? product.images[selectedImage] : "/placeholder-image.jpg"}
                   alt={product.name || 'Product image'}
                   className="object-contain p-4 sm:p-8 w-full h-full"
                   style={{ aspectRatio: 1 }}
-                  onError={e => { e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"; }}
+                  onError={e => { e.target.src = "/placeholder-image.jpg"; }}
                   loading="lazy"
                 />
               </div>
@@ -171,11 +171,11 @@ export default function ProductDetailPage() {
                   >
                     <div className="relative w-full h-full">
                       <img
-                        src={img || "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"}
+                        src={img || "/placeholder-image.jpg"}
                         alt={`${product.name} thumbnail ${index + 1}`}
                         className="object-cover w-full h-full"
                         style={{ aspectRatio: 1 }}
-                        onError={e => { e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"; }}
+                        onError={e => { e.target.src = "/placeholder-image.jpg"; }}
                         loading="lazy"
                       />
                     </div>

@@ -5,8 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { FiArrowLeft, FiSave, FiImage, FiX } from 'react-icons/fi';
 import { Helmet } from 'react-helmet';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchCategoryById, createCategory, updateCategory } from '../../store/categorySlice';
+import {
+  fetchAdminCategoryById,
+  createAdminCategory,
+  updateAdminCategory,
+} from '../../services/adminApi';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { supabase } from '../../services/supabaseClient';
@@ -53,9 +56,10 @@ const AdminCategoryAddEditPage = () => {
         name: currentCategory.name || '',
         description: currentCategory.description || '',
       });
-      if (currentCategory.image_url) {
+      // Set image preview if an image exists
+      if (categoryData.image_url) {
         const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
-        const imageUrl = `${backendUrl}${currentCategory.image_url.startsWith('/') ? '' : '/'}${currentCategory.image_url}`;
+        const imageUrl = `${backendUrl}${categoryData.image_url.startsWith('/') ? '' : '/'}${categoryData.image_url}`;
         setExistingImageUrl(imageUrl);
         setImagePreview(imageUrl);
       } else {
@@ -69,7 +73,89 @@ const AdminCategoryAddEditPage = () => {
       setExistingImageUrl(null);
       setImageFile(null);
     }
-  }, [isEditMode, currentCategory, reset]);
+    // Ensure reset is included in dependencies if it's stable (which it should be from react-hook-form)
+    // Key dependencies are isEditMode and the fetched data (categoryData)
+  }, [isEditMode, categoryData, reset]);
+
+  const categoryMutation = useMutation({
+    mutationFn: async (formData) => {
+      let finalImageUrl = existingImageUrl;
+
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `category-${Date.now()}.${fileExt}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('categories')
+          .upload(fileName, imageFile, { cacheControl: '3600', upsert: false });
+
+        if (uploadError) {
+          console.error('Supabase Storage Upload Error:', uploadError);
+          throw new Error('Image upload failed');
+        }
+
+        if (uploadData?.path) {
+          // Always store the image_url as /categories/filename.png
+          finalImageUrl = `/categories/${fileName}`;
+          console.log('Uploaded image relative path:', finalImageUrl);
+
+          // --- Delete previous image if it exists and is different ---
+          if (isEditMode && existingImageUrl) {
+            console.log('[DEBUG] existingImageUrl before deletion attempt:', existingImageUrl);
+            // Extract the relative path from the full URL
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || '';
+            let oldPath = existingImageUrl.replace(backendUrl, '');
+            if (oldPath.startsWith('/')) oldPath = oldPath.substring(1);
+            // If oldPath starts with 'categories/', keep it, else prepend
+            if (!oldPath.startsWith('categories/')) {
+              oldPath = `categories/${oldPath}`;
+            }
+            // Remove any query params (e.g., ?t=...) that Supabase adds for public URLs
+            oldPath = oldPath.split('?')[0];
+            // Only delete if the oldPath is not the same as the new file
+            if (oldPath && oldPath !== `categories/${fileName}`) {
+              console.log('[DEBUG] Attempting to delete old image path:', oldPath);
+              try {
+                const { data: removeData, error: removeError } = await supabase.storage.from('categories').remove([oldPath]);
+                if (removeError) {
+                  console.error('[DEBUG] Failed to delete old category image:', removeError);
+                } else {
+                  console.log('[DEBUG] Successfully deleted old category image:', oldPath, 'Response:', removeData);
+                }
+              } catch (e) {
+                console.error('[DEBUG] Exception while deleting old category image:', e);
+              }
+            }
+          }
+        } else {
+          console.warn('Upload successful but path not found in response.');
+        }
+      } else if (existingImageUrl && !imagePreview) {
+        finalImageUrl = null;
+      }
+
+      const categoryPayload = {
+        name: formData.name,
+        description: formData.description || null,
+        image_url: finalImageUrl,
+      };
+
+      console.log('Sending category payload:', categoryPayload);
+
+      if (isEditMode) {
+        return updateAdminCategory(categoryId, categoryPayload);
+      } else {
+        return createAdminCategory(categoryPayload);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminCategories'] });
+      queryClient.invalidateQueries({ queryKey: ['adminCategoryDetail', categoryId] });
+      navigate('/admin/categories');
+    },
+    onError: (err) => {
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} category:`, err);
+    },
+  });
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -231,7 +317,7 @@ const AdminCategoryAddEditPage = () => {
                     src={imagePreview}
                     alt="Preview"
                     className="h-full w-full object-cover"
-                    onError={e => { e.target.onerror = null; e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'; }}
+                    onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
                   />
                 ) : (
                   <FiImage className="h-8 w-8 text-slate-400" />

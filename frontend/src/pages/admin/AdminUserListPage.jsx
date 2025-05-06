@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchUsers, deleteUser } from '../../store/userSlice';
+import { useQuery } from '@tanstack/react-query';
+// --- Import the real function ---
+import { fetchAdminUsers } from '../../services/adminApi.jsx';
+
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import Pagination from '../../components/common/Pagination';

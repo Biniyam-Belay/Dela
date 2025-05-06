@@ -50,13 +50,12 @@ const AdminProductListPage = () => {
       setDeletingId(productId);
       setDeleteError(null);
       try {
-        await dispatch(deleteProduct(productId)).unwrap();
+        await deleteAdminProduct(productId);
+        queryClient.invalidateQueries(['admin-products']);
+        refetch();
         toast.success('Product deleted successfully!');
       } catch (err) {
-        setDeleteError(err?.message || err || 'Failed to delete product.');
-        toast.error(err?.message || err || 'Failed to delete product.');
-      } finally {
-        setDeletingId(null);
+        toast.error(err.error || err.message || 'Failed to delete product.');
       }
     }
   };
