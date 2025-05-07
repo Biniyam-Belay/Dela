@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-// --- Import the real function ---
-import { fetchAdminUsers } from '../../services/adminApi.jsx';
+import { useDispatch, useSelector } from 'react-redux'; // Import Redux hooks
+import { fetchUsers } from '../../store/userSlice'; // Assuming fetchUsers will be in userSlice.js
 
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -23,8 +22,23 @@ const AdminUserListPage = () => {
   const [roleFilter, setRoleFilter] = useState(searchParams.get('role') || '');
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
   const userRoles = ['Admin', 'Customer'];
+
   const dispatch = useDispatch();
-  const { items: users = [], loading, error } = useSelector((state) => state.users);
+  const userSliceState = useSelector((state) => state.users);
+  const { 
+    items: users = [], 
+    loading = false, 
+    error = null, 
+    totalPages = 1, 
+    totalUsers = 0 
+  } = userSliceState || { 
+    items: [], 
+    loading: false, 
+    error: null, 
+    totalPages: 1, 
+    totalUsers: 0 
+  };
+
   const [deleteError, setDeleteError] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
 
@@ -32,13 +46,13 @@ const AdminUserListPage = () => {
     dispatch(fetchUsers({
       page: currentPage,
       limit: 10,
-      search: searchTerm,
-      role: roleFilter,
+      search: searchTerm || undefined,
+      role: roleFilter || undefined,
     }));
   }, [dispatch, currentPage, searchTerm, roleFilter]);
 
   const handlePageChange = (newPage) => {
-    if (newPage >= 1) {
+    if (newPage >= 1 && newPage <= totalPages) {
       setSearchParams(prev => {
         const newParams = new URLSearchParams(prev);
         newParams.set('page', newPage.toString());
@@ -76,10 +90,6 @@ const AdminUserListPage = () => {
         return newParams;
       }, { replace: true });
   };
-
-  // Placeholder for pagination/total count
-  const totalPages = 1;
-  const totalUsers = users.length;
 
   return (
     <div className="space-y-6">
@@ -128,16 +138,16 @@ const AdminUserListPage = () => {
       </div>
 
       {/* Error Message */}
-      {error && <ErrorMessage message={error} />}
+      {error && <ErrorMessage message={error.message || error} />}
       {deleteError && <ErrorMessage message={deleteError} />}
 
       {/* Content Area */}
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {loading ? (
+        {loading && users.length === 0 ? (
           <div className="flex justify-center items-center p-12 min-h-[200px]">
             <Spinner />
           </div>
-        ) : users.length === 0 ? (
+        ) : !loading && users.length === 0 && !error ? (
           <div className="text-center p-12 text-slate-500">
             <FiAlertCircle className="mx-auto h-10 w-10 text-slate-400 mb-4" />
             <p className="font-medium">No users found</p>
@@ -169,7 +179,7 @@ const AdminUserListPage = () => {
                   {users.map((user) => (
                     <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-slate-900">{user.profile?.full_name || user.email}</div>
+                        <div className="text-sm font-medium text-slate-900">{user.name || user.email}</div>
                         <div className="text-sm text-slate-500 md:hidden mt-1">{user.email}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden md:table-cell">{user.email}</td>
@@ -178,7 +188,7 @@ const AdminUserListPage = () => {
                           {user.role || 'Customer'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden sm:table-cell">{new Date(user.created_at).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden sm:table-cell">{new Date(user.createdAt).toLocaleDateString()}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                         <Link
                           to={`/admin/users/edit/${user.id}`}

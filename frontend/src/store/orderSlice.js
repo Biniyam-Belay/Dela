@@ -1,41 +1,39 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { supabase } from "../services/supabaseClient"; // Adjust path if needed
+import { supabase } from "../services/supabaseClient";
 
 export const fetchOrders = createAsyncThunk(
   "orders/fetchOrders",
   async (params = { page: 1, limit: 10, search: '', status: '' }, { rejectWithValue }) => {
     try {
-      const { page, limit, search, status } = params;
-      const offset = (page - 1) * limit;
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', params.page.toString());
+      queryParams.append('limit', params.limit.toString());
+      if (params.search) queryParams.append('search', params.search);
+      if (params.status) queryParams.append('status', params.status);
 
-      let query = supabase
-        .from("orders")
-        .select(`*`, { count: "exact" })
-        .order("created_at", { ascending: false });
+      const queryString = queryParams.toString();
+      const functionToInvoke = `get-admin-orders${queryString ? `?${queryString}` : ''}`;
 
-      if (search) {
-        query = query.or(`order_number.ilike.%${search}%,shipping_address->>firstName.ilike.%${search}%,shipping_address->>lastName.ilike.%${search}%,shipping_address->>email.ilike.%${search}%`);
+      const { data: functionResponse, error: invokeError } = await supabase.functions.invoke(functionToInvoke, { method: 'GET' });
+
+      if (invokeError) {
+        let detailedError = invokeError.message;
+        if (invokeError.context && invokeError.context.json) {
+          detailedError = invokeError.context.json.error || invokeError.message;
+        }
+        throw new Error(detailedError);
       }
 
-      if (status) {
-        query = query.eq("status", status);
-      }
+      // Always return a safe object for the reducer
+      const safeData = functionResponse && functionResponse.data
+        ? functionResponse.data
+        : { orders: [], totalPages: 1, totalOrders: 0 };
 
-      query = query.range(offset, offset + limit - 1);
+      console.log('[orderSlice] Returning safeData to reducer:', safeData); // <-- Add this line
 
-      const { data, error, count } = await query;
-
-      if (error) {
-        throw error;
-      }
-      
-      const totalOrders = count || 0;
-      const totalPages = Math.ceil(totalOrders / limit);
-
-      const responseData = data || [];
-      return { data: responseData, totalOrders, totalPages };
+      return safeData;
     } catch (err) {
-      return rejectWithValue(err.message || "Failed to fetch orders");
+      return rejectWithValue(err.message || "Failed to fetch orders via Edge Function");
     }
   }
 );
@@ -74,20 +72,20 @@ const orderSlice = createSlice({
   name: "orders",
   initialState: {
     items: [],
-    loading: false, // For fetch operations
-    error: null,    // For fetch operations
+    loading: false,
+    error: null,
     currentOrder: null,
     totalPages: 1,
     totalOrders: 0,
-    mutationStatus: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+    mutationStatus: 'idle',
     mutationError: null,
   },
   reducers: {
     clearOrderError: (state) => {
       state.error = null;
-      state.mutationError = null; // Clear mutation error as well
+      state.mutationError = null;
     },
-    resetMutationStatus: (state) => { // New reducer to reset mutation status
+    resetMutationStatus: (state) => {
       state.mutationStatus = 'idle';
       state.mutationError = null;
     }
@@ -100,9 +98,9 @@ const orderSlice = createSlice({
       })
       .addCase(fetchOrders.fulfilled, (state, action) => {
         state.loading = false;
-        state.items = action.payload.data;
-        state.totalPages = action.payload.totalPages;
-        state.totalOrders = action.payload.totalOrders;
+        state.items = action.payload.orders || [];
+        state.totalPages = action.payload.totalPages || 1;
+        state.totalOrders = action.payload.totalOrders || 0;
       })
       .addCase(fetchOrders.rejected, (state, action) => {
         state.loading = false;
@@ -130,14 +128,13 @@ const orderSlice = createSlice({
 });
 
 export const { clearOrderError, resetMutationStatus } = orderSlice.actions;
-
 export const selectAllOrders = (state) => state.orders.items;
-export const selectOrdersLoading = (state) => state.orders.loading; // Loading for fetch
-export const selectOrderError = (state) => state.orders.error; // Error for fetch
+export const selectOrdersLoading = (state) => state.orders.loading;
+export const selectOrderError = (state) => state.orders.error;
 export const selectTotalOrders = (state) => state.orders.totalOrders;
 export const selectOrderTotalPages = (state) => state.orders.totalPages;
 export const selectCurrentOrder = (state) => state.orders.currentOrder;
-export const selectOrderStatus = (state) => state.orders.mutationStatus; // Renamed from selectOrderMutationStatus
-export const selectOrderMutationError = (state) => state.orders.mutationError; // Selector for mutation error
+export const selectOrderStatus = (state) => state.orders.mutationStatus;
+export const selectOrderMutationError = (state) => state.orders.mutationError;
 
 export default orderSlice.reducer;

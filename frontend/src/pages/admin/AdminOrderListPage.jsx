@@ -46,12 +46,14 @@ const AdminOrderListPage = () => {
   };
 
   useEffect(() => { 
-    dispatch(fetchOrders({
+    const dispatchParams = {
       page: currentPage,
-      search: searchTerm || undefined, // Pass undefined if empty for cleaner query params
-      status: statusFilter || undefined, // Pass undefined if empty
-      limit: 10, // Or your preferred limit
-    }));
+      search: searchTerm || undefined,
+      status: statusFilter || undefined,
+      limit: 10,
+    };
+    console.log('[AdminOrderListPage] Dispatching fetchOrders with params:', dispatchParams); // Log params
+    dispatch(fetchOrders(dispatchParams));
   }, [dispatch, currentPage, searchTerm, statusFilter]);
 
   const handlePageChange = (newPage) => {
@@ -202,7 +204,7 @@ const AdminOrderListPage = () => {
                 </tbody>
               </table>
             </div>
-
+            {console.log("Orders from Redux:", orders)}
             {totalPages > 1 && (
               <div className="px-4 py-4 sm:px-6 border-t border-slate-100">
                 <Pagination

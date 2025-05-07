@@ -21,7 +21,7 @@ serve(async (req) => {
   // Supabase client (use service role key for full access)
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')! // <--- This is the service role key
   );
 
   // TODO: Add admin check here (e.g., query user role or use RLS)
@@ -37,13 +37,19 @@ serve(async (req) => {
 
   // Build query with only available fields (no join)
   let query = supabase
-    .from('orders')
-    .select('id, status, "totalAmount", created_at, "userId", "shippingAddress"', { count: 'exact' })
+    .from('orders') // <--- You are fetching from the "orders" table
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
+  // Add search on id or shippingAddress->>firstName/lastName/email if needed
   if (search) {
-    query = query.ilike('id', `%${search}%`);
+    query = query.or([
+      `id.ilike.%${search}%`,
+      `"shippingAddress"->>firstName.ilike.%${search}%`,
+      `"shippingAddress"->>lastName.ilike.%${search}%`,
+      `"shippingAddress"->>email.ilike.%${search}%`
+    ].join(','));
   }
   if (status) {
     query = query.eq('status', status);
@@ -54,13 +60,16 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: error.message }), { headers: corsHeaders, status: 400 });
   }
 
+  // Debug log for troubleshooting
+  console.log("Fetched orders:", data?.length, "Total count:", count);
+
   return new Response(
     JSON.stringify({
       success: true,
       data: {
-        orders: data,
+        orders: data || [],
         totalPages: Math.ceil((count || 0) / limit),
-        totalOrders: count,
+        totalOrders: count || 0,
         currentPage: page,
       },
     }),
