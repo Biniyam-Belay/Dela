@@ -1,19 +1,18 @@
-import { configureStore } from "@reduxjs/toolkit"
-import cartReducer from "./cartSlice.js"
-import orderReducer from "./orderSlice.js"
-import productReducer from "./productSlice.js"
-import categoryReducer from "./categorySlice.js"
-import wishlistReducer from "./wishlistSlice.js" // Import the new wishlist reducer
+import { configureStore } from '@reduxjs/toolkit';
+import productReducer from './productSlice';
+import cartReducer from './cartSlice'; 
+import wishlistReducer from './wishlistSlice'; 
+// Import other reducers here if you have them
 
 const store = configureStore({
   reducer: {
-    cart: cartReducer,
-    orders: orderReducer,
     products: productReducer,
-    categories: categoryReducer,
-    wishlist: wishlistReducer, // Add the wishlist reducer here
+    cart: cartReducer,
+    wishlist: wishlistReducer,
+    // Add other reducers here:
+    // example: user: userReducer,
   },
-})
+  // Redux Toolkit's configureStore automatically includes redux-thunk.
+});
 
-export default store
-export { store }
+export default store; // Ensure this is a default export

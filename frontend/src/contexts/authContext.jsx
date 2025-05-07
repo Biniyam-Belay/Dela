@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient'; // Adjust path if needed
 import Spinner from '../components/common/Spinner'; // Assuming you have a Spinner
-import { store } from '../store/store';
+import store from '../store/store'; // Changed from named import to default import
 import { clearLocalCartAndState, mergeLocalCartWithBackend } from '../store/cartSlice';
 
 const AuthContext = createContext(null);
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
         return () => {
             subscription?.unsubscribe();
         };
-    }, []); // Empty dependency array ensures this runs only once on mount
+    }, []); // Dependency array changed to empty to run only on mount and unmount
 
     const login = useCallback(async (email, password) => {
         setIsLoading(true);

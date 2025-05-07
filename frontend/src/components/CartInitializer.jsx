@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { store } from '../store/store.js';
+import store from '../store/store.js'; // Changed from named import to default import
 import { fetchCart } from '../store/cartSlice';
 
 // Initializes the cart on app load

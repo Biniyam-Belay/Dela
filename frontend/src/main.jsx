@@ -6,11 +6,12 @@ import App from './App.jsx';
 import './index.css';
 import { AuthProvider } from './contexts/authContext.jsx';
 import { Provider } from 'react-redux';
-import { store } from './store/store.js';
+import store from './store/store.js'; // Changed from named import to default import
 import TOASTER_OPTIONS from './utils/toastOptions.js';
 import CartInitializer from './components/CartInitializer.jsx';
 import { Toaster } from 'react-hot-toast';
 import { Suspense } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Simple error boundary for production robustness
 class ErrorBoundary extends React.Component {
@@ -33,6 +34,9 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Create a client instance for React Query
+const queryClient = new QueryClient();
+
 // --- App Bootstrap ---
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -40,19 +44,22 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <Provider store={store}>
       {/* React Router Provider */}
       <BrowserRouter>
-        {/* Auth Context Provider */}
-        <AuthProvider>
-          {/* Cart Initialization on App Load */}
-          <CartInitializer />
-          {/* Global Toast Notifications */}
-          <Toaster position="bottom-center" toastOptions={TOASTER_OPTIONS} />
-          {/* App with Suspense and Error Boundary */}
-          <ErrorBoundary>
-            <Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}>
-              <App />
-            </Suspense>
-          </ErrorBoundary>
-        </AuthProvider>
+        {/* React Query Provider */}
+        <QueryClientProvider client={queryClient}>
+          {/* Auth Context Provider */}
+          <AuthProvider>
+            {/* Cart Initialization on App Load */}
+            <CartInitializer />
+            {/* Global Toast Notifications */}
+            <Toaster position="bottom-center" toastOptions={TOASTER_OPTIONS} />
+            {/* App with Suspense and Error Boundary */}
+            <ErrorBoundary>
+              <Suspense fallback={<div style={{padding:'2rem',textAlign:'center'}}>Loading...</div>}>
+                <App />
+              </Suspense>
+            </ErrorBoundary>
+          </AuthProvider>
+        </QueryClientProvider>
       </BrowserRouter>
     </Provider>
   </React.StrictMode>

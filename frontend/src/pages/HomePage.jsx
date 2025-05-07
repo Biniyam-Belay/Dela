@@ -1,8 +1,6 @@
-"use client"
 import { Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState, useCallback } from "react"
-import { supabase } from "../services/supabaseClient"
+import { supabase } from "../services/supabaseClient.js"
 import {
   ArrowRight,
   Star,
@@ -18,13 +16,14 @@ import {
   ChevronRight,
 } from "lucide-react"
 import useEmblaCarousel from 'embla-carousel-react'
+import { useDispatch, useSelector } from 'react-redux';
 
 import { Button } from "../components/ui/button"
 import ProductCard from "../components/ui/ProductCard.jsx"
 import SkeletonCard from "../components/ui/SkeletonCard.jsx"
 import ErrorMessage from "../components/common/ErrorMessage.jsx"
 import { Input } from "../components/ui/input"
-import { fetchProducts, fetchCategories } from "../services/productApi"
+import { fetchProducts, fetchCategoriesThunk, fetchReviewsThunk } from "../store/productSlice"
 import Header from '../components/layout/Header'
 import CategorySkeletonCard from "../components/ui/CategorySkeletonCard.jsx"
 
@@ -37,8 +36,10 @@ const HeroSection = () => {
   const [heroImageUrl, setHeroImageUrl] = useState("/placeholder.svg?height=1200&width=2000")
 
   useEffect(() => {
-    const { data } = supabase.storage.from("public_assets").getPublicUrl("landing.jpg")
-    if (data?.publicUrl) setHeroImageUrl(data.publicUrl)
+    const { data } = supabase.storage.from("public_assets").getPublicUrl("landing.webp") 
+    if (data?.publicUrl) {
+      setHeroImageUrl(data.publicUrl)
+    }
   }, [])
 
   return (
@@ -48,6 +49,12 @@ const HeroSection = () => {
         alt="Luxury essentials for you"
         className="absolute inset-0 w-full h-full object-cover opacity-70 grayscale"
         style={{ zIndex: 0, filter: 'brightness(0.7)' }}
+        onError={(e) => {
+          if (e.target.src !== "/placeholder.svg?height=1200&width=2000") {
+            e.target.onerror = null;
+            e.target.src = "/placeholder.svg?height=1200&width=2000";
+          }
+        }}
       />
       {/* Gradient overlay: solid on left, fades to transparent on right */}
       <div className="absolute inset-0" style={{zIndex:1, background: 'linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.7) 40%, rgba(0,0,0,0.15) 80%, rgba(0,0,0,0.01) 100%)'}} />
@@ -131,15 +138,16 @@ const AdBanner = () => (
 
 // White-themed, seamless Category Showcase Section with Carousel
 const CategoryShowcase = () => {
-  const {
-    data: categoriesData,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["categories"],
-    queryFn: () => fetchCategories(),
-    select: (data) => data?.data || [],
-  })
+  const dispatch = useDispatch();
+  const { 
+    categories: categoriesData, 
+    categoriesLoading: isLoading, 
+    categoriesError: error 
+  } = useSelector((state) => state.products);
+
+  useEffect(() => {
+    dispatch(fetchCategoriesThunk());
+  }, [dispatch]);
 
   // Embla Carousel setup
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -162,9 +170,7 @@ const CategoryShowcase = () => {
     if (!imagePath) {
       return '/placeholder-image.jpg';
     }
-    // Remove leading slash if present
     let path = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
-    // Remove leading 'categories/' if present, as getPublicUrl adds the bucket name
     if (path.startsWith('categories/')) {
       path = path.substring('categories/'.length);
     }
@@ -214,7 +220,7 @@ const CategoryShowcase = () => {
               ))
             ) : error ? (
               <div className="w-full">
-                <ErrorMessage message="Could not load categories" />
+                <ErrorMessage message={error || "Could not load categories"} />
               </div>
             ) : categoriesData && categoriesData.length > 0 ? (
               categoriesData.map((category) => (
@@ -243,7 +249,6 @@ const CategoryShowcase = () => {
                         {category.description ? category.description.substring(0, 40) + (category.description.length > 40 ? '...' : '') : 'Curated selection'}
                       </span>
                       <span className="inline-flex items-center gap-1 text-white text-[11px] font-medium border-b border-white/30 pb-0.5 group-hover:border-white transition-colors w-fit" style={{textShadow: '0 1px 6px rgba(0,0,0,0.2)'}}>
-                        Explore <ArrowRight className="ml-0.5 h-2.5 w-2.5 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </div>
                   </Link>
@@ -290,7 +295,7 @@ const TrendingProducts = () => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 w-full max-w-full">
-        {isLoading ? (
+        {loading ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : error ? (
           <ErrorMessage message="Could not load products" />
@@ -364,7 +369,12 @@ const FeaturedBanner = () => (
               alt="Signature Collection"
               className="object-cover w-full h-full rounded-lg"
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-              onError={e => { e.target.onerror = null; e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"; }}
+              onError={e => { 
+                if (e.target.src !== "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp") {
+                  e.target.onerror = null;
+                  e.target.src = "https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp"; 
+                }
+              }}
             />
           </div>
           <div className="absolute -bottom-4 sm:-bottom-6 -left-2 sm:-left-6 bg-white text-black py-2 sm:py-3 px-4 sm:px-6 shadow-lg text-xs sm:text-base">
@@ -421,7 +431,7 @@ const FeaturedProducts = () => {
   const { items: productsData = [], loading, error } = useSelector((state) => state.products);
 
   useEffect(() => {
-    dispatch(fetchProducts({ limit: 4, featured: true }));
+    dispatch(fetchProducts({ limit: 4 }));
   }, [dispatch]);
 
   return (
@@ -435,7 +445,7 @@ const FeaturedProducts = () => {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
-          {isLoading ? (
+          {loading ? (
             Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
           ) : error ? (
             <ErrorMessage message="Could not load featured products" />
@@ -480,32 +490,16 @@ const NewsletterSection = () => (
 
 // Customer Reviews Section
 const CustomerReviews = () => {
-  // TODO: Replace hardcoded reviews with real data from backend in production
-  const reviews = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      rating: 5,
-      comment:
-        "The quality of their products is exceptional. I've been a loyal customer for years and have never been disappointed.",
-      date: "2 weeks ago",
-    },
-    {
-      id: 2,
-      name: "Michael Chen",
-      rating: 5,
-      comment:
-        "Fast shipping and the packaging was beautiful. The attention to detail really shows how much they care about the customer experience.",
-      date: "1 month ago",
-    },
-    {
-      id: 3,
-      name: "Emma Williams",
-      rating: 4,
-      comment: "Love the minimalist design aesthetic. These pieces integrate perfectly into my existing wardrobe.",
-      date: "2 months ago",
-    },
-  ]
+  const dispatch = useDispatch();
+  const { 
+    reviews: reviewsData, 
+    reviewsLoading: isLoading, 
+    reviewsError: error 
+  } = useSelector((state) => state.products);
+
+  useEffect(() => {
+    dispatch(fetchReviewsThunk());
+  }, [dispatch]);
 
   return (
     <section className="py-16 sm:py-24 bg-white">
@@ -515,25 +509,33 @@ const CustomerReviews = () => {
           <p className="text-neutral-500 mt-4 max-w-xl mx-auto text-sm sm:text-base" style={{fontFamily: flowingSans}}>Real experiences from our valued customers</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
-          {reviews.map((review) => (
-            <div key={review.id} className="border border-neutral-200 p-6 rounded-lg">
-              <div className="flex items-center mb-4">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400" : "text-neutral-300"}`}
-                  />
-                ))}
+        {isLoading ? (
+          <div className="text-center text-neutral-500">Loading reviews...</div>
+        ) : error ? (
+          <ErrorMessage message="Could not load reviews." />
+        ) : reviewsData && reviewsData.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
+            {reviewsData.map((review) => (
+              <div key={review.id} className="border border-neutral-200 p-6 rounded-lg">
+                <div className="flex items-center mb-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${i < review.rating ? "fill-amber-400 text-amber-400" : "text-neutral-300"}`}
+                    />
+                  ))}
+                </div>
+                <p className="text-neutral-700 mb-4">"{review.comment}"</p>
+                <div className="flex justify-between items-center">
+                  <p className="font-medium">{review.name}</p>
+                  <p className="text-sm text-neutral-500">{review.date}</p>
+                </div>
               </div>
-              <p className="text-neutral-700 mb-4">"{review.comment}"</p>
-              <div className="flex justify-between items-center">
-                <p className="font-medium">{review.name}</p>
-                <p className="text-sm text-neutral-500">{review.date}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-neutral-500">No reviews yet.</div>
+        )}
 
         <div className="text-center mt-8 sm:mt-10">
           <Link to="/reviews" className="inline-flex items-center text-neutral-700 hover:text-neutral-900 text-sm sm:text-base">
