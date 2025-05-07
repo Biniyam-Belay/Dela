@@ -7,6 +7,11 @@ import ProductCard from '../components/ui/ProductCard';
 import { Input } from "../components/ui/input"; // Import Input
 import { Button } from "../components/ui/button"; // Import Button
 import { Helmet } from 'react-helmet';
+import { supabase } from "../services/supabaseClient.js"; // Import supabase
+
+// Define the Supabase placeholder image URL
+const SUPABASE_PLACEHOLDER_IMAGE_URL = supabase.storage.from("public_assets").getPublicUrl("placeholder.webp").data?.publicUrl || "/fallback-placeholder.svg";
+const SUPABASE_SIGNATURE_IMAGE_URL = supabase.storage.from("public_assets").getPublicUrl("signature.webp").data?.publicUrl || "/fallback-signature.svg"; // Fallback if Supabase URL construction fails
 
 const collections = [
   {
@@ -178,7 +183,11 @@ const CollectionsPage = () => {
                   alt={col.name}
                   className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
                   style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-                  onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+                  onError={e => { 
+                    if (e.target.src !== SUPABASE_PLACEHOLDER_IMAGE_URL) {
+                      e.target.onerror = null; e.target.src = SUPABASE_PLACEHOLDER_IMAGE_URL; 
+                    }
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex items-end p-6">
                   <div>
@@ -210,10 +219,14 @@ const CollectionsPage = () => {
           {/* Left: High-Fashion Image Placeholder */}
           <div className="flex-1 md:w-1/2 relative min-h-[400px] md:min-h-[500px] bg-neutral-100 border-r border-black">
             <img
-              src="/images/suriAddis-hero.jpg" // Replace with a high-fashion, edgy image
+              src={SUPABASE_SIGNATURE_IMAGE_URL} 
               alt="Fashion Forward Collection"
               className="absolute inset-0 w-full h-full object-cover object-center grayscale filter"
-              onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+              onError={e => { 
+                if (e.target.src !== SUPABASE_PLACEHOLDER_IMAGE_URL) { // Fallback to general placeholder on error
+                  e.target.onerror = null; e.target.src = SUPABASE_PLACEHOLDER_IMAGE_URL; 
+                }
+              }}
             />
             <div className="absolute inset-0 bg-black/10 pointer-events-none"></div>
           </div>

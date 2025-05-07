@@ -42,6 +42,10 @@ import { fetchProducts, fetchCategories } from "../services/productApi.js"
 import { addItemToCart } from "../store/cartSlice"
 import { addToWishlist } from "../store/wishlistSlice"
 import { formatETB } from "../utils/utils"
+import { supabase } from "../services/supabaseClient.js" // Import supabase
+
+// Define the Supabase placeholder image URL
+const SUPABASE_PLACEHOLDER_IMAGE_URL = supabase.storage.from("public_assets").getPublicUrl("placeholder.webp").data?.publicUrl || "/fallback-placeholder.svg";
 
 const priceRanges = [
   { label: "Under $100", min: 0, max: 100 },
@@ -86,7 +90,7 @@ const ProductCard = ({ product }) => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
   const imageUrl = product.images && product.images[0]
     ? `${backendUrl}${product.images[0].startsWith("/") ? "" : "/"}${product.images[0]}`
-    : "/placeholder-image.jpg";
+    : SUPABASE_PLACEHOLDER_IMAGE_URL;
 
   const handleAddToCart = async () => {
     setIsAdding(true);
@@ -140,7 +144,11 @@ const ProductCard = ({ product }) => {
           alt={product.name || 'Product image'}
           className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
           style={{ width: '100%', height: '100%' }}
-          onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+          onError={e => { 
+            if (e.target.src !== SUPABASE_PLACEHOLDER_IMAGE_URL) {
+              e.target.onerror = null; e.target.src = SUPABASE_PLACEHOLDER_IMAGE_URL; 
+            }
+          }}
           loading="lazy"
         />
         {product.discount > 0 && (
@@ -883,11 +891,15 @@ export default function ProductListPage() {
             >
               <div className="relative w-16 h-16 mx-auto mb-3 bg-gray-100 rounded-full overflow-hidden">
                 <img
-                  src={category.image_url ? `${import.meta.env.VITE_BACKEND_URL || ''}${category.image_url.startsWith('/') ? '' : '/'}${category.image_url}` : '/placeholder-image.jpg'}
+                  src={category.image_url ? `${import.meta.env.VITE_BACKEND_URL || ''}${category.image_url.startsWith('/') ? '' : '/'}${category.image_url}` : SUPABASE_PLACEHOLDER_IMAGE_URL}
                   alt={category.name}
                   className="object-cover group-hover:scale-110 transition-transform"
                   style={{ width: '100%', height: '100%' }}
-                  onError={e => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+                  onError={e => { 
+                    if (e.target.src !== SUPABASE_PLACEHOLDER_IMAGE_URL) {
+                      e.target.onerror = null; e.target.src = SUPABASE_PLACEHOLDER_IMAGE_URL; 
+                    }
+                  }}
                 />
               </div>
               <h3 className="font-medium text-sm group-hover:text-indigo-600 transition-colors">{category.name}</h3>

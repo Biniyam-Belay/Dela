@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { fetchAdminOrders } from '../../services/adminApi';
+import { useDispatch, useSelector } from 'react-redux'; // Import useDispatch and useSelector
+import { fetchOrders } from '../../store/orderSlice'; // Assuming fetchOrders is in orderSlice.js
 
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -26,17 +26,31 @@ const AdminOrderListPage = () => {
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
   const currentPage = parseInt(searchParams.get('page') || '1', 10);
 
-  const orderStatuses = ['Processing', 'Shipped', 'Delivered', 'Cancelled', 'Pending']; // Example
+  const orderStatuses = ['Processing', 'Shipped', 'Delivered', 'Cancelled', 'Pending']; 
 
   const dispatch = useDispatch();
-  const { orders, loading, error, totalPages, totalOrders } = useSelector((state) => state.orders);
+  const ordersSlice = useSelector((state) => state.orders);
+  
+  const { 
+    items: orders = [], 
+    loading = false, 
+    error = null, 
+    totalPages = 1, 
+    totalOrders = 0 
+  } = ordersSlice || { 
+    items: [], 
+    loading: false, 
+    error: null, 
+    totalPages: 1, 
+    totalOrders: 0 
+  };
 
-  React.useEffect(() => {
+  useEffect(() => { 
     dispatch(fetchOrders({
       page: currentPage,
-      search: searchTerm,
-      status: statusFilter,
-      limit: 10,
+      search: searchTerm || undefined, // Pass undefined if empty for cleaner query params
+      status: statusFilter || undefined, // Pass undefined if empty
+      limit: 10, // Or your preferred limit
     }));
   }, [dispatch, currentPage, searchTerm, statusFilter]);
 
@@ -117,20 +131,20 @@ const AdminOrderListPage = () => {
         </div>
       </div>
 
-      {error && <ErrorMessage message={error.error || error.message || 'Failed to load orders.'} />}
+      {error && <ErrorMessage message={error.message || error || 'Failed to load orders.'} />}
 
       <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        {loading ? (
+        {loading && orders.length === 0 ? ( // Show spinner only if loading AND no orders are yet displayed
           <div className="flex justify-center items-center p-12 min-h-[200px]">
             <Spinner />
           </div>
-        ) : orders.length === 0 ? (
+        ) : !loading && orders.length === 0 && !error ? ( // Show "No orders found" only if not loading, no orders, and no error
           <div className="text-center p-12 text-slate-500">
             <FiAlertCircle className="mx-auto h-10 w-10 text-slate-400 mb-4" />
             <p className="font-medium">No orders found</p>
             {(searchTerm || statusFilter) && <p className="text-sm mt-1">Try adjusting your search or filters.</p>}
           </div>
-        ) : (
+        ) : orders.length > 0 ? ( // Only render table if there are orders
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-100">
@@ -199,7 +213,7 @@ const AdminOrderListPage = () => {
               </div>
             )}
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );
