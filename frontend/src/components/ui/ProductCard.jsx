@@ -149,7 +149,35 @@ export default function ProductCard({ product, className = "" }) {
           )}
         </div>
 
-        <div className="mt-4 flex items-center justify-between">
+        {/* --- Responsive Price & Button Layout --- */}
+        {/* Mobile: Price above, button below */}
+        <div className="block sm:hidden">
+          <span className="block text-base font-semibold text-neutral-900 mb-2">
+            {product.discount ? (
+              <>
+                {formatETB(product.price * (1 - product.discount / 100))}
+                <span className="text-xs text-neutral-400 line-through ml-2">{formatETB(product.price)}</span>
+              </>
+            ) : (
+              formatETB(product.price)
+            )}
+          </span>
+          <Button
+            size="sm"
+            disabled={product.stockQuantity === 0 || isAdding}
+            onClick={handleAddToCart}
+            className={`w-full rounded-full px-4 py-2 text-xs font-medium transition-colors ${
+              product.stockQuantity === 0 || isAdding
+                ? "bg-neutral-100 text-neutral-400 cursor-not-allowed"
+                : "bg-neutral-800 text-white hover:bg-black"
+            }`}
+          >
+            <ShoppingCart size={14} className="mr-1.5" />
+            {isAdding ? "Adding..." : (product.stockQuantity === 0 ? "Out of Stock" : "Add")}
+          </Button>
+        </div>
+        {/* Desktop: Price and button side by side */}
+        <div className="hidden sm:flex items-center justify-between mt-4">
           <div className="flex flex-col">
             {product.discount ? (
               <>

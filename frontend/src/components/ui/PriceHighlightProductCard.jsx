@@ -28,11 +28,7 @@ export default function PriceHighlightProductCard({ product }) {
 
   const imageUrl = product.images?.[0]
     ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
-<<<<<<< HEAD
-    : 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
-=======
     : '/placeholder-image.jpg';
->>>>>>> mergeFix
 
   const isOutOfStock = product.stockQuantity !== undefined && product.stockQuantity <= 0;
 
@@ -99,15 +95,9 @@ export default function PriceHighlightProductCard({ product }) {
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 ease-in-out group-hover:scale-105"
           onError={(e) => {
-<<<<<<< HEAD
-            if (e.target.src !== 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp') {
-              e.target.onerror = null;
-              e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
-=======
             if (e.target.src !== '/placeholder-image.jpg') {
               e.target.onerror = null;
               e.target.src = '/placeholder-image.jpg';
->>>>>>> mergeFix
             }
           }}
           loading="lazy"
@@ -129,19 +119,38 @@ export default function PriceHighlightProductCard({ product }) {
 
         <div className="flex-grow"></div>
 
+        {/* Mobile: Price above button, smaller font */}
+        <div className="block sm:hidden mb-2">
+          {product.discount ? (
+            <>
+              <span className="text-base font-semibold text-red-600">
+                {formatETB(finalPrice)}
+              </span>
+              <span className="text-xs text-neutral-400 line-through ml-2">
+                {formatETB(product.price)}
+              </span>
+            </>
+          ) : (
+            <span className="text-base font-semibold text-neutral-800">
+              {formatETB(product.price)}
+            </span>
+          )}
+        </div>
+
         <div className="mt-3 flex items-end justify-between gap-3">
           <div className="flex flex-col items-start">
+            {/* Desktop: Price and button side by side, original font */}
             {product.discount ? (
               <>
-                <span className="text-lg font-semibold text-red-600">
+                <span className="hidden sm:block text-lg font-semibold text-red-600">
                   {formatETB(finalPrice)}
                 </span>
-                <span className="text-sm text-neutral-400 line-through -mt-1">
+                <span className="hidden sm:block text-sm text-neutral-400 line-through -mt-1">
                   {formatETB(product.price)}
                 </span>
               </>
             ) : (
-              <span className="text-lg font-semibold text-neutral-800">
+              <span className="hidden sm:block text-lg font-semibold text-neutral-800">
                 {formatETB(product.price)}
               </span>
             )}
