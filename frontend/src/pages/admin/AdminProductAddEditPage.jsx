@@ -3,18 +3,19 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Helmet } from 'react-helmet';
 import {
-  fetchAdminProductById,
   createAdminProduct,
   updateAdminProduct,
-  fetchAdminCategories,
 } from '../../services/adminApi';
 import Spinner from '../../components/common/Spinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import { FiTrash2, FiSave, FiX, FiPlus, FiChevronLeft, FiUploadCloud } from 'react-icons/fi';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchCategories } from '../../store/categorySlice.js';
+import { fetchProductById } from '../../store/productSlice.js';
 
 const productSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
@@ -37,8 +38,9 @@ const AdminProductAddEditPage = () => {
   const isEditMode = Boolean(productId);
 
   const dispatch = useDispatch();
-  const { currentProduct, loading: productLoading, error: productError, mutationStatus, mutationError } = useSelector((state) => state.products);
-  const { items: categoriesData = [], loading: categoriesLoading, error: categoriesError } = useSelector((state) => state.categories);
+  const queryClient = useQueryClient();
+  const { currentProduct: productData, loading: productLoading } = useSelector((state) => state.products);
+  const { items: categoriesData = [], loading: categoriesLoading } = useSelector((state) => state.categories);
 
   const [formError, setFormError] = useState(null);
   const [existingImages, setExistingImages] = useState([]);
@@ -51,7 +53,6 @@ const AdminProductAddEditPage = () => {
     register,
     handleSubmit,
     reset,
-    setValue,
     watch,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -123,7 +124,7 @@ const AdminProductAddEditPage = () => {
       setImagePreviews([]);
       setNewImageFiles([]);
     }
-  }, [isEditMode, productData, reset]);
+  }, [isEditMode, productData, reset, backendUrl]);
 
   const handleImageChange = (e) => {
     if (e.target.files) {
@@ -209,7 +210,7 @@ const AdminProductAddEditPage = () => {
     }
   };
 
-  if (loading || categoriesLoading || productLoading) {
+  if (categoriesLoading || productLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Spinner />

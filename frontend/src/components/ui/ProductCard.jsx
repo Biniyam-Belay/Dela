@@ -49,10 +49,24 @@ export default function ProductCard({ product, className = "" }) {
   const wishlistItems = useSelector((state) => state.wishlist.items);
   const isInWishlist = wishlistItems.some(item => item.product_id === product.id);
 
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
-  const imageUrl = product.images && product.images[0]
-    ? `${backendUrl}${product.images[0].startsWith("/") ? "" : "/"}${product.images[0]}`
-    : 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
+  // Helper to get the first image from the product's images array (Supabase storage or fallback)
+  const getProductImageUrl = () => {
+    if (Array.isArray(product.images) && product.images.length > 0 && typeof product.images[0] === 'string') {
+      const img = product.images[0];
+      // Remove leading slash if present
+      const path = img.startsWith('/') ? img.substring(1) : img;
+      // Use Supabase client from global or import if available
+      if (window.supabase) {
+        const { data } = window.supabase.storage.from('products').getPublicUrl(path);
+        return data?.publicUrl || 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
+      }
+      // If window.supabase is not available, fallback to static URL
+      return `https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/products/${path}`;
+    }
+    return 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
+  };
+
+  const imageUrl = getProductImageUrl();
 
   const handleAddToCart = async (e) => {
     e?.preventDefault?.();

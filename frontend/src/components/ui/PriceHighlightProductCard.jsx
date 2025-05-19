@@ -26,9 +26,25 @@ export default function PriceHighlightProductCard({ product }) {
   const dispatch = useDispatch();
   const [isAdding, setIsAdding] = useState(false);
 
-  const imageUrl = product.images?.[0]
-    ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
-    : '/placeholder-image.jpg';
+  // Helper to get the first image from the product's images array (Supabase storage or fallback)
+  const getProductImageUrl = () => {
+    if (Array.isArray(product.images) && product.images.length > 0 && typeof product.images[0] === 'string') {
+      const img = product.images[0];
+      if (img.startsWith('http')) return img;
+      // Remove leading slash if present
+      const path = img.startsWith('/') ? img.substring(1) : img;
+      // Try to get public URL from supabase storage (products bucket)
+      // NOTE: This assumes you have supabase client imported in a parent or globally
+      if (window.supabase) {
+        const { data } = window.supabase.storage.from('products').getPublicUrl(path);
+        return data?.publicUrl || '/placeholder-image.jpg';
+      }
+      return '/placeholder-image.jpg';
+    }
+    return '/placeholder-image.jpg';
+  };
+
+  const imageUrl = getProductImageUrl();
 
   const isOutOfStock = product.stockQuantity !== undefined && product.stockQuantity <= 0;
 
