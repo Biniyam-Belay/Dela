@@ -23,7 +23,8 @@ import ProductCard from "../components/ui/ProductCard.jsx"
 import SkeletonCard from "../components/ui/SkeletonCard.jsx"
 import ErrorMessage from "../components/common/ErrorMessage.jsx"
 import { Input } from "../components/ui/input"
-import { fetchProducts, fetchCategoriesThunk, fetchReviewsThunk } from "../store/productSlice"
+import { fetchCategoriesThunk, fetchReviewsThunk } from "../store/productSlice"
+import { fetchProducts } from "../services/productApi.js"; 
 import Header from '../components/layout/Header'
 import CategorySkeletonCard from "../components/ui/CategorySkeletonCard.jsx"
 
@@ -271,12 +272,22 @@ const CategoryShowcase = () => {
 
 // Trending Products Section
 const TrendingProducts = () => {
-  const dispatch = useDispatch();
-  const { items: productsData = [], loading, error } = useSelector((state) => state.products);
+  const [trending, setTrending] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchProducts({ limit: 8 }));
-  }, [dispatch]);
+    fetchProducts({ is_trending: true, limit: 8 })
+      .then(res => {
+        setTrending(res.data || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setTrending([]);
+        setError('Could not load trending products');
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <section className="container mx-auto px-4 sm:px-6 py-16 sm:py-24">
@@ -296,21 +307,20 @@ const TrendingProducts = () => {
           View all <ArrowRight className="group-hover:translate-x-1 transition-transform" />
         </Link>
       </div>
-
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 w-full max-w-full">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
         ) : error ? (
-          <ErrorMessage message="Could not load products" />
-        ) : productsData.length > 0 ? (
-          productsData.slice(0, 4).map((product) => <ProductCard key={product.id} product={product} />)
+          <ErrorMessage message={error} />
+        ) : trending.length > 0 ? (
+          trending.slice(0, 4).map((product) => <ProductCard key={product.id} product={product} />)
         ) : (
           <p className="col-span-full text-center text-neutral-500">No trending products available</p>
         )}
       </div>
     </section>
-  )
-}
+  );
+};
 
 // Featured Banner Section
 const FeaturedBanner = () => (
@@ -430,12 +440,22 @@ const BrandHighlights = () => (
 
 // Featured Products Section
 const FeaturedProducts = () => {
-  const dispatch = useDispatch();
-  const { items: productsData = [], loading, error } = useSelector((state) => state.products);
+  const [featured, setFeatured] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchProducts({ limit: 4 }));
-  }, [dispatch]);
+    fetchProducts({ is_featured: true, limit: 4 })
+      .then(res => {
+        setFeatured(res.data || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setFeatured([]);
+        setError('Could not load featured products');
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <section className="py-16 sm:py-24 bg-white">
@@ -446,22 +466,65 @@ const FeaturedProducts = () => {
             Discover our most popular items loved by customers worldwide
           </p>
         </div>
-
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
           {loading ? (
             Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
           ) : error ? (
-            <ErrorMessage message="Could not load featured products" />
-          ) : productsData.length > 0 ? (
-            productsData.map((product) => <ProductCard key={product.id} product={product} featured />)
+            <ErrorMessage message={error} />
+          ) : featured.length > 0 ? (
+            featured.map((product) => <ProductCard key={product.id} product={product} featured />)
           ) : (
             <p className="col-span-full text-center text-neutral-500">No featured products available</p>
           )}
         </div>
       </div>
     </section>
-  )
-}
+  );
+};
+
+// New Arrivals Section
+// const NewArrivals = () => {
+//   const [newArrivals, setNewArrivals] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState(null);
+
+//   useEffect(() => {
+//     fetchProducts({ is_new_arrival: true, limit: 4 })
+//       .then(res => {
+//         setNewArrivals(res.data || []);
+//         setLoading(false);
+//       })
+//       .catch(() => {
+//         setNewArrivals([]);
+//         setError('Could not load new arrivals');
+//         setLoading(false);
+//       });
+//   }, []);
+
+//   return (
+//     <section className="py-16 sm:py-24 bg-neutral-50">
+//       <div className="container mx-auto px-4 sm:px-6">
+//         <div className="text-center mb-10 sm:mb-16">
+//           <h2 className="text-2xl sm:text-3xl md:text-4xl font-light tracking-tight" style={{fontFamily: flowingSerif}}>New Arrivals</h2>
+//           <p className="text-neutral-500 mt-4 max-w-xl mx-auto text-sm sm:text-base" style={{fontFamily: flowingSans}}>
+//             Be the first to shop our latest additions
+//           </p>
+//         </div>
+//         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+//           {loading ? (
+//             Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+//           ) : error ? (
+//             <ErrorMessage message={error} />
+//           ) : newArrivals.length > 0 ? (
+//             newArrivals.map((product) => <ProductCard key={product.id} product={product} />)
+//           ) : (
+//             <p className="col-span-full text-center text-neutral-500">No new arrivals available</p>
+//           )}
+//         </div>
+//       </div>
+//     </section>
+//   );
+// };
 
 // Newsletter Section
 const NewsletterSection = () => (
@@ -561,6 +624,7 @@ export default function HomePage() {
       <TrendingProducts />
       <FeaturedBanner />
       <FeaturedProducts />
+      {/* <NewArrivals /> */}
       <BrandHighlights />
       <CustomerReviews />
       <NewsletterSection />

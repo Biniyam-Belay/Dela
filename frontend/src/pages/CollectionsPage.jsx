@@ -138,10 +138,92 @@ const CollectionsPage = () => {
     error: newArrivalsError,
   } = useQuery({
     queryKey: ['new-arrivals'],
-    queryFn: () => fetchProducts({ sortBy: 'createdAt', order: 'desc', limit: 4 }),
+    queryFn: () => fetchProducts({ is_new_arrival: true, limit: 4 }), // Changed sortBy and order to is_new_arrival: true
     select: (res) => res?.data || [],
     staleTime: 1000 * 60 * 10, // Cache for 10 minutes
   });
+
+  // Trending Products Section
+  // const TrendingProducts = () => {
+  //   const { data, isLoading, error } = useQuery({
+  //     queryKey: ['trending-products'],
+  //     queryFn: () => fetchProducts({ is_trending: true, limit: 8 }),
+  //     select: (res) => res?.data || [],
+  //     staleTime: 1000 * 60 * 5,
+  //   });
+  //   return (
+  //     <section className="container mx-auto px-4 sm:px-6 mb-20">
+  //       <div className="mb-10 text-center">
+  //         <h2 className="text-3xl font-light mb-2 tracking-tight">Trending Now</h2>
+  //         <p className="text-neutral-500 text-sm max-w-md mx-auto">See what's hot and in demand right now.</p>
+  //       </div>
+  //       {isLoading ? (
+  //         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+  //           {Array.from({ length: 4 }).map((_, i) => (
+  //             <div key={i} className="border border-neutral-200 rounded-lg p-4 animate-pulse">
+  //               <div className="aspect-square bg-neutral-200 rounded mb-4"></div>
+  //               <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2 mx-auto"></div>
+  //               <div className="h-6 bg-neutral-200 rounded w-1/4 mx-auto"></div>
+  //             </div>
+  //           ))}
+  //         </div>
+  //       ) : error ? (
+  //         <div className="text-center text-red-500 py-10">Could not load trending products. Please try again later.</div>
+  //       ) : data && data.length > 0 ? (
+  //         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+  //           {data.map(product => (
+  //             <div key={product.id} className="group">
+  //               <ProductCard product={product} className="transition-shadow duration-300 group-hover:shadow-xl" />
+  //             </div>
+  //           ))}
+  //         </div>
+  //       ) : (
+  //         <div className="text-center text-neutral-500 py-10">No trending products found.</div>
+  //       )}
+  //     </section>
+  //   );
+  // };
+
+  // Featured Products Section
+  const FeaturedProducts = () => {
+    const { data, isLoading, error } = useQuery({
+      queryKey: ['featured-products'],
+      queryFn: () => fetchProducts({ is_featured: true, limit: 8 }),
+      select: (res) => res?.data || [],
+      staleTime: 1000 * 60 * 5,
+    });
+    return (
+      <section className="container mx-auto px-4 sm:px-6 mb-20">
+        <div className="mb-10 text-center">
+          <h2 className="text-3xl font-light mb-2 tracking-tight">Featured Products</h2>
+          <p className="text-neutral-500 text-sm max-w-md mx-auto">Handpicked favorites from our collection.</p>
+        </div>
+        {isLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="border border-neutral-200 rounded-lg p-4 animate-pulse">
+                <div className="aspect-square bg-neutral-200 rounded mb-4"></div>
+                <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2 mx-auto"></div>
+                <div className="h-6 bg-neutral-200 rounded w-1/4 mx-auto"></div>
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="text-center text-red-500 py-10">Could not load featured products. Please try again later.</div>
+        ) : data && data.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
+            {data.map(product => (
+              <div key={product.id} className="group">
+                <ProductCard product={product} className="transition-shadow duration-300 group-hover:shadow-xl" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center text-neutral-500 py-10">No featured products found.</div>
+        )}
+      </section>
+    );
+  };
 
   return (
     <div className="bg-white min-h-screen text-neutral-900">
@@ -336,6 +418,12 @@ const CollectionsPage = () => {
           </div>
         </section>
       )}
+
+      {/* Trending Products Section */}
+      {/* <TrendingProducts /> */}
+
+      {/* Featured Products Section */}
+      <FeaturedProducts />
 
       {/* Newsletter Section - Styled like HomePage */}
       <section className="py-16 sm:py-24 bg-neutral-100"> {/* Updated padding */}

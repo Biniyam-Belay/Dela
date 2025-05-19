@@ -23,8 +23,12 @@ serve(async (req) => {
     const sortOrder = url.searchParams.get('sortOrder') || 'asc'; // Default to 'asc' for name sorting
     const price_gte = url.searchParams.get('price_gte');
     const price_lte = url.searchParams.get('price_lte');
+    const is_trending = url.searchParams.get('is_trending');
+    const is_featured = url.searchParams.get('is_featured');
+    const is_new_arrival = url.searchParams.get('is_new_arrival');
+    const flash_deal = url.searchParams.get('flash_deal');
 
-    console.log(`Function called with params: page=${page}, limit=${limit}, category=${categorySlug}, search=${searchTerm}, sortBy=${sortBy}, sortOrder=${sortOrder}, price_gte=${price_gte}, price_lte=${price_lte}`); // Log entry params
+    console.log(`Function called with params: page=${page}, limit=${limit}, category=${categorySlug}, search=${searchTerm}, sortBy=${sortBy}, sortOrder=${sortOrder}, price_gte=${price_gte}, price_lte=${price_lte}, is_trending=${is_trending}, is_featured=${is_featured}, is_new_arrival=${is_new_arrival}, flash_deal=${flash_deal}`); // Log entry params
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -94,6 +98,25 @@ serve(async (req) => {
         });
       }
     }
+
+    // --- Filter by product features ---
+    if (is_trending === 'true') {
+      console.log('Applying filter: is_trending = true');
+      query = query.eq('is_trending', true);
+    }
+    if (is_featured === 'true') {
+      console.log('Applying filter: is_featured = true');
+      query = query.eq('is_featured', true);
+    }
+    if (is_new_arrival === 'true') {
+      console.log('Applying filter: is_new_arrival = true');
+      query = query.eq('is_new_arrival', true);
+    }
+    if (flash_deal === 'true') {
+      console.log('Applying filter: flash_deal = true');
+      query = query.eq('flash_deal', true);
+    }
+    // ---------------------------------
 
     console.log("Executing final product query..."); // Log before final query execution
     const { data, error, count } = await query;

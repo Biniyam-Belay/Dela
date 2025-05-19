@@ -161,6 +161,13 @@ export default function ProductCard({ product, className = "" }) {
               <StarRating rating={product.rating} />
             </div>
           )}
+
+          {/* Feature Badges (inline for mobile/list view) */}
+          <div className="flex gap-2 mb-2">
+            {product.is_trending && <Badge className="bg-pink-100 text-pink-700">Trending</Badge>}
+            {product.is_featured && <Badge className="bg-blue-100 text-blue-700">Featured</Badge>}
+            {product.is_new_arrival && <Badge className="bg-green-100 text-green-700">New Arrival</Badge>}
+          </div>
         </div>
 
         {/* --- Responsive Price & Button Layout --- */}

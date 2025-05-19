@@ -159,6 +159,15 @@ const AdminProductListPage = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden sm:table-cell">
                       Stock
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">
+                      Trending
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">
+                      Featured
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">
+                      New Arrival
+                    </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -196,6 +205,15 @@ const AdminProductListPage = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden sm:table-cell">
                         {product.stock_quantity ?? product.stockQuantity ?? 0}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-center hidden md:table-cell">
+                        {product.is_trending ? '✅' : ''}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-center hidden md:table-cell">
+                        {product.is_featured ? '✅' : ''}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-center hidden md:table-cell">
+                        {product.is_new_arrival ? '✅' : ''}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
                         <div className="flex items-center justify-end gap-4">

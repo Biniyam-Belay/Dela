@@ -23,6 +23,9 @@ export const fetchProducts = createAsyncThunk(
       if (params.category) query.append("category", params.category);
       if (typeof params.in_stock !== "undefined") query.append("in_stock", params.in_stock);
       if (params.min_rating) query.append("min_rating", params.min_rating);
+      if (typeof params.is_trending !== "undefined") query.append("is_trending", params.is_trending);
+      if (typeof params.is_featured !== "undefined") query.append("is_featured", params.is_featured);
+      if (typeof params.is_new_arrival !== "undefined") query.append("is_new_arrival", params.is_new_arrival);
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -226,6 +229,7 @@ const productSlice = createSlice({
       })
       .addCase(createProduct.fulfilled, (state, action) => {
         state.mutationStatus = 'succeeded';
+        state.items.push(action.payload); // Add the new product to the list
       })
       .addCase(createProduct.rejected, (state, action) => {
         state.mutationStatus = 'failed';

@@ -1,4 +1,3 @@
-
 [functions.get-public-categories]
 enabled = true
 verify_jwt = true
@@ -12,7 +11,7 @@ entrypoint = "./functions/get-public-categories/index.ts"
 
 [functions.get-public-products]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/get-public-products/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
