@@ -180,6 +180,11 @@ export default function ProductDetailPage() {
 
   // --- Zoom Effect Handlers ---
   const handleMouseEnter = () => {
+    // Disable zoom on smaller screens (e.g., less than 1024px, typical for 'lg' breakpoint)
+    if (window.innerWidth < 1024) {
+      setShowZoom(false);
+      return;
+    }
     if (mainImageContainerRef.current && product?.images?.[selectedImageIndex]) {
       setShowZoom(true);
     }
@@ -362,7 +367,7 @@ export default function ProductDetailPage() {
             {/* Zoomed Image Display Pane */}
             {showZoom && product?.images?.[selectedImageIndex] && mainImageContainerRef.current && (
               <div
-                className="hidden lg:block" // Show only on large screens
+                className="hidden lg:block" // Ensures it's hidden on screens smaller than lg
                 style={{
                   position: 'absolute',
                   left: `calc(100% + ${GAP_BETWEEN_IMAGE_AND_ZOOM}px)`,
@@ -395,7 +400,7 @@ export default function ProductDetailPage() {
                     {product.category.name}
                   </Link>
                 )}
-                <h1 className="text-3xl font-bold text-gray-900 mt-1 mb-2">{product.name}</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 mb-2">{product.name}</h1> {/* Adjusted font size for mobile */}
                 
                 <div className="flex items-center justify-between">
                   <StarRating rating={product.rating} reviewCount={product.review_count} />
@@ -417,35 +422,35 @@ export default function ProductDetailPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <span className="text-3xl font-bold text-gray-900">
+                <div className="flex items-center gap-2 sm:gap-4 flex-wrap"> {/* Added flex-wrap and adjusted gap for responsiveness */}
+                  <span className="text-2xl sm:text-3xl font-bold text-gray-900">
                     {formatETB(product.price)}
                   </span>
                   {product.original_price && product.price < product.original_price && (
-                    <span className="text-xl text-gray-400 line-through">
+                    <span className="text-lg sm:text-xl text-gray-400 line-through"> {/* Adjusted font size */}
                       {formatETB(product.original_price)}
                     </span>
                   )}
                   {product.original_price && product.price < product.original_price && (
-                    <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                    <span className="bg-red-100 text-red-700 text-xs sm:text-sm font-semibold px-2 py-0.5 rounded-md"> {/* Adjusted padding, font-weight, color */}
                       {Math.round((1 - product.price / product.original_price) * 100)}% OFF
                     </span>
                   )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap pt-1"> {/* Added flex-wrap and pt-1 for spacing */}
                   {product.is_new_arrival && (
-                    <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                    <span className="bg-green-100 text-green-700 text-xs sm:text-sm font-semibold px-2.5 py-1 rounded-md"> {/* Adjusted padding, font-weight, color */}
                       New Arrival
                     </span>
                   )}
                   {product.is_trending && (
-                    <span className="bg-pink-100 text-pink-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                    <span className="bg-pink-100 text-pink-700 text-xs sm:text-sm font-semibold px-2.5 py-1 rounded-md"> {/* Adjusted padding, font-weight, color */}
                       Trending
                     </span>
                   )}
                   {product.is_featured && (
-                    <span className="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                    <span className="bg-indigo-100 text-indigo-700 text-xs sm:text-sm font-semibold px-2.5 py-1 rounded-md"> {/* Adjusted padding, font-weight, color */}
                       Featured
                     </span>
                   )}
@@ -498,7 +503,7 @@ export default function ProductDetailPage() {
 
                 {product.stock_quantity > 0 && (
                   <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                    <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden w-fit"> {/* Added w-fit */}
                       <button
                         onClick={() => handleQuantityChange(-1)}
                         disabled={quantity <= 1}
@@ -531,12 +536,12 @@ export default function ProductDetailPage() {
             {/* Product Details Tabs */}
             <div className="mt-12">
               <div className="border-b border-gray-200">
-                <nav className="flex space-x-8">
+                <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto pb-2"> {/* Added overflow-x-auto, adjusted spacing, added pb-2 for scrollbar */} 
                   {['description', 'specifications', 'reviews'].map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === tab ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                      className={`py-4 px-1 whitespace-nowrap border-b-2 font-medium text-sm capitalize ${activeTab === tab ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`} /* Added whitespace-nowrap */
                     >
                       {tab}
                     </button>
