@@ -303,64 +303,107 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Main Product Section */}
-      <div className="px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-20"> {/* Removed max-w-7xl and mx-auto, Added pt-16 md:pt-20 for header overlap */}
+      <div className="px-4 sm:px-6 lg:px-8 py-8 pt-16 md:pt-20">
         <div className="flex flex-col lg:flex-row gap-12">
           {/* Image Gallery */}
-          <div className="lg:w-1/2 relative"> {/* Added relative for zoom pane positioning */}
+          <div className="lg:w-1/2 relative">
             <div className="sticky top-4">
-              <div 
-                ref={mainImageContainerRef}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                onMouseMove={handleMouseMove}
-                className="aspect-square w-full bg-gray-100 rounded-xl overflow-hidden mb-4 relative cursor-crosshair" // Added relative for lens, cursor
-              >
-                <img
-                  src={product.images && product.images.length > 0 && productImagesBaseUrl ? `${productImagesBaseUrl}${product.images[selectedImageIndex]}` : SUPABASE_PLACEHOLDER_IMAGE_URL}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                  onError={e => { 
-                    if (e.target.src !== SUPABASE_PLACEHOLDER_IMAGE_URL) {
-                      e.target.onerror = null; 
-                      e.target.src = SUPABASE_PLACEHOLDER_IMAGE_URL;
-                    }
-                  }}
-                  loading="lazy"
-                />
-                {/* Lens */}
-                {showZoom && product?.images?.[selectedImageIndex] && mainImageContainerRef.current && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      border: '2px solid rgba(255, 255, 255, 0.7)',
-                      boxShadow: '0 0 5px rgba(0,0,0,0.3)',
-                      width: `${LENS_WIDTH}px`,
-                      height: `${LENS_HEIGHT}px`,
-                      left: `${mousePosition.x}px`,
-                      top: `${mousePosition.y}px`,
-                      pointerEvents: 'none',
-                      // backgroundColor: 'rgba(255,255,255,0.1)', // Optional: slight lens tint
+              
+              {/* Desktop Image Viewer with Arrows and Zoom */}
+              <div className="hidden lg:block relative">
+                <div 
+                  ref={mainImageContainerRef} 
+                  onMouseEnter={handleMouseEnter}
+                  onMouseLeave={handleMouseLeave}
+                  onMouseMove={handleMouseMove}
+                  className="aspect-square w-full bg-gray-100 rounded-xl overflow-hidden relative cursor-crosshair" // Removed mb-4
+                >
+                  <img
+                    src={product.images && product.images.length > 0 && productImagesBaseUrl ? `${productImagesBaseUrl}${product.images[selectedImageIndex]}` : SUPABASE_PLACEHOLDER_IMAGE_URL}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    onError={e => { 
+                      if (e.target.src !== SUPABASE_PLACEHOLDER_IMAGE_URL) {
+                        e.target.onerror = null; 
+                        e.target.src = SUPABASE_PLACEHOLDER_IMAGE_URL;
+                      }
                     }}
+                    loading="lazy"
                   />
-                )}
-                {/* Arrow Navigation */}
-                {product.images && product.images.length > 1 && (
-                  <>
-                    <button
-                      onClick={handlePrevImage}
-                      className="absolute top-1/2 left-2 -translate-y-1/2 z-10 p-2 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-white"
-                      aria-label="Previous image"
+                  {/* Lens */}
+                  {showZoom && product?.images?.[selectedImageIndex] && mainImageContainerRef.current && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        border: '2px solid rgba(255, 255, 255, 0.7)',
+                        boxShadow: '0 0 5px rgba(0,0,0,0.3)',
+                        width: `${LENS_WIDTH}px`,
+                        height: `${LENS_HEIGHT}px`,
+                        left: `${mousePosition.x}px`,
+                        top: `${mousePosition.y}px`,
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  )}
+                  {/* Arrow Navigation for Desktop */}
+                  {product.images && product.images.length > 1 && (
+                    <>
+                      <button
+                        onClick={handlePrevImage}
+                        className="absolute top-1/2 left-2 -translate-y-1/2 z-10 p-2 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-white"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft size={24} />
+                      </button>
+                      <button
+                        onClick={handleNextImage}
+                        className="absolute top-1/2 right-2 -translate-y-1/2 z-10 p-2 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-white"
+                        aria-label="Next image"
+                      >
+                        <ChevronRight size={24} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Mobile Scrollable Image Viewer */}
+              <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-xl bg-gray-100 aspect-square w-full">
+                {product.images && product.images.length > 0 ? (
+                  product.images.map((image, index) => (
+                    <div 
+                      key={index} 
+                      className="w-full flex-shrink-0 snap-center h-full"
                     >
-                      <ChevronLeft size={24} />
-                    </button>
-                    <button
-                      onClick={handleNextImage}
-                      className="absolute top-1/2 right-2 -translate-y-1/2 z-10 p-2 bg-black bg-opacity-30 hover:bg-opacity-50 text-white rounded-full transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-white"
-                      aria-label="Next image"
-                    >
-                      <ChevronRight size={24} />
-                    </button>
-                  </>
+                      <img
+                        src={productImagesBaseUrl && image ? `${productImagesBaseUrl}${image}` : SUPABASE_PLACEHOLDER_IMAGE_URL}
+                        alt={`${product.name} image ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={e => { 
+                          if (e.target.src !== SUPABASE_PLACEHOLDER_IMAGE_URL) {
+                            e.target.onerror = null; 
+                            e.target.src = SUPABASE_PLACEHOLDER_IMAGE_URL;
+                          }
+                        }}
+                        loading="lazy"
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="w-full flex-shrink-0 snap-center h-full">
+                    <img
+                      src={SUPABASE_PLACEHOLDER_IMAGE_URL}
+                      alt={product.name || "Product image"}
+                      className="w-full h-full object-cover"
+                      onError={e => { 
+                        if (e.target.src !== SUPABASE_PLACEHOLDER_IMAGE_URL) {
+                          e.target.onerror = null; 
+                          e.target.src = SUPABASE_PLACEHOLDER_IMAGE_URL;
+                        }
+                      }}
+                      loading="lazy"
+                    />
+                  </div>
                 )}
               </div>
             </div>
