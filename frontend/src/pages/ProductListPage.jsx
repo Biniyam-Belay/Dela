@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate, useLocation, Link } from "react-router-dom"
+import { useLocation, Link } from "react-router-dom" // Removed useNavigate
 import { motion, AnimatePresence } from "framer-motion"
 import { Helmet } from "react-helmet"
 
@@ -44,182 +44,142 @@ import { supabase } from "../services/supabaseClient.js" // Import supabase
 const SUPABASE_PLACEHOLDER_IMAGE_URL = supabase.storage.from("public_assets").getPublicUrl("placeholder.webp").data?.publicUrl || "/fallback-placeholder.svg";
 
 const priceRanges = [
-  { label: "Under $100", min: 0, max: 100 },
-  { label: "$100 - $300", min: 100, max: 300 },
-  { label: "$300 - $500", min: 300, max: 500 },
-  { label: "$500 - $1000", min: 500, max: 1000 },
-  { label: "$1000+", min: 1000, max: null },
-]
-
-const sortOptions = [
-  { label: "Newest", value: "created_at_desc" },
-  { label: "Price: Low to High", value: "price_asc" },
-  { label: "Price: High to Low", value: "price_desc" },
-  { label: "Name: A-Z", value: "name_asc" },
-  { label: "Name: Z-A", value: "name_desc" },
-  { label: "Most Popular", value: "popularity_desc" },
-  { label: "Best Rating", value: "rating_desc" },
-]
+  { label: "Under 5,000 ETB", min: 0, max: 5000 },
+  { label: "5,000 - 15,000 ETB", min: 5000, max: 15000 },
+  { label: "15,000 - 25,000 ETB", min: 15000, max: 25000 },
+  { label: "25,000 - 50,000 ETB", min: 25000, max: 50000 },
+  { label: "50,000+ ETB", min: 50000, max: null },
+];
 
 export default function ProductListPage() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const searchParams = new URLSearchParams(location.search)
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedPrice, setSelectedPrice] = useState(null)
-  const [sort, setSort] = useState(sortOptions[0].value)
-  const viewMode = "grid"; // Set directly as it's not changed
+  const location = useLocation();
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Filter States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentSearch, setCurrentSearch] = useState('');
+  const [selectedPrice, setSelectedPrice] = useState(null);
+  const viewMode = "grid";
   const [selectedFilters, setSelectedFilters] = useState({
     categories: [],
     tags: [],
-    availability: [],
-  })
-  const [selectedRating, setSelectedRating] = useState(null)
-  const [products, setProducts] = useState([])
-  const [totalProducts, setTotalProducts] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
-  const [categories, setCategories] = useState([])
+  });
+  const [selectedRating, setSelectedRating] = useState(null);
+
+  const [products, setProducts] = useState([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [categories, setCategories] = useState([]);
 
   // Fetch all categories on mount
   useEffect(() => {
     fetchCategories().then((res) => {
-      setCategories(res.data || [])
-    }).catch(() => setCategories([]))
-  }, [])
+      setCategories(res.data || []);
+    }).catch(() => setCategories([]));
+  }, []);
 
-  // Extract filter params
-  const page = Number(searchParams.get("page")) || 1
-  const search = searchParams.get("search") || undefined
-
-  // Simulate loading
+  // Effect 1: Sync URL query params to component state (on initial load and browser navigation)
   useEffect(() => {
-    setIsLoading(true)
+    const searchParams = new URLSearchParams(location.search);
+    setCurrentPage(Number(searchParams.get("page")) || 1);
+    setCurrentSearch(searchParams.get("search") || '');
+    
+    const priceLabel = searchParams.get("price");
+    if (priceLabel) {
+      setSelectedPrice(priceRanges.find(r => r.label === priceLabel) || null);
+    } else {
+      setSelectedPrice(null);
+    }
+
+    const categorySlug = searchParams.get("category");
+    setSelectedFilters(prev => ({ ...prev, categories: categorySlug ? [categorySlug] : [] }));
+    
+    const rating = searchParams.get("min_rating");
+    setSelectedRating(rating ? Number(rating) : null);
+  }, [location.search]);
+
+
+  // Effect 2: Fetch products when filter states change, and update URL
+  useEffect(() => {
+    setIsLoading(true);
     const params = {
-      page,
+      page: currentPage,
       limit: 6,
-      search,
-      sort,
+      search: currentSearch || undefined,
       ...(selectedFilters.categories.length === 1 ? { category: selectedFilters.categories[0] } : {}),
       ...(selectedPrice && selectedPrice.min !== null ? { price_gte: selectedPrice.min } : {}),
       ...(selectedPrice && selectedPrice.max !== null ? { price_lte: selectedPrice.max } : {}),
-      // Availability filter
-      ...(selectedFilters.availability.length === 1
-        ? selectedFilters.availability[0] === "in-stock"
-          ? { in_stock: true }
-          : { in_stock: false }
-        : {}),
-      // Rating filter
       ...(selectedRating ? { min_rating: selectedRating } : {}),
-    }
+    };
     fetchProducts(params).then((res) => {
-      setProducts(res.data || [])
-      setTotalProducts(res.count || 0)
-      setTotalPages(res.totalPages || 1)
-      setIsLoading(false)
-    }).catch(() => {
-      setProducts([])
-      setTotalProducts(0)
-      setTotalPages(1)
-      setIsLoading(false)
-    })
-  }, [page, search, sort, selectedFilters.categories, selectedPrice, selectedFilters.availability, selectedRating])
+      setProducts(res.data || []);
+      setTotalProducts(res.count || 0);
+      setTotalPages(res.totalPages || 1);
+      setIsLoading(false);
 
-  const updateFiltersInUrl = (newFilters) => {
-    const params = new URLSearchParams(searchParams.toString())
-    // Categories
-    if (newFilters.categories && newFilters.categories.length > 0) {
-      params.set("category", newFilters.categories[0]) // Only single category for now
-    } else {
-      params.delete("category")
-    }
-    // Price
-    if (newFilters.selectedPrice) {
-      params.set("price", newFilters.selectedPrice.label)
-    } else {
-      params.delete("price")
-    }
-    // Availability (not in URL for now)
-    params.set("page", "1")
-    navigate(`/products?${params.toString()}`, { replace: true })
-  }
+      // Update URL after fetching
+      const newUrlParams = new URLSearchParams();
+      if (currentPage > 1) newUrlParams.set("page", currentPage.toString());
+      if (currentSearch) newUrlParams.set("search", currentSearch);
+      if (selectedFilters.categories.length > 0) newUrlParams.set("category", selectedFilters.categories[0]);
+      if (selectedPrice) newUrlParams.set("price", selectedPrice.label);
+      if (selectedRating) newUrlParams.set("min_rating", selectedRating.toString());
+      
+      const newSearchString = newUrlParams.toString();
+      if (location.search.substring(1) !== newSearchString) {
+        window.history.pushState({}, '', `${location.pathname}?${newSearchString}`);
+      }
+    }).catch(() => {
+      setProducts([]);
+      setTotalProducts(0);
+      setTotalPages(1);
+      setIsLoading(false);
+    });
+  }, [currentPage, currentSearch, selectedFilters, selectedPrice, selectedRating, location.pathname]); // Removed location.search from dependencies
 
   const handleCategoryFilter = (categorySlug) => {
     setSelectedFilters((prev) => {
-      const alreadySelected = prev.categories.includes(categorySlug)
-      const newCategories = alreadySelected ? [] : [categorySlug]
-      const newFilters = { ...prev, categories: newCategories }
-      updateFiltersInUrl({ ...newFilters, selectedPrice })
-      return newFilters
-    })
-  }
-
-  const handleAvailabilityFilter = (value) => {
-    setSelectedFilters((prev) => {
-      const newAvailability = prev.availability.includes(value)
-        ? prev.availability.filter((a) => a !== value)
-        : [...prev.availability, value]
-      const newFilters = { ...prev, availability: newAvailability }
-      return newFilters
-    })
-  }
+      const alreadySelected = prev.categories.includes(categorySlug);
+      const newCategories = alreadySelected ? [] : [categorySlug];
+      return { ...prev, categories: newCategories };
+    });
+    setCurrentPage(1);
+  };
 
   const handlePriceFilter = (range) => {
-    setSelectedPrice((prev) => {
-      const newPrice = prev === range ? null : range
-      updateFiltersInUrl({ ...selectedFilters, selectedPrice: newPrice })
-      return newPrice
-    })
-  }
-
-  const handleSortChange = (value) => {
-    setSort(value)
-    const sortParams = new URLSearchParams(searchParams.toString()) // Renamed variable
-    sortParams.set("sort", value)
-    sortParams.set("page", "1")
-    navigate(`/products?${sortParams.toString()}`, { replace: true })
+    setSelectedPrice((prev) => (prev === range ? null : range));
+    setCurrentPage(1);
   }
 
   const handleRatingFilter = (rating) => {
-    setSelectedRating((prev) => (prev === rating ? null : rating))
+    setSelectedRating((prev) => (prev === rating ? null : rating));
+    setCurrentPage(1);
   }
 
   const handleClearFilters = () => {
     setSelectedFilters({
       categories: [],
       tags: [],
-      availability: [],
     })
     setSelectedPrice(null)
     setSelectedRating(null)
-    setSort(sortOptions[0].value)
-
-    const params = new URLSearchParams()
-    params.set("page", "1")
-    navigate(`/products?${params.toString()}`)
+    setCurrentSearch('');
+    setCurrentPage(1);
   }
 
   const handlePageChange = (newPage) => {
-    if (newPage < 1 || newPage > totalPages) return; // Prevent invalid page changes
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", newPage.toString());
-    navigate(`/products?${params.toString()}`, { replace: true });
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
   };
 
   const handleSearch = (e) => {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    const searchTerm = formData.get("search")
-    const params = new URLSearchParams(searchParams.toString())
-    if (searchTerm) {
-      params.set("search", searchTerm)
-    } else {
-      params.delete("search")
-    }
-    params.set("page", "1")
-    navigate(`/products?${params.toString()}`, { replace: true })
+    const searchTerm = formData.get("search")?.toString() || '';
+    setCurrentSearch(searchTerm);
+    setCurrentPage(1);
   }
 
-  // Filter sidebar content
   const FilterSidebar = (
     <div className="w-full bg-white rounded-xl overflow-hidden">
       <div className="p-5 border-b">
@@ -233,8 +193,7 @@ export default function ProductListPage() {
       </div>
 
       <ScrollArea className="h-[calc(100vh-220px)] py-2">
-        <Accordion type="multiple" defaultValue={["categories", "price", "availability", "ratings"]} className="px-5">
-          {/* Categories Filter */}
+        <Accordion type="multiple" defaultValue={["categories", "price", "ratings"]} className="px-5">
           <AccordionItem value="categories" className="border-b">
             <AccordionTrigger className="py-4 text-base hover:no-underline">
               <div className="flex items-center gap-2">
@@ -266,7 +225,6 @@ export default function ProductListPage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* Price Filter */}
           <AccordionItem value="price" className="border-b">
             <AccordionTrigger className="py-4 text-base hover:no-underline">
               <div className="flex items-center gap-2">
@@ -297,47 +255,6 @@ export default function ProductListPage() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* Availability Filter */}
-          <AccordionItem value="availability" className="border-b">
-            <AccordionTrigger className="py-4 text-base hover:no-underline">
-              <div className="flex items-center gap-2">
-                <ShoppingCart size={18} className="text-gray-500" />
-                <span>Availability</span>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <div className="space-y-2 pb-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="in-stock"
-                    checked={selectedFilters.availability.includes("in-stock")}
-                    onCheckedChange={() => handleAvailabilityFilter("in-stock")}
-                  />
-                  <label
-                    htmlFor="in-stock"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    In Stock
-                  </label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="out-of-stock"
-                    checked={selectedFilters.availability.includes("out-of-stock")}
-                    onCheckedChange={() => handleAvailabilityFilter("out-of-stock")}
-                  />
-                  <label
-                    htmlFor="out-of-stock"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Out of Stock
-                  </label>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-
-          {/* Ratings Filter */}
           <AccordionItem value="ratings" className="border-b">
             <AccordionTrigger className="py-4 text-base hover:no-underline">
               <div className="flex items-center gap-2">
@@ -385,11 +302,7 @@ export default function ProductListPage() {
         <title>Products - Suri Addis</title>
         <meta name="description" content="Browse our collection of exclusive products." />
       </Helmet>
-      <div className="bg-gray-50 min-h-screen">
-        {/* Header Placeholder - Assuming a global header is used */}
-        {/* <Header /> */}
-
-        {/* Breadcrumbs & Title */}
+      <div className="bg-gray-50 min-h-screen pt-20">
         <div className="bg-white border-b border-gray-200">
           <div className="container mx-auto px-4 sm:px-6 py-6">
             <nav className="text-sm mb-3" aria-label="Breadcrumb">
@@ -406,19 +319,19 @@ export default function ProductListPage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                  {searchParams.get("category") 
-                    ? categories.find(c => c.slug === searchParams.get("category"))?.name || "Products" 
+                  {selectedFilters.categories.length > 0 && categories.length > 0
+                    ? categories.find(c => c.slug === selectedFilters.categories[0])?.name || "Products" 
                     : "All Products"}
                 </h1>
                 <p className="mt-1 text-sm text-gray-500">
-                  Showing {products.length > 0 ? ((page - 1) * 6) + 1 : 0}-{(page - 1) * 6 + products.length} of {totalProducts} results
+                  Showing {products.length > 0 ? ((currentPage - 1) * 6) + 1 : 0}-{(currentPage - 1) * 6 + products.length} of {totalProducts} results
                 </p>
               </div>
               <form onSubmit={handleSearch} className="flex items-center gap-2 w-full sm:w-auto">
                 <Input
                   type="search"
                   name="search"
-                  defaultValue={search || ""}
+                  defaultValue={currentSearch} // Use state for defaultValue
                   placeholder="Search products..."
                   className="w-full sm:w-64"
                 />
@@ -432,34 +345,15 @@ export default function ProductListPage() {
         
         <div className="container mx-auto px-4 sm:px-6 py-8">
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Filters Sidebar (Desktop) */}
             <aside className="hidden lg:block lg:w-1/4 xl:w-1/5 space-y-6">
               {FilterSidebar}
             </aside>
 
-            {/* Main Content Area */}
             <main className="flex-1">
-              {/* Toolbar: Sort, View Mode, Mobile Filter Trigger */}
-              <div className="flex flex-col sm:flex-row justify-between items-center mb-6 p-4 bg-white rounded-xl shadow-sm border border-gray-200">
-                <div className="flex items-center gap-2 mb-4 sm:mb-0">
-                  <span className="text-sm text-gray-600">Sort by:</span>
-                  <Select value={sort} onValueChange={handleSortChange}>
-                    <SelectTrigger className="w-[180px] h-9 text-sm">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sortOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value} className="text-sm">
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Mobile Filter Trigger */}
+              <div className="mb-6 lg:hidden flex justify-end"> {/* Container for mobile filter button */}
                 <Sheet>
                   <SheetTrigger asChild>
+                    {/* Keeping lg:hidden on the button itself to ensure consistent behavior with its original w-full/sm:w-auto styling below lg breakpoint */}
                     <Button variant="outline" className="lg:hidden w-full sm:w-auto h-9">
                       <Filter size={16} className="mr-2" />
                       Filters
@@ -477,7 +371,6 @@ export default function ProductListPage() {
                 </Sheet>
               </div>
 
-              {/* Product Grid / List */}
               {isLoading ? (
                 <div className={`grid gap-x-6 gap-y-8 ${viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"}`}>
                   {Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={index} />)}
@@ -504,14 +397,13 @@ export default function ProductListPage() {
                 </div>
               )}
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="mt-12 flex justify-center items-center space-x-2">
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => handlePageChange(page - 1)}
-                    disabled={page === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
                     aria-label="Go to previous page"
                   >
                     <ChevronLeft size={18} />
@@ -519,7 +411,7 @@ export default function ProductListPage() {
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                     <Button
                       key={p}
-                      variant={page === p ? "default" : "outline"}
+                      variant={currentPage === p ? "default" : "outline"}
                       size="icon"
                       onClick={() => handlePageChange(p)}
                       aria-label={`Go to page ${p}`}
@@ -530,8 +422,8 @@ export default function ProductListPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => handlePageChange(page + 1)}
-                    disabled={page === totalPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
                     aria-label="Go to next page"
                   >
                     <ChevronRight size={18} />

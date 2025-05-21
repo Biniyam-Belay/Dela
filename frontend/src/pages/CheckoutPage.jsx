@@ -101,7 +101,22 @@ const CheckoutPage = () => {
         navigate(`/order-success/${order.id}`);
       })
       .catch((err) => {
-        setError(err || 'Failed to place order. Please try again.');
+        console.error("Detailed error during order creation:", err); // Log the full error object
+        let errorMessage = 'Failed to place order. Please try again.';
+        if (typeof err === 'string') {
+          errorMessage = err;
+        } else if (err && err.message) {
+          errorMessage = err.message; // Prefer .message if available from error object
+        } else if (err && typeof err === 'object') {
+          // Fallback for other object structures, try to stringify
+          try {
+            const errStr = JSON.stringify(err);
+            if (errStr !== '{}') errorMessage = errStr;
+          } catch (e) {
+            // If stringify fails, stick to the generic message
+          }
+        }
+        setError(errorMessage);
       })
       .finally(() => setIsPlacingOrder(false));
   };

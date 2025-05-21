@@ -42,28 +42,50 @@ export const createOrder = createAsyncThunk(
   "orders/createOrder",
   async (orderDetails, { rejectWithValue }) => {
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .insert([
-          // Map orderDetails to your table columns
-          // e.g., { 
-          //   user_id: orderDetails.userId, 
-          //   total_amount: orderDetails.totalAmount, 
-          //   status: 'Pending', // or 'Processing'
-          //   shipping_address: orderDetails.shippingAddress,
-          //   // ... other fields
-          // }
-        ])
-        .select()
-        .single();
+      // Ensure orderDetails contains: { orderItems, shippingAddress, totalAmount }
+      const { data: functionResponse, error: invokeError } = await supabase.functions.invoke(
+        "create-order", // Name of the Edge Function
+        {
+          body: orderDetails, // Pass orderDetails as the body
+          method: 'POST', // Specify the method
+        }
+      );
 
-      if (error) {
-        throw error;
+      if (invokeError) {
+        let detailedError = invokeError.message;
+        // Attempt to parse more detailed error from function response if available
+        if (invokeError.context && invokeError.context.json && invokeError.context.json.error) {
+          detailedError = invokeError.context.json.error;
+          if (invokeError.context.json.details) {
+            detailedError += `: ${JSON.stringify(invokeError.context.json.details)}`;
+          }
+        } else if (functionResponse && functionResponse.error) { // Sometimes error is in data
+            detailedError = functionResponse.error;
+            if (functionResponse.details) {
+                 detailedError += `: ${JSON.stringify(functionResponse.details)}`;
+            }
+        }
+        throw new Error(detailedError);
       }
 
-      return data;
+      // The Edge function is expected to return an object containing the created order.
+      // e.g., { order: { id: '...', ... }, orderItemsData: [...], message: '...' }
+      if (functionResponse && functionResponse.order && functionResponse.order.id) {
+        return functionResponse.order; // Return only the order object
+      } else {
+        // Log the problematic response for debugging
+        console.error(
+          "Unexpected response structure from create-order function or missing order/order.id:",
+          functionResponse
+        );
+        // Throw an error that will be caught by rejectWithValue
+        throw new Error(
+          "Failed to process order creation response: order data is invalid or missing."
+        );
+      }
+
     } catch (err) {
-      return rejectWithValue(err.message || "Failed to create order");
+      return rejectWithValue(err.message || "Failed to create order via Edge Function");
     }
   }
 );
@@ -118,7 +140,7 @@ const orderSlice = createSlice({
         // Optionally add to items or set currentOrder
         // state.items.unshift(action.payload);
         // state.totalOrders++;
-        // state.currentOrder = action.payload;
+        state.currentOrder = action.payload; // Assuming payload is the created order
       })
       .addCase(createOrder.rejected, (state, action) => {
         state.mutationStatus = 'failed';
