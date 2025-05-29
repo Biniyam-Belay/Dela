@@ -174,70 +174,102 @@ const AdminProductListPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0 h-10 w-10 bg-slate-100 rounded-md overflow-hidden">
-                            <img
-                              src={`${import.meta.env.VITE_BACKEND_URL || ''}${product.images?.[0] || 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'}`}
-                              alt={product.name}
-                              className="h-full w-full object-cover"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
-                              }}
-                            />
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-slate-900">{product.name}</div>
-                            <div className="text-sm text-slate-500 lg:hidden mt-1">
-                              {product.category?.name || <span className="italic">No category</span>}
+                  {filteredProducts.map((product) => {
+                    // Determine the image URL for preview
+                    const firstImageInfo = product.images?.[0];
+                    let imageUrl = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp'; // Default placeholder
+
+                    if (firstImageInfo) {
+                      let pathOrUrlValue;
+                      if (typeof firstImageInfo === 'string') {
+                        pathOrUrlValue = firstImageInfo;
+                      } else if (firstImageInfo && (firstImageInfo.image_url || firstImageInfo.url)) {
+                        pathOrUrlValue = firstImageInfo.image_url || firstImageInfo.url;
+                      }
+
+                      if (pathOrUrlValue) {
+                        if (pathOrUrlValue.startsWith('http')) {
+                          imageUrl = pathOrUrlValue;
+                        } else {
+                          const viteBackendUrl = import.meta.env.VITE_BACKEND_URL;
+                          if (viteBackendUrl) {
+                            try {
+                              imageUrl = new URL(pathOrUrlValue, viteBackendUrl).href;
+                            } catch (e) {
+                              console.error(`Failed to construct image URL for path "${pathOrUrlValue}" and base "${viteBackendUrl}":`, e);
+                              // imageUrl remains the default placeholder
+                            }
+                          }
+                          // If viteBackendUrl is not set and path is relative, imageUrl also remains placeholder
+                        }
+                      }
+                    }
+
+                    return (
+                      <tr key={product.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0 h-10 w-10 bg-slate-100 rounded-md overflow-hidden">
+                              <img
+                                src={imageUrl}
+                                alt={product.name}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp';
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-slate-900">{product.name}</div>
+                              <div className="text-sm text-slate-500 lg:hidden mt-1">
+                                {product.category?.name || <span className="italic">No category</span>}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-500 hidden lg:table-cell">
-                        {product.category?.name || <span className="italic text-slate-400">No category</span>}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                        {formatETB(product.price)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden sm:table-cell">
-                        {product.stock_quantity ?? product.stockQuantity ?? 0}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center hidden md:table-cell">
-                        {product.is_trending ? '✅' : ''}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center hidden md:table-cell">
-                        {product.is_featured ? '✅' : ''}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center hidden md:table-cell">
-                        {product.is_new_arrival ? '✅' : ''}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
-                        <div className="flex items-center justify-end gap-4">
-                          <Link
-                            to={`/admin/products/edit/${product.id}`}
-                            className="text-slate-600 hover:text-slate-900 transition-colors"
-                            title="Edit"
-                          >
-                            <FiEdit2 size={16} />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(product.id, product.name)}
-                            disabled={deletingId === product.id || loading}
-                            className={`text-slate-600 hover:text-red-600 transition-colors ${
-                              deletingId === product.id || loading ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                            title="Delete"
-                          >
-                            {deletingId === product.id ? <Spinner size="xs" /> : <FiTrash2 size={16} />}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-500 hidden lg:table-cell">
+                          {product.category?.name || <span className="italic text-slate-400">No category</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                          {formatETB(product.price)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 hidden sm:table-cell">
+                          {product.stock_quantity ?? product.stockQuantity ?? 0}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center hidden md:table-cell">
+                          {product.is_trending ? '✅' : ''}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center hidden md:table-cell">
+                          {product.is_featured ? '✅' : ''}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-center hidden md:table-cell">
+                          {product.is_new_arrival ? '✅' : ''}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                          <div className="flex items-center justify-end gap-4">
+                            <Link
+                              to={`/admin/products/edit/${product.id}`}
+                              className="text-slate-600 hover:text-slate-900 transition-colors"
+                              title="Edit"
+                            >
+                              <FiEdit2 size={16} />
+                            </Link>
+                            <button
+                              onClick={() => handleDelete(product.id, product.name)}
+                              disabled={deletingId === product.id || loading}
+                              className={`text-slate-600 hover:text-red-600 transition-colors ${
+                                deletingId === product.id || loading ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
+                              title="Delete"
+                            >
+                              {deletingId === product.id ? <Spinner size="xs" /> : <FiTrash2 size={16} />}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

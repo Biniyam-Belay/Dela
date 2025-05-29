@@ -18,7 +18,7 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
-    global: { headers: { Authorization: authHeader } },
+    global: { headers: { Authorization: authHeader! } },
     db: { schema: 'public' }
   });
 
@@ -39,10 +39,16 @@ serve(async (req) => {
         status: 400,
       });
     }
-    const body = await req.json();
-    const { name, description, price, stockQuantity, categoryId, isActive, images, originalPrice, rating, reviewCount, sellerName, sellerLocation, unitsSold, imagesToDelete } = body;
 
-    const { data, error } = await supabase.from('products').update({
+    const body = await req.json();
+    const {
+      name, description, price, stockQuantity, categoryId, isActive, images,
+      originalPrice, rating, reviewCount, sellerName, sellerLocation, unitsSold,
+      isTrending, isFeatured, isNewArrival,
+      imagesToDelete
+    } = body;
+
+    const updatePayload: { [key: string]: any } = {
       name,
       description,
       price,
@@ -56,9 +62,39 @@ serve(async (req) => {
       seller_name: sellerName,
       seller_location: sellerLocation,
       units_sold: unitsSold,
-    }).eq('id', id).select().single();
+      is_trending: isTrending,
+      is_featured: isFeatured,
+      is_new_arrival: isNewArrival,
+    };
+
+    Object.keys(updatePayload).forEach(key => {
+      if (updatePayload[key] === undefined) {
+        delete updatePayload[key];
+      }
+    });
+    
+    if (imagesToDelete && Array.isArray(imagesToDelete) && imagesToDelete.length > 0) {
+      const pathsToRemove = imagesToDelete.map(p => p.startsWith('/') ? p.substring(1) : p).filter(p => p);
+      if (pathsToRemove.length > 0) {
+        console.log('Attempting to delete images from storage:', pathsToRemove);
+        const { error: storageError } = await supabase.storage.from('products').remove(pathsToRemove);
+        if (storageError) {
+          console.error('Error deleting images from storage:', storageError);
+        } else {
+          console.log('Successfully deleted images from storage:', pathsToRemove);
+        }
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('products')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
 
     if (error) {
+      console.error('Supabase DB update error:', error);
       return new Response(JSON.stringify({ success: false, error: error.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400,
@@ -69,8 +105,10 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     });
+
   } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: err.message }), {
+    console.error('Function error:', err);
+    return new Response(JSON.stringify({ success: false, error: err.message || 'Internal server error' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
