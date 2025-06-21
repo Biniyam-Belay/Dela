@@ -1,11 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/authContext.jsx';
 import { Link } from 'react-router-dom';
-import { FiUser, FiMail, FiAward, FiCalendar, FiLogOut, FiShoppingBag, FiMapPin } from 'react-icons/fi';
+import { FiUser, FiMail, FiAward, FiCalendar, FiLogOut, FiShoppingBag, FiMapPin, FiPackage } from 'react-icons/fi';
 import { Helmet } from 'react-helmet';
+import { getSellerProfile } from '../services/sellerApi.js';
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
+  const [sellerStatus, setSellerStatus] = useState(null);
+  const [loadingSellerStatus, setLoadingSellerStatus] = useState(true);
+
+  useEffect(() => {
+    const checkSellerStatus = async () => {
+      if (user) {
+        try {
+          const sellerData = await getSellerProfile();
+          setSellerStatus(sellerData?.status || 'not_applied');
+        } catch (error) {
+          setSellerStatus('not_applied');
+        }
+      }
+      setLoadingSellerStatus(false);
+    };
+
+    checkSellerStatus();
+  }, [user]);
 
   if (!user) {
     return (
@@ -99,6 +118,25 @@ const ProfilePage = () => {
                 </div>
                 <span className="text-black">→</span>
               </Link>
+              
+              {/* Seller Actions */}
+              {!loadingSellerStatus && (
+                <Link
+                  to={sellerStatus === 'approved' ? '/seller/dashboard' : '/seller/apply'}
+                  className="flex items-center justify-between p-4 border border-black/10 rounded-lg bg-white hover:border-black hover:bg-black/5 transition-all duration-200 group"
+                >
+                  <div className="flex items-center">
+                    <FiPackage className="text-black mr-3" />
+                    <span className="font-medium text-black group-hover:text-black">
+                      {sellerStatus === 'approved' ? 'Seller Dashboard' : 
+                       sellerStatus === 'pending' ? 'Application Pending' :
+                       sellerStatus === 'rejected' ? 'Reapply as Seller' :
+                       'Become a Seller'}
+                    </span>
+                  </div>
+                  <span className="text-black">→</span>
+                </Link>
+              )}
             </div>
           </div>
 

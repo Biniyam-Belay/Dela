@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ShoppingBag, RefreshCw, Clock, Loader2 } from "lucide-react";
+import { ShoppingBag, RefreshCw, Clock, Loader2, Store } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 import { fetchProducts } from '../services/productApi';
 import ProductCard from '../components/ui/ProductCard';
@@ -8,6 +8,20 @@ import { Input } from "../components/ui/input"; // Import Input
 import { Button } from "../components/ui/button"; // Import Button
 import { Helmet } from 'react-helmet';
 import { supabase } from "../services/supabaseClient.js"; // Import supabase
+
+// Fetch public collections from API
+const fetchPublicCollections = async () => {
+  try {
+    const { data, error } = await supabase.functions.invoke('get-public-collections');
+    
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching public collections:', error);
+    // Return empty array for now - let the static collections show
+    return [];
+  }
+};
 
 // Define the Supabase placeholder image URL
 const SUPABASE_PLACEHOLDER_IMAGE_URL = supabase.storage.from("public_assets").getPublicUrl("placeholder.webp").data?.publicUrl || "/fallback-placeholder.svg";
@@ -129,6 +143,18 @@ const CollectionsPage = () => {
     enabled: !!selectedPrice,
     select: (res) => res?.data || [],
     staleTime: 1000 * 60 * 5,
+  });
+
+  // Fetch public collections
+  const {
+    data: publicCollections,
+    isLoading: collectionsLoading,
+    error: collectionsError,
+  } = useQuery({
+    queryKey: ['public-collections'],
+    queryFn: fetchPublicCollections,
+    select: (data) => data || [],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
   // Fetch New Arrivals
@@ -294,6 +320,96 @@ const CollectionsPage = () => {
           ))}
         </div>
       </section>
+
+      {/* Seller Collections Section */}
+      {publicCollections && publicCollections.length > 0 && (
+        <section className="container mx-auto px-4 sm:px-6 mb-20">
+          <div className="mb-10 text-center">
+            <h2 className="text-3xl font-light mb-2 tracking-tight">Seller Collections</h2>
+            <p className="text-neutral-500 text-sm max-w-md mx-auto">
+              Discover curated collections from our talented sellers
+            </p>
+          </div>
+          
+          {collectionsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="border border-neutral-200 rounded-2xl p-4 animate-pulse">
+                  <div className="aspect-[3/4] bg-neutral-200 rounded-lg mb-4"></div>
+                  <div className="h-4 bg-neutral-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-6 bg-neutral-200 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          ) : collectionsError ? (
+            <div className="text-center text-red-500 py-10">
+              Could not load seller collections. Please try again later.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {publicCollections.map((collection) => (
+                <div key={collection.id} className="relative group rounded-2xl overflow-hidden shadow-lg border border-neutral-100 bg-white">
+                  <div className="aspect-[3/4] relative overflow-hidden">
+                    <img
+                      src={collection.image_url || SUPABASE_PLACEHOLDER_IMAGE_URL}
+                      alt={collection.name}
+                      className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
+                      onError={e => { 
+                        if (e.target.src !== SUPABASE_PLACEHOLDER_IMAGE_URL) {
+                          e.target.onerror = null; 
+                          e.target.src = SUPABASE_PLACEHOLDER_IMAGE_URL; 
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex items-end p-6">
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <Store className="h-4 w-4 text-white mr-2" />
+                          <span className="text-xs text-neutral-200">
+                            {collection.seller_name || 'Curated Collection'}
+                          </span>
+                        </div>
+                        <h3 className="text-2xl font-semibold mb-2 drop-shadow text-white">
+                          {collection.name}
+                        </h3>
+                        <p className="text-sm text-neutral-200 mb-4 max-w-xs drop-shadow">
+                          {collection.description}
+                        </p>
+                        <Link
+                          to={`/collections/${collection.id}`}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-black rounded-full font-medium shadow hover:bg-neutral-100 transition-all text-base"
+                        >
+                          View Collection
+                        </Link>
+                      </div>
+                    </div>
+                    {collection.price && (
+                      <div className="absolute top-4 right-4 bg-white/90 text-black text-xs font-semibold px-4 py-1 rounded-full shadow border border-neutral-200">
+                        ${collection.price}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Call to Action for Sellers */}
+          <div className="text-center mt-12">
+            <div className="inline-flex items-center gap-2 text-neutral-600 text-sm mb-4">
+              <Store className="h-4 w-4" />
+              <span>Are you a seller?</span>
+            </div>
+            <Link
+              to="/seller/apply"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              <Store className="h-4 w-4" />
+              Become a Seller
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Bold Fashionistic Ad Banner - Added bottom margin */}
       <section className="container mx-auto px-4 sm:px-6 mb-24"> {/* Increased bottom margin */}

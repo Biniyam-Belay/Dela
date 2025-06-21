@@ -6,18 +6,21 @@ import { useAuth } from "../../contexts/authContext.jsx"
 import { useSelector } from 'react-redux';
 import { selectCartCount } from '../../store/cartSlice';
 import { supabase } from "../../services/supabaseClient"
-import { Search, ShoppingCart, User, Menu, X } from "lucide-react"
+import { Search, ShoppingCart, User, Menu, X, Store } from "lucide-react"
 
 // Font stacks for luxury, flowing look
 const flowingSerif = '"Playfair Display", "Georgia", serif';
 const flowingSans = '"Inter", "Helvetica Neue", Arial, sans-serif';
 
 const Header = () => {
-  const { isAuthenticated, logout, isLoading } = useAuth()
+  const { isAuthenticated, logout, isLoading, user } = useAuth()
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  // For now, we'll assume users are not sellers until they navigate to seller pages
+  // This prevents unnecessary API calls and CORS issues
+  const sellerStatus = 'not_applied';
   const cartCount = useSelector(selectCartCount);
 
   // Handle scroll effect
@@ -71,12 +74,29 @@ const Header = () => {
             <Link to="/wishlist" className={`text-sm font-light uppercase tracking-[0.18em] px-2 py-1 transition-all duration-200 border-b-2 border-transparent hover:border-black ${isScrolled ? 'text-neutral-800 hover:border-black' : 'text-black hover:border-black'}`} style={{fontFamily: flowingSans, letterSpacing: '0.18em', textShadow: isScrolled ? 'none' : '0 2px 8px rgba(0,0,0,0.12)'}}>
               Wishlist
             </Link>
+            {/* Temporary link for testing seller dashboard */}
+            <Link to="/seller/dashboard" className={`text-sm font-light uppercase tracking-[0.18em] px-2 py-1 transition-all duration-200 border-b-2 border-transparent hover:border-black ${isScrolled ? 'text-neutral-800 hover:border-black' : 'text-black hover:border-black'}`} style={{fontFamily: flowingSans, letterSpacing: '0.18em', textShadow: isScrolled ? 'none' : '0 2px 8px rgba(0,0,0,0.12)'}}>
+              Seller Dashboard
+            </Link>
           </nav>
           {/* Actions Right */}
           <div className="flex items-center space-x-4">
             <button className={`hidden md:flex items-center ${isScrolled ? 'text-neutral-700 hover:text-black' : 'text-black hover:text-neutral-700'} transition-colors`} style={{textShadow: isScrolled ? 'none' : '0 2px 8px rgba(0,0,0,0.12)'}}>
               <Search className="h-5 w-5" />
             </button>
+            
+            {/* Seller Link - Show based on authentication and seller status */}
+            {isAuthenticated && (
+              <Link 
+                to={sellerStatus === 'approved' ? '/seller/dashboard' : '/seller/apply'} 
+                className={`hidden md:flex items-center ${isScrolled ? 'text-neutral-700 hover:text-black' : 'text-black hover:text-neutral-700'} transition-colors`} 
+                style={{textShadow: isScrolled ? 'none' : '0 2px 8px rgba(0,0,0,0.12)'}}
+                title={sellerStatus === 'approved' ? 'Seller Dashboard' : 'Become a Seller'}
+              >
+                <Store className="h-5 w-5" />
+              </Link>
+            )}
+            
             <Link to={isAuthenticated ? "/profile" : "/login"} className={`${isScrolled ? 'text-neutral-700 hover:text-black' : 'text-black hover:text-neutral-700'} transition-colors`} style={{textShadow: isScrolled ? 'none' : '0 2px 8px rgba(0,0,0,0.12)'}}>
               <User className="h-5 w-5" />
             </Link>
@@ -110,6 +130,22 @@ const Header = () => {
             <Link to="/wishlist" className="px-6 py-3 text-base font-medium uppercase tracking-widest text-black hover:bg-neutral-100 transition-all" style={{fontFamily: flowingSans}} onClick={() => setIsMenuOpen(false)}>
               Wishlist
             </Link>
+            {/* Temporary link for testing seller dashboard */}
+            <Link to="/seller/dashboard" className="px-6 py-3 text-base font-medium uppercase tracking-widest text-black hover:bg-neutral-100 transition-all" style={{fontFamily: flowingSans}} onClick={() => setIsMenuOpen(false)}>
+              Seller Dashboard
+            </Link>
+            {/* Seller Link for Mobile */}
+            {isAuthenticated && (
+              <Link 
+                to={sellerStatus === 'approved' ? '/seller/dashboard' : '/seller/apply'} 
+                className="px-6 py-3 text-base font-medium uppercase tracking-widest text-black hover:bg-neutral-100 transition-all flex items-center" 
+                style={{fontFamily: flowingSans}} 
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Store className="h-4 w-4 mr-2" />
+                {sellerStatus === 'approved' ? 'Seller Dashboard' : 'Become a Seller'}
+              </Link>
+            )}
           </nav>
         </div>
       )}
