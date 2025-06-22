@@ -52,15 +52,27 @@ serve(async (req) => {
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid JSON' }), { headers: corsHeaders, status: 400 });
   }
-  const { orderItems, shippingAddress, totalAmount } = body;
+  const { orderItems, shippingAddress, totalAmount, collections, hasCollections } = body;
   if (!Array.isArray(orderItems) || orderItems.length === 0 || !shippingAddress || typeof totalAmount !== 'number') {
     return new Response(JSON.stringify({ error: 'Missing or invalid order data' }), { headers: corsHeaders, status: 400 });
   }
 
-  // --- Insert Order ---
+  // --- Insert Order with collection metadata ---
+  const orderMetadata = {
+    hasCollections: hasCollections || false,
+    collectionsCount: collections ? Object.keys(collections).length : 0,
+    collections: collections || {}
+  };
+
   const { data: order, error: orderError } = await supabase
     .from('orders')
-    .insert({ userId, shippingAddress, totalAmount, status: 'pending' })
+    .insert({ 
+      userId, 
+      shippingAddress, 
+      totalAmount, 
+      status: 'pending',
+      metadata: orderMetadata
+    })
     .select()
     .single();
 
@@ -72,13 +84,22 @@ serve(async (req) => {
     });
   }
 
-  // --- Insert Order Items ---
+  // --- Insert Order Items with collection and seller information ---
   const orderItemsData = orderItems.map(item => ({
     orderId: order.id,
     productId: item.productId,
     quantity: item.quantity,
     price: item.price,
+    // Include collection metadata if available (using snake_case for database)
+    ...(item.collectionId && {
+      collection_id: item.collectionId
+    }),
+    // Include seller information for commission tracking (using snake_case for database)
+    ...(item.sellerId && {
+      seller_id: item.sellerId
+    })
   }));
+
   const { error: itemsError } = await supabase.from('order_items').insert(orderItemsData);
   if (itemsError) {
     console.error('Order Items Insert Error:', JSON.stringify(itemsError, null, 2));
@@ -88,9 +109,52 @@ serve(async (req) => {
     });
   }
 
+  // --- Calculate and record seller earnings if this order has collections ---
+  if (hasCollections && collections) {
+    try {
+      const commissionRate = 0.15; // 15% platform commission
+      const sellerEarnings: any[] = [];
+
+      for (const [collectionKey, collectionData] of Object.entries(collections)) {
+        const collection = collectionData as any;
+        if (collection.sellerId && collection.total > 0) {
+          const platformCommission = collection.total * commissionRate;
+          const sellerEarning = collection.total - platformCommission;
+
+          sellerEarnings.push({
+            orderId: order.id,
+            sellerId: collection.sellerId,
+            collectionId: collection.collectionId,
+            grossAmount: collection.total,
+            platformCommission: platformCommission,
+            sellerEarning: sellerEarning,
+            status: 'pending'
+          });
+        }
+      }
+
+      if (sellerEarnings.length > 0) {
+        const { error: earningsError } = await supabase
+          .from('seller_earnings')
+          .insert(sellerEarnings);
+
+        if (earningsError) {
+          console.error('Seller Earnings Insert Error:', JSON.stringify(earningsError, null, 2));
+          // Don't fail the order if earnings tracking fails, but log it
+        }
+      }
+    } catch (earningsError) {
+      console.error('Error calculating seller earnings:', earningsError);
+      // Continue with order processing even if earnings calculation fails
+    }
+  }
+
   // --- Fetch Product Details for Email ---
   let productDetailsText = '';
   let productDetailsHtml = '';
+  let collectionsText = '';
+  let collectionsHtml = '';
+  
   if (orderItems.length > 0) {
     const productIds = orderItems.map(item => item.productId);
     const { data: products, error: productsError } = await supabase
@@ -100,13 +164,24 @@ serve(async (req) => {
     if (!productsError && products) {
       productDetailsText = orderItems.map(item => {
         const prod = products.find(p => p.id === item.productId);
-        return `- ${prod?.name || 'Product'} x${item.quantity}`;
+        const collectionInfo = item.collectionName ? ` (from ${item.collectionName})` : '';
+        return `- ${prod?.name || 'Product'} x${item.quantity}${collectionInfo}`;
       }).join('\n');
       productDetailsHtml = orderItems.map(item => {
         const prod = products.find(p => p.id === item.productId);
-        return `<li><b>${prod?.name || 'Product'}</b> &times; ${item.quantity}</li>`;
+        const collectionInfo = item.collectionName ? ` <em>(from ${item.collectionName})</em>` : '';
+        return `<li><b>${prod?.name || 'Product'}</b> &times; ${item.quantity}${collectionInfo}</li>`;
       }).join('');
     }
+  }
+
+  // --- Build collection summary for email ---
+  if (hasCollections && collections) {
+    const collectionList = Object.values(collections).map((collection: any) => 
+      `- ${collection.collectionName} (${collection.items.length} items)`
+    );
+    collectionsText = collectionList.join('\n');
+    collectionsHtml = collectionList.map(item => `<li>${item}</li>`).join('');
   }
 
   // --- Estimate Delivery Date ---
@@ -139,7 +214,7 @@ serve(async (req) => {
 Order ID: ${order.id}
 Total: ${totalAmount}
 
-Items Ordered:\n${productDetailsText}\n\nShipping Address:\n${shippingAddress.street || ''} ${shippingAddress.city || ''} ${shippingAddress.country || ''}\n\nEstimated Delivery: ${deliveryRange}\n\nWe will notify you when your order ships.\n\nIf you have questions, reply to this email.`
+${hasCollections ? `Collections Ordered:\n${collectionsText}\n\n` : ''}Items Ordered:\n${productDetailsText}\n\nShipping Address:\n${shippingAddress.street || ''} ${shippingAddress.city || ''} ${shippingAddress.country || ''}\n\nEstimated Delivery: ${deliveryRange}\n\nWe will notify you when your order ships.\n\nIf you have questions, reply to this email.`
           },
           {
             type: 'text/html',
@@ -147,6 +222,7 @@ Items Ordered:\n${productDetailsText}\n\nShipping Address:\n${shippingAddress.st
 `<h2>Thank you for your order!</h2>
 <p><b>Order ID:</b> ${order.id}<br/>
 <b>Total:</b> ${totalAmount}</p>
+${hasCollections ? `<h3>Collections Ordered:</h3><ul>${collectionsHtml}</ul>` : ''}
 <h3>Items Ordered:</h3>
 <ul>${productDetailsHtml}</ul>
 <h3>Shipping Address:</h3>

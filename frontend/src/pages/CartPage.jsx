@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FiTrash2, FiPlus, FiMinus, FiArrowLeft } from 'react-icons/fi';
+import { FiTrash2, FiPlus, FiMinus, FiArrowLeft, FiTag } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
 import { Helmet } from 'react-helmet';
@@ -174,7 +174,7 @@ const CartPage = () => {
           <div className="flex flex-col lg:flex-row gap-10">
             {/* Cart Items */}
             <div className="lg:w-2/3 space-y-6">
-              {cartItems.map(({ product, quantity }) => (
+              {cartItems.map(({ product, quantity, collectionId, collectionName }) => (
                 <div
                   key={product.id}
                   className="flex flex-col sm:flex-row items-start sm:items-center bg-white p-5 sm:p-6 rounded-xl shadow border border-neutral-200 gap-6 group hover:shadow-md transition-shadow duration-200"
@@ -204,6 +204,15 @@ const CartPage = () => {
                     >
                       <h3 className="font-sans text-lg font-semibold text-neutral-900 mb-1 tracking-tight">{product.name}</h3>
                     </Link>
+                    
+                    {/* Collection Info */}
+                    {collectionId && collectionName && (
+                      <div className="flex items-center gap-1 text-xs text-blue-600 mb-1">
+                        <FiTag size={12} />
+                        <span>From collection: {collectionName}</span>
+                      </div>
+                    )}
+                    
                     {/* Product Variant Info */}
                     {product.variant && (
                       <div className="text-xs text-neutral-500 mb-1">Variant: {product.variant}</div>

@@ -87,10 +87,43 @@ const CheckoutPage = () => {
       orderItems: cartItems.map(item => ({
         productId: item.product.id,
         quantity: item.quantity,
-        price: item.product.price
+        price: item.product.price,
+        // Include collection information if item is from a collection
+        ...(item.collectionId && {
+          collectionId: item.collectionId,
+          collectionName: item.collectionName
+        }),
+        // Include seller information if available from cart item or product
+        ...(item.sellerId && {
+          sellerId: item.sellerId
+        })
       })),
       shippingAddress,
-      totalAmount: cartTotal
+      totalAmount: cartTotal,
+      // Group items by collection and seller for multi-vendor processing
+      collections: cartItems
+        .filter(item => item.collectionId)
+        .reduce((acc, item) => {
+          const key = `${item.collectionId}-${item.sellerId || 'unknown'}`;
+          if (!acc[key]) {
+            acc[key] = {
+              collectionId: item.collectionId,
+              collectionName: item.collectionName,
+              sellerId: item.sellerId,
+              items: [],
+              total: 0
+            };
+          }
+          acc[key].items.push({
+            productId: item.product.id,
+            quantity: item.quantity,
+            price: item.product.price
+          });
+          acc[key].total += item.product.price * item.quantity;
+          return acc;
+        }, {}),
+      // Track if this order contains collections for special processing
+      hasCollections: cartItems.some(item => item.collectionId)
     };
 
     console.log('Submitting orderData:', orderData);
@@ -263,17 +296,17 @@ const CheckoutPage = () => {
               <h2 className="text-xl font-sans font-semibold text-neutral-900 mb-6">Order Summary</h2>
               {/* Items List */}
               <div className="space-y-4 mb-6 max-h-72 overflow-y-auto pr-2">
-                {cartItems.map(({ product, quantity }) => (
-                  <div key={product.id} className="flex justify-between items-start">
+                {cartItems.map((item) => (
+                  <div key={item.product.id} className="flex justify-between items-start">
                     <div className="flex items-center gap-4">
                       <div className="h-16 w-16 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                         <img
                           src={
-                            product.images?.[0]
-                              ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${product.images[0].startsWith('/') ? '' : '/'}${product.images[0]}`
+                            item.product.images?.[0]
+                              ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}${item.product.images[0].startsWith('/') ? '' : '/'}${item.product.images[0]}`
                               : '/placeholder-image.jpg' // Use placeholder if no image path
                           }
-                          alt={product.name}
+                          alt={item.product.name}
                           className="h-full w-full object-cover"
                           onError={(e) => {
                             // Prevent infinite loop if placeholder itself fails
@@ -285,11 +318,14 @@ const CheckoutPage = () => {
                         />
                       </div>
                       <div>
-                        <h3 className="font-medium text-gray-900">{product.name}</h3>
-                        <p className="text-sm text-gray-500">Qty: {quantity}</p>
+                        <h3 className="font-medium text-gray-900">{item.product.name}</h3>
+                        {item.collectionName && (
+                          <p className="text-xs text-blue-600 font-medium">From: {item.collectionName}</p>
+                        )}
+                        <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
                       </div>
                     </div>
-                    <p className="font-medium">{formatETB(product.price * quantity)}</p>
+                    <p className="font-medium">{formatETB(item.product.price * item.quantity)}</p>
                   </div>
                 ))}
               </div>

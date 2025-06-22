@@ -39,7 +39,7 @@ import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage'; // Import the
 
 // --- Seller Pages ---
 import SellerApplicationPage from './pages/seller/SellerApplicationPage';
-import ApplicationSubmittedPage from './pages/seller/ApplicationSubmittedPage';
+import SellerApplicationSubmittedPage from './pages/seller/SellerApplicationSubmittedPage';
 import SellerDashboardPage from './pages/seller/SellerDashboardPage';
 import SellerCollectionsPage from './pages/seller/SellerCollectionsPage';
 import CollectionFormPage from './pages/seller/CollectionFormPage';
@@ -91,7 +91,7 @@ const AppContent = () => {
 
                     {/* --- Seller Routes --- */}
                     <Route path="/seller/apply" element={<ProtectedRoute><SellerApplicationPage /></ProtectedRoute>} />
-                    <Route path="/seller/application-submitted" element={<ProtectedRoute><ApplicationSubmittedPage /></ProtectedRoute>} />
+                    <Route path="/seller/application-submitted" element={<ProtectedRoute><SellerApplicationSubmittedPage /></ProtectedRoute>} />
                     <Route
                         path="/seller"
                         element={

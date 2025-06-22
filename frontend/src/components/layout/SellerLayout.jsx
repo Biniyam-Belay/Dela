@@ -16,7 +16,12 @@ import {
   FiBarChart,
   FiUser,
 } from 'react-icons/fi';
+import { Search, ShoppingCart, User, Menu, X, Store, Home } from "lucide-react";
 import { useAuth } from '../../contexts/authContext.jsx';
+
+// Font stacks for luxury, flowing look (matching homepage)
+const flowingSerif = '"Playfair Display", "Georgia", serif';
+const flowingSans = '"Inter", "Helvetica Neue", Arial, sans-serif';
 
 // Helper function to get page title
 const getPageTitle = (pathname) => {
@@ -47,10 +52,25 @@ const SellerLayout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const dropdownRef = useRef(null);
 
   const pageTitle = getPageTitle(location.pathname);
+
+  // Handle scroll effect (matching homepage)
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -68,11 +88,6 @@ const SellerLayout = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownRef]);
 
-  const getNavLinkClass = ({ isActive }) =>
-    `flex items-center gap-3 p-2 rounded-md text-slate-700 hover:bg-slate-100 transition-colors ${
-      isActive ? "bg-slate-100 font-medium" : ""
-    }`;
-
   const getUserInitials = () => {
     if (user?.email) {
       return user.email.substring(0, 2).toUpperCase();
@@ -80,95 +95,94 @@ const SellerLayout = () => {
     return 'SE';
   };
 
-  const SidebarContent = ({ isCollapsed }) => (
-    <>
-      <div className="p-4 border-b border-slate-200 flex items-center justify-between h-16">
-        {!isCollapsed && <h2 className="text-xl font-semibold text-slate-900">Seller Portal</h2>}
-        {/* Collapse button only visible on md+ screens */}
-        <button
-          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="ml-auto p-2 rounded-md hover:bg-slate-100 text-slate-700 hidden md:block"
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <FiBarChart className="h-5 w-5" />
-        </button>
-        {/* Close button for mobile overlay */}
-        <button
-          onClick={() => setIsMobileMenuOpen(false)}
-          className="ml-auto p-2 rounded-md hover:bg-slate-100 text-slate-700 md:hidden"
-          aria-label="Close menu"
-        >
-          <FiX className="h-5 w-5" />
-        </button>
-      </div>
-      <nav className="flex-1 p-4 overflow-y-auto">
-        <ul className="space-y-2">
-          <li>
-            <NavLink to="/seller/dashboard" className={getNavLinkClass} end>
-              <FiGrid className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span>Dashboard</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/seller/collections" className={getNavLinkClass}>
-              <FiTag className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span>Collections</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/seller/products" className={getNavLinkClass}>
-              <FiBox className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span>Products</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/seller/orders" className={getNavLinkClass}>
-              <FiShoppingBag className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span>Orders</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/seller/earnings" className={getNavLinkClass}>
-              <FiDollarSign className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span>Earnings</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/seller/profile" className={getNavLinkClass}>
-              <FiUser className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span>Profile</span>}
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/seller/settings" className={getNavLinkClass}>
-              <FiSettings className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span>Settings</span>}
-            </NavLink>
-          </li>
-        </ul>
-      </nav>
-      <div className="p-4 border-t border-slate-200">
-        <button
-          onClick={() => {
-            logout();
-            setIsMobileMenuOpen(false);
-          }}
-          className="w-full flex items-center gap-3 p-2 rounded-md text-slate-700 hover:bg-slate-100 transition-colors"
-        >
-          <FiLogOut className="h-5 w-5 flex-shrink-0" />
-          {!isCollapsed && <span>Logout</span>}
-        </button>
-      </div>
-    </>
-  );
-
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Sidebar for Medium+ Screens */}
+      {/* Sidebar for Medium+ Screens - Updated with luxury styling */}
       <aside
-        className={`hidden md:flex flex-col fixed h-full z-30 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? "w-20" : "w-64"}`}
+        className={`hidden md:flex flex-col fixed h-full z-30 bg-white/95 backdrop-blur-md border-r border-black/10 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? "w-20" : "w-64"}`}
       >
-        <SidebarContent isCollapsed={isSidebarCollapsed} />
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-black/10 flex items-center justify-between h-16 md:h-20">
+          {!isSidebarCollapsed && (
+            <Link to="/" className="font-bold text-xl tracking-widest text-black" style={{fontFamily: flowingSerif, letterSpacing: '0.18em', textTransform: 'uppercase'}}>
+              DELA
+            </Link>
+          )}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="ml-auto p-2 rounded-md hover:bg-black/5 text-black"
+            aria-label={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <FiBarChart className="h-5 w-5" />
+          </button>
+        </div>
+        
+        {/* Sidebar Navigation */}
+        <nav className="flex-1 p-4 overflow-y-auto">
+          <div className="space-y-2">
+            <NavLink 
+              to="/seller/dashboard" 
+              className={({ isActive }) => `flex items-center gap-3 p-3 rounded-md transition-all ${isActive ? "bg-black/10 text-black font-medium" : "text-black/70 hover:bg-black/5 hover:text-black"}`}
+              end
+            >
+              <FiGrid className="h-5 w-5 flex-shrink-0" />
+              {!isSidebarCollapsed && <span className="uppercase tracking-wider text-sm font-medium" style={{fontFamily: flowingSans}}>Dashboard</span>}
+            </NavLink>
+            <NavLink 
+              to="/seller/collections" 
+              className={({ isActive }) => `flex items-center gap-3 p-3 rounded-md transition-all ${isActive ? "bg-black/10 text-black font-medium" : "text-black/70 hover:bg-black/5 hover:text-black"}`}
+            >
+              <FiTag className="h-5 w-5 flex-shrink-0" />
+              {!isSidebarCollapsed && <span className="uppercase tracking-wider text-sm font-medium" style={{fontFamily: flowingSans}}>Collections</span>}
+            </NavLink>
+            <NavLink 
+              to="/seller/products" 
+              className={({ isActive }) => `flex items-center gap-3 p-3 rounded-md transition-all ${isActive ? "bg-black/10 text-black font-medium" : "text-black/70 hover:bg-black/5 hover:text-black"}`}
+            >
+              <FiBox className="h-5 w-5 flex-shrink-0" />
+              {!isSidebarCollapsed && <span className="uppercase tracking-wider text-sm font-medium" style={{fontFamily: flowingSans}}>Products</span>}
+            </NavLink>
+            <NavLink 
+              to="/seller/orders" 
+              className={({ isActive }) => `flex items-center gap-3 p-3 rounded-md transition-all ${isActive ? "bg-black/10 text-black font-medium" : "text-black/70 hover:bg-black/5 hover:text-black"}`}
+            >
+              <FiShoppingBag className="h-5 w-5 flex-shrink-0" />
+              {!isSidebarCollapsed && <span className="uppercase tracking-wider text-sm font-medium" style={{fontFamily: flowingSans}}>Orders</span>}
+            </NavLink>
+            <NavLink 
+              to="/seller/earnings" 
+              className={({ isActive }) => `flex items-center gap-3 p-3 rounded-md transition-all ${isActive ? "bg-black/10 text-black font-medium" : "text-black/70 hover:bg-black/5 hover:text-black"}`}
+            >
+              <FiDollarSign className="h-5 w-5 flex-shrink-0" />
+              {!isSidebarCollapsed && <span className="uppercase tracking-wider text-sm font-medium" style={{fontFamily: flowingSans}}>Earnings</span>}
+            </NavLink>
+            <NavLink 
+              to="/seller/profile" 
+              className={({ isActive }) => `flex items-center gap-3 p-3 rounded-md transition-all ${isActive ? "bg-black/10 text-black font-medium" : "text-black/70 hover:bg-black/5 hover:text-black"}`}
+            >
+              <FiUser className="h-5 w-5 flex-shrink-0" />
+              {!isSidebarCollapsed && <span className="uppercase tracking-wider text-sm font-medium" style={{fontFamily: flowingSans}}>Profile</span>}
+            </NavLink>
+            <NavLink 
+              to="/seller/settings" 
+              className={({ isActive }) => `flex items-center gap-3 p-3 rounded-md transition-all ${isActive ? "bg-black/10 text-black font-medium" : "text-black/70 hover:bg-black/5 hover:text-black"}`}
+            >
+              <FiSettings className="h-5 w-5 flex-shrink-0" />
+              {!isSidebarCollapsed && <span className="uppercase tracking-wider text-sm font-medium" style={{fontFamily: flowingSans}}>Settings</span>}
+            </NavLink>
+          </div>
+        </nav>
+        
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-black/10">
+          <button
+            onClick={() => logout()}
+            className="w-full flex items-center gap-3 p-3 rounded-md text-black/70 hover:bg-black/5 hover:text-black transition-all"
+          >
+            <FiLogOut className="h-5 w-5 flex-shrink-0" />
+            {!isSidebarCollapsed && <span className="uppercase tracking-wider text-sm font-medium" style={{fontFamily: flowingSans}}>Logout</span>}
+          </button>
+        </div>
       </aside>
 
       {/* Mobile Menu Overlay */}
@@ -180,113 +194,231 @@ const SellerLayout = () => {
             onClick={() => setIsMobileMenuOpen(false)}
             aria-hidden="true"
           ></div>
-          {/* Mobile Sidebar */}
+          {/* Mobile Sidebar - Updated with luxury styling */}
           <aside
-            className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-slate-200 z-40 flex flex-col transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
+            className={`fixed top-0 left-0 h-full w-64 bg-white/95 backdrop-blur-md border-r border-black/10 z-40 flex flex-col transition-transform duration-300 ease-in-out md:hidden ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
           >
-            <SidebarContent isCollapsed={false} />
+            {/* Mobile Header */}
+            <div className="p-4 border-b border-black/10 flex items-center justify-between h-16">
+              <Link to="/" className="font-bold text-2xl tracking-widest text-black" style={{fontFamily: flowingSerif, letterSpacing: '0.18em', textTransform: 'uppercase'}}>
+                DELA
+              </Link>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2 rounded-md hover:bg-black/5 text-black"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {/* Mobile Navigation */}
+            <nav className="flex-1 p-4 overflow-y-auto">
+              <div className="space-y-1">
+                <Link 
+                  to="/" 
+                  className="flex items-center gap-3 p-3 text-black hover:bg-black/5 transition-all uppercase tracking-wider font-medium rounded-md"
+                  style={{fontFamily: flowingSans}}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <Home className="h-5 w-5" />
+                  <span>Back to Shop</span>
+                </Link>
+                <NavLink 
+                  to="/seller/dashboard" 
+                  className={({ isActive }) => `flex items-center gap-3 p-3 transition-all uppercase tracking-wider font-medium rounded-md ${isActive ? "bg-black/10 text-black" : "text-black hover:bg-black/5"}`}
+                  style={{fontFamily: flowingSans}}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FiGrid className="h-5 w-5" />
+                  <span>Dashboard</span>
+                </NavLink>
+                <NavLink 
+                  to="/seller/collections" 
+                  className={({ isActive }) => `flex items-center gap-3 p-3 transition-all uppercase tracking-wider font-medium rounded-md ${isActive ? "bg-black/10 text-black" : "text-black hover:bg-black/5"}`}
+                  style={{fontFamily: flowingSans}}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FiTag className="h-5 w-5" />
+                  <span>Collections</span>
+                </NavLink>
+                <NavLink 
+                  to="/seller/products" 
+                  className={({ isActive }) => `flex items-center gap-3 p-3 transition-all uppercase tracking-wider font-medium rounded-md ${isActive ? "bg-black/10 text-black" : "text-black hover:bg-black/5"}`}
+                  style={{fontFamily: flowingSans}}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FiBox className="h-5 w-5" />
+                  <span>Products</span>
+                </NavLink>
+                <NavLink 
+                  to="/seller/orders" 
+                  className={({ isActive }) => `flex items-center gap-3 p-3 transition-all uppercase tracking-wider font-medium rounded-md ${isActive ? "bg-black/10 text-black" : "text-black hover:bg-black/5"}`}
+                  style={{fontFamily: flowingSans}}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FiShoppingBag className="h-5 w-5" />
+                  <span>Orders</span>
+                </NavLink>
+                <NavLink 
+                  to="/seller/earnings" 
+                  className={({ isActive }) => `flex items-center gap-3 p-3 transition-all uppercase tracking-wider font-medium rounded-md ${isActive ? "bg-black/10 text-black" : "text-black hover:bg-black/5"}`}
+                  style={{fontFamily: flowingSans}}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FiDollarSign className="h-5 w-5" />
+                  <span>Earnings</span>
+                </NavLink>
+                <NavLink 
+                  to="/seller/profile" 
+                  className={({ isActive }) => `flex items-center gap-3 p-3 transition-all uppercase tracking-wider font-medium rounded-md ${isActive ? "bg-black/10 text-black" : "text-black hover:bg-black/5"}`}
+                  style={{fontFamily: flowingSans}}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FiUser className="h-5 w-5" />
+                  <span>Profile</span>
+                </NavLink>
+                <NavLink 
+                  to="/seller/settings" 
+                  className={({ isActive }) => `flex items-center gap-3 p-3 transition-all uppercase tracking-wider font-medium rounded-md ${isActive ? "bg-black/10 text-black" : "text-black hover:bg-black/5"}`}
+                  style={{fontFamily: flowingSans}}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <FiSettings className="h-5 w-5" />
+                  <span>Settings</span>
+                </NavLink>
+              </div>
+            </nav>
+            
+            {/* Mobile Footer */}
+            <div className="p-4 border-t border-black/10">
+              <button
+                onClick={() => {
+                  logout();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 p-3 text-black hover:bg-black/5 transition-all uppercase tracking-wider font-medium rounded-md"
+                style={{fontFamily: flowingSans}}
+              >
+                <FiLogOut className="h-5 w-5" />
+                <span>Logout</span>
+              </button>
+            </div>
           </aside>
         </>
       )}
 
       {/* Main Content Area Wrapper */}
       <div className={`flex-1 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? "md:ml-20" : "md:ml-64"}`}>
-        {/* Header */}
-        <header className={`fixed top-0 right-0 h-16 bg-white border-b border-slate-200 z-20 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? "left-0 md:left-20" : "left-0 md:left-64"}`}>
-          <div className="flex items-center justify-between p-4 h-full">
-            {/* Left side: Mobile Menu Toggle OR Dynamic Page Title on Desktop */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="p-2 -ml-2 rounded-md hover:bg-slate-100 text-slate-700 md:hidden"
-                aria-label="Open menu"
-              >
-                <FiMenu className="h-5 w-5" />
-              </button>
-              {/* Dynamic Title - Show on desktop */}
-              <h1 className="hidden md:block text-lg font-semibold text-slate-800">{pageTitle}</h1>
-            </div>
-
-            {/* Right side of header */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              {/* Search */}
-              <div className="relative hidden sm:block">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <input
-                  type="search"
-                  placeholder="Search..."
-                  className="w-32 sm:w-48 md:w-64 pl-9 pr-4 py-2 rounded-full bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400"
-                />
-              </div>
-              {/* Notifications */}
-              <button className="relative p-2 rounded-full border border-transparent hover:border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-800">
-                <span className="sr-only">View notifications</span>
-                <FiBell className="h-5 w-5" />
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
-              </button>
-
-              {/* User Dropdown */}
-              <div className="relative" ref={dropdownRef}>
+        {/* Header - Matching Homepage Style */}
+        <header className={`fixed top-0 right-0 h-16 md:h-20 z-20 transition-all duration-500 ${isSidebarCollapsed ? "left-0 md:left-20" : "left-0 md:left-64"} ${isScrolled ? 'bg-white/80 shadow-lg backdrop-blur-xl' : 'bg-white/60 backdrop-blur-md shadow-md'}`} style={{fontFamily: flowingSans, borderBottom: 'none', transition: 'background 0.5s cubic-bezier(.4,0,.2,1), box-shadow 0.5s cubic-bezier(.4,0,.2,1)'}}>
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="flex items-center justify-between h-16 md:h-20">
+              {/* Left side: Mobile Menu Toggle + Logo/Title */}
+              <div className="flex items-center gap-4">
                 <button
-                  onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                  className="flex items-center gap-2 p-1 rounded-full hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-slate-500"
-                  aria-expanded={isUserDropdownOpen}
-                  aria-haspopup="true"
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="p-2 -ml-2 rounded-md hover:bg-white/20 text-black md:hidden"
+                  aria-label="Open menu"
                 >
-                  <span className="sr-only">Open user menu</span>
-                  <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
-                    <span className="text-sm font-medium text-slate-600">{getUserInitials()}</span>
-                  </div>
-                  <FiChevronDown className="h-4 w-4 text-slate-500 hidden sm:block" />
+                  <Menu className="h-6 w-6" />
+                </button>
+                {/* Logo/Brand (matching homepage) */}
+                <Link to="/" className={`font-bold text-2xl md:text-3xl tracking-widest ${isScrolled ? 'text-black' : 'text-black'}`} style={{fontFamily: flowingSerif, letterSpacing: '0.18em', textTransform: 'uppercase', textShadow: isScrolled ? 'none' : '0 2px 12px rgba(0,0,0,0.12)'}}>
+                  DELA
+                </Link>
+                {/* Separator */}
+                <div className="hidden md:block h-6 w-px bg-black/20"></div>
+                {/* Seller Portal Label */}
+                <div className="hidden md:block">
+                  <span className="text-sm font-light uppercase tracking-widest text-black/60" style={{fontFamily: flowingSans, letterSpacing: '0.18em'}}>
+                    Seller Portal
+                  </span>
+                </div>
+              </div>
+
+              {/* Center - Empty space for clean look */}
+              <div className="hidden md:flex flex-1"></div>
+
+              {/* Right side - Actions */}
+              <div className="flex items-center space-x-4">
+                {/* Search */}
+                <button className={`hidden md:flex items-center ${isScrolled ? 'text-neutral-700 hover:text-black' : 'text-black hover:text-neutral-700'} transition-colors`} style={{textShadow: isScrolled ? 'none' : '0 2px 8px rgba(0,0,0,0.12)'}}>
+                  <Search className="h-5 w-5" />
+                </button>
+                
+                {/* Notifications */}
+                <button className={`relative ${isScrolled ? 'text-neutral-700 hover:text-black' : 'text-black hover:text-neutral-700'} transition-colors`} style={{textShadow: isScrolled ? 'none' : '0 2px 8px rgba(0,0,0,0.12)'}}>
+                  <FiBell className="h-5 w-5" />
+                  <span className="absolute top-0 right-0 bg-black rounded-full h-2 w-2 border-2 border-white" style={{display:'block'}}></span>
                 </button>
 
-                {/* Dropdown Menu */}
-                {isUserDropdownOpen && (
-                  <div
-                    className="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
-                    role="menu"
-                    aria-orientation="vertical"
-                    aria-labelledby="user-menu-button"
+                {/* User Dropdown */}
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                    className={`flex items-center gap-2 ${isScrolled ? 'text-neutral-700 hover:text-black' : 'text-black hover:text-neutral-700'} transition-colors`}
+                    style={{textShadow: isScrolled ? 'none' : '0 2px 8px rgba(0,0,0,0.12)'}}
+                    aria-expanded={isUserDropdownOpen}
+                    aria-haspopup="true"
                   >
-                    <div className="px-4 py-2 border-b border-slate-100">
-                      <p className="text-sm font-medium text-slate-900 truncate">{user?.email || 'Seller'}</p>
-                      <p className="text-xs text-slate-500">Seller Account</p>
+                    <div className="h-8 w-8 rounded-full bg-black/10 flex items-center justify-center overflow-hidden">
+                      <span className="text-sm font-medium text-black">{getUserInitials()}</span>
                     </div>
-                    <Link
-                      to="/seller/profile"
-                      className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                      role="menuitem"
-                      onClick={() => setIsUserDropdownOpen(false)}
+                    <FiChevronDown className="h-4 w-4 hidden sm:block" />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {isUserDropdownOpen && (
+                    <div
+                      className="absolute right-0 mt-2 w-56 origin-top-right rounded-xl bg-white/95 backdrop-blur-md py-2 shadow-xl border border-black/10 focus:outline-none z-50 animate-fadeIn"
+                      role="menu"
+                      aria-orientation="vertical"
+                      aria-labelledby="user-menu-button"
                     >
-                      Profile
-                    </Link>
-                    <Link
-                      to="/seller/settings"
-                      className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                      role="menuitem"
-                      onClick={() => setIsUserDropdownOpen(false)}
-                    >
-                      Settings
-                    </Link>
-                    <button
-                      onClick={() => {
-                        logout();
-                        setIsUserDropdownOpen(false);
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
-                      role="menuitem"
-                    >
-                      Sign out
-                    </button>
-                  </div>
-                )}
+                      <div className="px-6 py-3 border-b border-black/10">
+                        <p className="text-sm font-medium text-black truncate" style={{fontFamily: flowingSans}}>{user?.email || 'Seller'}</p>
+                        <p className="text-xs text-black/60 uppercase tracking-wider" style={{fontFamily: flowingSans}}>Seller Account</p>
+                      </div>
+                      <Link
+                        to="/seller/profile"
+                        className="block px-6 py-3 text-sm text-black hover:bg-black/5 transition-all uppercase tracking-wider font-medium"
+                        style={{fontFamily: flowingSans}}
+                        role="menuitem"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                      >
+                        Profile
+                      </Link>
+                      <Link
+                        to="/seller/settings"
+                        className="block px-6 py-3 text-sm text-black hover:bg-black/5 transition-all uppercase tracking-wider font-medium"
+                        style={{fontFamily: flowingSans}}
+                        role="menuitem"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                      >
+                        Settings
+                      </Link>
+                      <button
+                        onClick={() => {
+                          logout();
+                          setIsUserDropdownOpen(false);
+                        }}
+                        className="block w-full text-left px-6 py-3 text-sm text-black hover:bg-black/5 transition-all uppercase tracking-wider font-medium"
+                        style={{fontFamily: flowingSans}}
+                        role="menuitem"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </header>
 
         {/* Content Container */}
-        <main className="p-4 pt-20 sm:p-6 sm:pt-22">
+        <main className="p-4 pt-20 md:pt-24 sm:p-6 sm:pt-26">
           <Outlet />
         </main>
       </div>

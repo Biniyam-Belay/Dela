@@ -141,7 +141,11 @@ const SellerDashboardPage = () => {
       <div className="bg-red-50 border border-red-200 rounded-md p-4">
         <p className="text-red-800">{error}</p>
         <button 
-          onClick={() => window.location.reload()} 
+          onClick={() => {
+            setError('');
+            setLoading(true);
+            fetchDashboardData();
+          }} 
           className="mt-2 text-red-600 hover:text-red-700 underline"
         >
           Try Again

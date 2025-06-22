@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/authContext.jsx';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Spinner from '../common/Spinner';
 import { getSellerProfile } from '../../services/sellerApi.js';
 
 const SellerRoute = ({ children }) => {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const navigate = useNavigate();
   const [sellerStatus, setSellerStatus] = useState(null);
   const [isCheckingSellerStatus, setIsCheckingSellerStatus] = useState(true);
   const location = useLocation();
@@ -74,7 +75,7 @@ const SellerRoute = ({ children }) => {
             Unfortunately, your seller application was not approved.
           </p>
           <button 
-            onClick={() => window.location.href = '/seller/apply'}
+            onClick={() => navigate('/seller/apply')}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             Apply Again

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import toast from 'react-hot-toast';
 import { 
   FiArrowLeft, 
   FiShoppingCart, 
@@ -9,15 +11,19 @@ import {
   FiTag
 } from 'react-icons/fi';
 import { supabase } from '../services/supabaseClient.js';
+import { addCollectionToCart } from '../store/cartSlice';
 import ProductCard from '../components/ui/ProductCard';
 import Spinner from '../components/common/Spinner.jsx';
 import { Helmet } from 'react-helmet';
+import { formatETB } from '../utils/utils';
 
 const CollectionDetailPage = () => {
   const { collectionId } = useParams();
+  const dispatch = useDispatch();
   const [collection, setCollection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
     fetchCollectionDetails();
@@ -26,17 +32,98 @@ const CollectionDetailPage = () => {
   const fetchCollectionDetails = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.functions.invoke('get-public-collection-details', {
-        body: { collection_id: collectionId }
-      });
       
-      if (error) throw error;
-      setCollection(data);
+      // Check if the collectionId is a valid UUID (not a mock numeric ID)
+      const isNumericId = /^\d+$/.test(collectionId);
+      if (isNumericId) {
+        console.warn('Received numeric collection ID:', collectionId, 'This suggests mock data is being used');
+        // Try to get a real collection instead
+        const { data: realCollections, error } = await supabase
+          .from('collections')
+          .select('id, name')
+          .eq('status', 'active')
+          .limit(1);
+        
+        if (!error && realCollections && realCollections.length > 0) {
+          const realCollectionId = realCollections[0].id;
+          console.log('Redirecting to real collection:', realCollectionId);
+          // Redirect to the real collection
+          window.location.href = `/collections/${realCollectionId}`;
+          return;
+        }
+      }
+      
+      // Try direct database query first instead of Edge Function
+      console.log('Fetching collection details for ID:', collectionId);
+      const { data: collectionData, error: dbError } = await supabase
+        .from('collections')
+        .select(`
+          id,
+          name,
+          description,
+          price,
+          image_url,
+          status,
+          created_at,
+          seller_id,
+          sellers (
+            id,
+            store_name,
+            contact_email
+          ),
+          collection_items (
+            products (
+              id,
+              name,
+              description,
+              price,
+              image_url,
+              category
+            )
+          )
+        `)
+        .eq('id', collectionId)
+        .eq('status', 'active')
+        .single();
+
+      if (dbError) {
+        console.error('Database query error:', dbError);
+        throw dbError;
+      }
+
+      if (collectionData) {
+        console.log('Collection data from database:', collectionData);
+        
+        // Transform the data to match expected format
+        const transformedCollection = {
+          id: collectionData.id,
+          name: collectionData.name,
+          description: collectionData.description,
+          price: collectionData.price,
+          image_url: collectionData.image_url || 'https://exutmsxktrnltvdgnlop.supabase.co/storage/v1/object/public/public_assets/placeholder.webp',
+          seller: {
+            id: collectionData.seller_id,
+            store_name: collectionData.sellers?.store_name || 'Unknown Store',
+            contact_email: collectionData.sellers?.contact_email || ''
+          },
+          // Add products with seller information from the collection
+          products: collectionData.collection_items?.map(item => ({
+            ...item.products,
+            seller_id: collectionData.seller_id // Add seller ID to each product
+          })).filter(Boolean) || [],
+          created_at: collectionData.created_at
+        };
+        
+        setCollection(transformedCollection);
+      } else {
+        throw new Error('Collection not found');
+      }
     } catch (err) {
       console.error('Error fetching collection details:', err);
       setError('Failed to load collection details');
-      // Use mock data for development
-      setCollection(getMockCollection());
+      // Don't use mock data fallback as it contains numeric IDs that break checkout
+      // Instead, show an error message to the user
+      console.log('Not using mock data fallback to prevent UUID errors in checkout');
     } finally {
       setLoading(false);
     }
@@ -88,9 +175,25 @@ const CollectionDetailPage = () => {
     ]
   });
 
-  const handleAddToCart = () => {
-    // Add collection to cart logic
-    console.log('Adding collection to cart:', collection.id);
+  const handleAddToCart = async () => {
+    if (!collection || isAddingToCart) return;
+    
+    // Prevent adding collections with numeric IDs (mock data) to cart
+    if (typeof collection.id === 'number') {
+      toast.error('Collection data unavailable. Please refresh the page.');
+      return;
+    }
+    
+    setIsAddingToCart(true);
+    try {
+      await dispatch(addCollectionToCart({ collection, quantity: 1 })).unwrap();
+      toast.success(`${collection.name} added to cart!`);
+    } catch (error) {
+      console.error('Error adding collection to cart:', error);
+      toast.error(error || 'Failed to add collection to cart');
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const handleAddToWishlist = () => {
@@ -226,10 +329,11 @@ const CollectionDetailPage = () => {
             <div className="flex space-x-4">
               <button
                 onClick={handleAddToCart}
-                className="flex-1 inline-flex items-center justify-center px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={isAddingToCart}
+                className="flex-1 inline-flex items-center justify-center px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
               >
                 <FiShoppingCart className="mr-2 h-5 w-5" />
-                Add Collection to Cart
+                {isAddingToCart ? 'Adding...' : 'Add Collection to Cart'}
               </button>
               <button
                 onClick={handleAddToWishlist}
