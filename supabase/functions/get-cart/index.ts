@@ -63,6 +63,7 @@ serve(async (req) => {
         cart_items(
           id,
           quantity,
+          collection_id,
           product:products(
             id,
             name,
@@ -100,7 +101,8 @@ serve(async (req) => {
       .filter(item => item && item.product)
       .map(item => ({
         product: item.product,
-        quantity: item.quantity
+        quantity: item.quantity,
+        collection_id: item.collection_id // Include collection_id if present
       }));
 
     console.log(`Returning cart with ${items.length} valid items for user ${user.id}.`);

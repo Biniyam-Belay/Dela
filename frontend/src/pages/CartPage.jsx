@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { FiTrash2, FiPlus, FiMinus, FiArrowLeft, FiTag } from 'react-icons/fi';
+import { FiTrash2, FiPlus, FiMinus, FiArrowLeft, FiTag, FiPackage } from 'react-icons/fi';
 import { useSelector, useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
 import { Helmet } from 'react-helmet';
@@ -34,6 +34,64 @@ const CartPage = () => {
   const [promoCode, setPromoCode] = useState('');
   const [promoMessage, setPromoMessage] = useState('');
   const [promoSuccess, setPromoSuccess] = useState(false);
+
+  // Group cart items by collection
+  const groupedCartItems = useMemo(() => {
+    const collections = {};
+    const individualItems = [];
+
+    console.log('Raw cart items:', cartItems);
+
+    cartItems.forEach(item => {
+      // Check for collection_id (from backend) - this is the primary field
+      const collectionId = item.collection_id;
+      const hasCollection = collectionId !== null && 
+                           collectionId !== undefined && 
+                           collectionId !== '' &&
+                           typeof collectionId === 'string';
+      
+      console.log(`Item ${item.product?.name}:`, {
+        collection_id: item.collection_id,
+        hasCollection,
+        finalCollectionId: collectionId
+      });
+      
+      if (hasCollection) {
+        // This item belongs to a collection
+        if (!collections[collectionId]) {
+          collections[collectionId] = {
+            id: collectionId,
+            name: item.collectionName || item.product?.collection_name || `Collection ${collectionId.slice(0, 8)}`,
+            sellerId: item.sellerId || item.product?.seller_id,
+            sellerName: item.sellerName || item.product?.seller_name || 'Unknown Seller',
+            description: item.collectionDescription || item.product?.collection_description,
+            items: [],
+            totalPrice: 0,
+            totalQuantity: 0
+          };
+        }
+        collections[collectionId].items.push(item);
+        collections[collectionId].totalPrice += parseFloat(item.product.price) * item.quantity;
+        collections[collectionId].totalQuantity += item.quantity;
+      } else {
+        // This is an individual item (no collection association)
+        console.log(`Adding as individual item: ${item.product?.name}`);
+        individualItems.push(item);
+      }
+    });
+
+    console.log('Final grouped cart items:', {
+      collections: Object.values(collections),
+      individualItems,
+      totalCollections: Object.keys(collections).length,
+      totalIndividualItems: individualItems.length
+    });
+
+    return {
+      collections: Object.values(collections),
+      individualItems
+    };
+  }, [cartItems]);
 
   // Find the specific item in the cart to check its current quantity
   const findItemQuantity = (productId) => {
@@ -125,6 +183,31 @@ const CartPage = () => {
       .finally(() => setIsUpdating(false));
   };
 
+  const saveCollectionForLaterHandler = (collection) => {
+    if (isUpdating) return;
+    setIsUpdating(true);
+    
+    // Remove all items from the collection and add to wishlist
+    const removePromises = collection.items.map(item => {
+      dispatch(removeItemOptimistic(item.product.id));
+      return dispatch(removeItem(item.product.id)).unwrap();
+    });
+
+    Promise.all(removePromises)
+      .then(() => {
+        // Add all collection items to wishlist
+        collection.items.forEach(item => {
+          dispatch(addToWishlist(item.product.id));
+        });
+        toast.success('Collection saved for later!');
+      })
+      .catch((err) => {
+        toast.error(err || 'Failed to save collection for later');
+        dispatch(fetchCart());
+      })
+      .finally(() => setIsUpdating(false));
+  };
+
   const applyPromoCodeHandler = (e) => {
     e.preventDefault();
     // Placeholder logic for applying promo code
@@ -174,131 +257,294 @@ const CartPage = () => {
           <div className="flex flex-col lg:flex-row gap-10">
             {/* Cart Items */}
             <div className="lg:w-2/3 space-y-6">
-              {cartItems.map(({ product, quantity, collectionId, collectionName }) => (
-                <div
-                  key={product.id}
-                  className="flex flex-col sm:flex-row items-start sm:items-center bg-white p-5 sm:p-6 rounded-xl shadow border border-neutral-200 gap-6 group hover:shadow-md transition-shadow duration-200"
-                >
-                  {/* Product Image */}
-                  <Link
-                    to={`/products/${product.slug || product.id}`}
-                    className="flex-shrink-0 w-full sm:w-auto"
-                  >
-                    <img
-                      src={getImageUrl(product.images?.[0])}
-                      alt={product.name}
-                      className="w-full sm:w-20 h-20 object-cover rounded-lg border border-neutral-200 shadow-sm group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = '/placeholder-image.jpg';
-                      }}
-                    />
-                  </Link>
-
-                  {/* Product Info */}
-                  <div className="flex-grow w-full sm:w-auto">
-                    <Link
-                      to={`/products/${product.slug || product.id}`}
-                      className="hover:text-black transition-colors"
-                    >
-                      <h3 className="font-sans text-lg font-semibold text-neutral-900 mb-1 tracking-tight">{product.name}</h3>
-                    </Link>
-                    
-                    {/* Collection Info */}
-                    {collectionId && collectionName && (
-                      <div className="flex items-center gap-1 text-xs text-blue-600 mb-1">
-                        <FiTag size={12} />
-                        <span>From collection: {collectionName}</span>
+              {/* Collections */}
+              {groupedCartItems.collections.map((collection) => (
+                <div key={collection.id} className="border-2 border-blue-100 rounded-xl p-6 bg-blue-50/30">
+                  {/* Collection Header */}
+                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-blue-200">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <FiPackage className="text-blue-600 w-5 h-5" />
                       </div>
-                    )}
-                    
-                    {/* Product Variant Info */}
-                    {product.variant && (
-                      <div className="text-xs text-neutral-500 mb-1">Variant: {product.variant}</div>
-                    )}
-                    {/* Estimated Delivery */}
-                    <div className="text-xs text-emerald-600 mb-2">Estimated Delivery: {getEstimatedDelivery()}</div>
-                    <p className="text-sm text-neutral-500 mb-2">{formatETB(product.price)}</p>
-                    {/* Save for Later / Wishlist */}
-                    <button
-                      className="text-xs text-indigo-500 hover:underline mb-2"
-                      onClick={() => saveForLaterHandler(product.id)}
-                      type="button"
-                    >
-                      Save for Later
-                    </button>
-                    {/* Mobile-only quantity controls */}
-                    <div className="sm:hidden flex items-center justify-between mt-3">
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={() => updateQuantityHandler(product.id, -1)}
-                          className={`p-1 rounded-full border border-neutral-200 ${quantity <= 1 ? 'text-neutral-300' : 'text-neutral-700 hover:bg-neutral-100'}`}
-                          disabled={quantity <= 1 || isUpdating}
-                        >
-                          <FiMinus size={14} />
-                        </button>
-                        <span className="w-6 text-center text-base font-medium">{quantity}</span>
-                        <button
-                          onClick={() => updateQuantityHandler(product.id, 1)}
-                          className="p-1 rounded-full border border-neutral-200 text-neutral-700 hover:bg-neutral-100"
-                          disabled={isUpdating}
-                        >
-                          <FiPlus size={14} />
-                        </button>
+                      <div>
+                        <h2 className="text-xl font-semibold text-neutral-900">{collection.name}</h2>
+                        <p className="text-sm text-neutral-600">by {collection.sellerName}</p>
+                        {collection.description && (
+                          <p className="text-xs text-neutral-500 mt-1">{collection.description}</p>
+                        )}
                       </div>
-                      <button
-                        onClick={() => removeItemHandler(product.id)}
-                        className="text-neutral-400 hover:text-red-500 transition-colors"
-                        disabled={isUpdating}
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-neutral-600">{collection.totalQuantity} items</p>
+                      <p className="text-lg font-semibold text-neutral-900">{formatETB(collection.totalPrice)}</p>
                     </div>
                   </div>
 
-                  {/* Desktop quantity controls */}
-                  <div className="hidden sm:flex items-center space-x-3">
+                  {/* Collection Items */}
+                  <div className="space-y-4">
+                    {collection.items.map(({ product, quantity }) => (
+                      <div
+                        key={product.id}
+                        className="flex flex-col sm:flex-row items-start sm:items-center bg-white p-4 sm:p-5 rounded-lg shadow-sm border border-neutral-200 gap-4 group hover:shadow-md transition-shadow duration-200"
+                      >
+                        {/* Product Image */}
+                        <Link
+                          to={`/products/${product.slug || product.id}`}
+                          className="flex-shrink-0 w-full sm:w-auto"
+                        >
+                          <img
+                            src={getImageUrl(product.images?.[0])}
+                            alt={product.name}
+                            className="w-full sm:w-16 h-16 object-cover rounded-lg border border-neutral-200 shadow-sm group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/placeholder-image.jpg';
+                            }}
+                          />
+                        </Link>
+
+                        {/* Product Info */}
+                        <div className="flex-grow w-full sm:w-auto">
+                          <Link
+                            to={`/products/${product.slug || product.id}`}
+                            className="hover:text-black transition-colors"
+                          >
+                            <h3 className="font-sans text-base font-semibold text-neutral-900 mb-1 tracking-tight">{product.name}</h3>
+                          </Link>
+                          
+                          {/* Product Variant Info */}
+                          {product.variant && (
+                            <div className="text-xs text-neutral-500 mb-1">Variant: {product.variant}</div>
+                          )}
+                          <p className="text-sm text-neutral-600 mb-2">{formatETB(product.price)} each</p>
+                          
+                          {/* Mobile-only quantity controls */}
+                          <div className="sm:hidden flex items-center justify-between mt-3">
+                            <div className="flex items-center space-x-3">
+                              <button
+                                onClick={() => updateQuantityHandler(product.id, -1)}
+                                className={`p-1 rounded-full border border-neutral-200 ${quantity <= 1 ? 'text-neutral-300' : 'text-neutral-700 hover:bg-neutral-100'}`}
+                                disabled={quantity <= 1 || isUpdating}
+                              >
+                                <FiMinus size={14} />
+                              </button>
+                              <span className="w-6 text-center text-base font-medium">{quantity}</span>
+                              <button
+                                onClick={() => updateQuantityHandler(product.id, 1)}
+                                className="p-1 rounded-full border border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+                                disabled={isUpdating}
+                              >
+                                <FiPlus size={14} />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => removeItemHandler(product.id)}
+                              className="text-neutral-400 hover:text-red-500 transition-colors"
+                              disabled={isUpdating}
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Desktop quantity controls */}
+                        <div className="hidden sm:flex items-center space-x-3">
+                          <button
+                            onClick={() => updateQuantityHandler(product.id, -1)}
+                            className={`p-2 rounded-full border border-neutral-200 ${quantity <= 1 ? 'text-neutral-300' : 'text-neutral-700 hover:bg-neutral-100'}`}
+                            disabled={quantity <= 1 || isUpdating}
+                          >
+                            <FiMinus size={16} />
+                          </button>
+                          <span className="w-8 text-center text-base font-medium">{quantity}</span>
+                          <button
+                            onClick={() => updateQuantityHandler(product.id, 1)}
+                            className="p-2 rounded-full border border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+                            disabled={isUpdating}
+                          >
+                            <FiPlus size={16} />
+                          </button>
+                        </div>
+
+                        {/* Price */}
+                        <div className="hidden sm:block w-20 text-right font-semibold text-base text-neutral-900">
+                          {formatETB(parseFloat(product.price) * quantity)}
+                        </div>
+
+                        {/* Desktop remove */}
+                        <button
+                          onClick={() => removeItemHandler(product.id)}
+                          className="hidden sm:block text-neutral-400 hover:text-red-500 transition-colors"
+                          disabled={isUpdating}
+                        >
+                          <FiTrash2 size={18} />
+                        </button>
+
+                        {/* Mobile price */}
+                        <div className="sm:hidden w-full text-right font-semibold text-base text-neutral-900 mt-2">
+                          {formatETB(parseFloat(product.price) * quantity)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Collection Footer */}
+                  <div className="mt-4 pt-4 border-t border-blue-200 flex items-center justify-between">
                     <button
-                      onClick={() => updateQuantityHandler(product.id, -1)}
-                      className={`p-2 rounded-full border border-neutral-200 ${quantity <= 1 ? 'text-neutral-300' : 'text-neutral-700 hover:bg-neutral-100'}`}
-                      disabled={quantity <= 1 || isUpdating}
-                    >
-                      <FiMinus size={18} />
-                    </button>
-                    <span className="w-10 text-center text-lg font-medium">{quantity}</span>
-                    <button
-                      onClick={() => updateQuantityHandler(product.id, 1)}
-                      className="p-2 rounded-full border border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+                      className="text-sm text-blue-600 hover:text-blue-800 transition-colors font-medium"
+                      onClick={() => saveCollectionForLaterHandler(collection)}
                       disabled={isUpdating}
                     >
-                      <FiPlus size={18} />
+                      Save Collection for Later
                     </button>
-                  </div>
-
-                  {/* Price */}
-                  <div className="hidden sm:block w-24 text-right font-semibold text-base text-neutral-900">
-                    {formatETB(parseFloat(product.price) * quantity)}
-                  </div>
-
-                  {/* Desktop remove */}
-                  <button
-                    onClick={() => removeItemHandler(product.id)}
-                    className="hidden sm:block text-neutral-400 hover:text-red-500 transition-colors"
-                    disabled={isUpdating}
-                  >
-                    <FiTrash2 size={20} />
-                  </button>
-
-                  {/* Mobile price */}
-                  <div className="sm:hidden w-full text-right font-semibold text-base text-neutral-900 mt-2">
-                    {formatETB(parseFloat(product.price) * quantity)}
+                    <div className="text-right">
+                      <p className="text-sm text-neutral-600">Collection Total:</p>
+                      <p className="text-lg font-bold text-neutral-900">{formatETB(collection.totalPrice)}</p>
+                    </div>
                   </div>
                 </div>
               ))}
 
+              {/* Individual Items */}
+              {groupedCartItems.individualItems.length > 0 && (
+                <div className="border border-neutral-200 rounded-xl p-6 bg-white">
+                  <h2 className="text-lg font-semibold text-neutral-900 mb-6 flex items-center gap-2 pb-4 border-b border-neutral-200">
+                    <FiTag className="text-neutral-500" />
+                    Individual Items ({groupedCartItems.individualItems.length})
+                  </h2>
+                  
+                  <div className="space-y-4">
+                    {groupedCartItems.individualItems.map(({ product, quantity }) => (
+                      <div
+                        key={product.id}
+                        className="flex flex-col sm:flex-row items-start sm:items-center p-4 rounded-lg border border-neutral-100 hover:border-neutral-200 hover:bg-neutral-50 transition-all duration-200 gap-4"
+                      >
+                        {/* Product Image */}
+                        <Link
+                          to={`/products/${product.slug || product.id}`}
+                          className="flex-shrink-0 w-full sm:w-auto"
+                        >
+                          <img
+                            src={getImageUrl(product.images?.[0])}
+                            alt={product.name}
+                            className="w-full sm:w-16 h-16 object-cover rounded-lg border border-neutral-200 shadow-sm hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = '/placeholder-image.jpg';
+                            }}
+                          />
+                        </Link>
+
+                        {/* Product Info */}
+                        <div className="flex-grow w-full sm:w-auto">
+                          <Link
+                            to={`/products/${product.slug || product.id}`}
+                            className="hover:text-black transition-colors"
+                          >
+                            <h3 className="font-medium text-base text-neutral-900 mb-1">{product.name}</h3>
+                          </Link>
+                          
+                          <p className="text-sm text-neutral-600 mb-2">{formatETB(product.price)} each</p>
+                          
+                          {/* Mobile-only quantity controls */}
+                          <div className="sm:hidden flex items-center justify-between mt-3">
+                            <div className="flex items-center space-x-3">
+                              <button
+                                onClick={() => updateQuantityHandler(product.id, -1)}
+                                className={`p-1 rounded-full border border-neutral-200 ${quantity <= 1 ? 'text-neutral-300' : 'text-neutral-700 hover:bg-neutral-100'}`}
+                                disabled={quantity <= 1 || isUpdating}
+                              >
+                                <FiMinus size={14} />
+                              </button>
+                              <span className="w-6 text-center text-base font-medium">{quantity}</span>
+                              <button
+                                onClick={() => updateQuantityHandler(product.id, 1)}
+                                className="p-1 rounded-full border border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+                                disabled={isUpdating}
+                              >
+                                <FiPlus size={14} />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => removeItemHandler(product.id)}
+                              className="text-neutral-400 hover:text-red-500 transition-colors"
+                              disabled={isUpdating}
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Desktop quantity controls */}
+                        <div className="hidden sm:flex items-center space-x-3">
+                          <button
+                            onClick={() => updateQuantityHandler(product.id, -1)}
+                            className={`p-2 rounded-full border border-neutral-200 ${quantity <= 1 ? 'text-neutral-300' : 'text-neutral-700 hover:bg-neutral-100'}`}
+                            disabled={quantity <= 1 || isUpdating}
+                          >
+                            <FiMinus size={16} />
+                          </button>
+                          <span className="w-8 text-center text-base font-medium">{quantity}</span>
+                          <button
+                            onClick={() => updateQuantityHandler(product.id, 1)}
+                            className="p-2 rounded-full border border-neutral-200 text-neutral-700 hover:bg-neutral-100"
+                            disabled={isUpdating}
+                          >
+                            <FiPlus size={16} />
+                          </button>
+                        </div>
+
+                        {/* Price */}
+                        <div className="hidden sm:block w-20 text-right font-semibold text-base text-neutral-900">
+                          {formatETB(parseFloat(product.price) * quantity)}
+                        </div>
+
+                        {/* Desktop remove */}
+                        <button
+                          onClick={() => removeItemHandler(product.id)}
+                          className="hidden sm:block text-neutral-400 hover:text-red-500 transition-colors"
+                          disabled={isUpdating}
+                        >
+                          <FiTrash2 size={18} />
+                        </button>
+
+                        {/* Mobile price */}
+                        <div className="sm:hidden w-full text-right font-semibold text-base text-neutral-900 mt-2">
+                          {formatETB(parseFloat(product.price) * quantity)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Individual Items Actions */}
+                  <div className="mt-4 pt-4 border-t border-neutral-200 flex items-center justify-between">
+                    <button
+                      className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
+                      onClick={() => {
+                        groupedCartItems.individualItems.forEach(item => {
+                          saveForLaterHandler(item.product.id);
+                        });
+                      }}
+                      disabled={isUpdating}
+                    >
+                      Save All for Later
+                    </button>
+                    <div className="text-right">
+                      <p className="text-sm text-neutral-600">Items Total:</p>
+                      <p className="text-lg font-bold text-neutral-900">
+                        {formatETB(groupedCartItems.individualItems.reduce((total, item) => 
+                          total + (parseFloat(item.product.price) * item.quantity), 0
+                        ))}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Clear Cart */}
-              <div className="text-right mt-2">
+              <div className="text-right mt-8">
                 <button
                   onClick={clearCartHandler}
                   className="text-base text-neutral-400 hover:text-red-500 transition-colors font-normal border-b border-transparent hover:border-red-400 pb-0.5"
@@ -312,6 +558,36 @@ const CartPage = () => {
             <div className="lg:w-1/3">
               <div className="bg-neutral-50 p-6 rounded-xl shadow border border-neutral-200 sticky top-4 sm:top-8 flex flex-col gap-6">
                 <h2 className="text-xl font-sans font-semibold text-neutral-900 mb-2 pb-3 border-b">Order Summary</h2>
+                
+                {/* Summary Breakdown */}
+                <div className="space-y-3 text-sm">
+                  {groupedCartItems.collections.length > 0 && (
+                    <div>
+                      <h3 className="font-medium text-neutral-700 mb-2">Collections:</h3>
+                      {groupedCartItems.collections.map((collection) => (
+                        <div key={collection.id} className="flex justify-between items-center py-1 px-3 bg-blue-50 rounded-lg mb-2">
+                          <span className="text-neutral-600">{collection.name} ({collection.totalQuantity} items)</span>
+                          <span className="font-medium text-neutral-900">{formatETB(collection.totalPrice)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {groupedCartItems.individualItems.length > 0 && (
+                    <div>
+                      <h3 className="font-medium text-neutral-700 mb-2">Individual Items:</h3>
+                      <div className="flex justify-between items-center py-1 px-3 bg-neutral-100 rounded-lg">
+                        <span className="text-neutral-600">{groupedCartItems.individualItems.length} items</span>
+                        <span className="font-medium text-neutral-900">
+                          {formatETB(groupedCartItems.individualItems.reduce((total, item) => 
+                            total + (parseFloat(item.product.price) * item.quantity), 0
+                          ))}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Promo Code Input */}
                 <form className="flex gap-2 mb-4" onSubmit={applyPromoCodeHandler}>
                   <input

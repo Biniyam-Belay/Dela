@@ -191,13 +191,19 @@ The multi-vendor marketplace **backend AND frontend seller interface** are now *
     *   ✅ Fixed database column naming issues (camelCase vs snake_case)
     *   ✅ Collection information included in order confirmation emails
     *   ✅ Fixed UUID validation error - collections now use real product UUIDs
-*   ✅ **Order Processing (FUNCTIONAL):**
+    *   ✅ **Cart Integration Issues (COMPLETED):**
+        *   ✅ Created `add-collection-to-cart` Edge Function
+        *   ✅ Added `collection_id` column to `cart_items` table
+        *   ✅ Fixed database permissions for collections and cart operations
+        *   ✅ Resolved upsert permissions for complete collection addition
+        *   ✅ Fixed issue ensuring all collection products are added (not just first 2)
+*   ⏳ **Order Processing (FUNCTIONAL):**
     *   ✅ End-to-end collection purchase workflow working
     *   ⏳ Commission calculation (table structure needs refinement)
     *   ⏳ Seller earnings tracking (to be implemented after testing)
 
-**CURRENT STATUS:** ✅ **Collections checkout flow COMPLETED!** End-to-end collection purchases now working with real database data and valid UUIDs!  
-**NEXT MILESTONE:** Seller earnings tracking, admin interface development, and advanced marketplace features
+**CURRENT STATUS:** ✅ **Collections cart integration COMPLETED!** All collection products now properly added to cart with correct permissions and database structure  
+**NEXT MILESTONE:** Enhanced cart UI, then move to admin interface development and seller earnings tracking
 
 ---
 
@@ -273,6 +279,35 @@ The multi-vendor marketplace **backend AND frontend seller interface** are now *
 *   [ ] **Admin Payout Management:**
     *   [ ] Payout queue and processing
     *   [ ] Payment history tracking
+
+---
+
+## 🎯 **IMMEDIATE NEXT STEPS (Current Priority)**
+
+### **� Phase 4: Enhanced Cart & User Experience (NEXT PRIORITY)**
+
+**Now that cart integration is working, focus on UX improvements:**
+1. **✅ Database Infrastructure:**
+   - ✅ Applied migration: `20250624111000_grant_cart_items_permissions.sql`
+   - ✅ Applied migration: `20250624110000_add_collection_id_to_cart_items.sql`
+   - ✅ Applied migration: `20250624110500_grant_carts_permissions.sql`
+   - ✅ Applied migration: `20250624100000_grant_select_on_collection_items.sql`
+
+2. **⏳ Enhanced Cart UI:**
+   - [ ] **Collection Grouping:** Show collection items grouped together in cart
+   - [ ] **Visual Distinction:** Different styling for collections vs individual products
+   - [ ] **Collection Metadata:** Display collection name, seller, and description in cart
+   - [ ] **Quantity Management:** Handle collection vs individual product quantities properly
+
+3. **⏳ Checkout Enhancements:**
+   - [ ] **Order Summary:** Clear breakdown of collections vs individual items
+   - [ ] **Seller Attribution:** Show which seller each collection comes from
+   - [ ] **Commission Tracking:** Ensure proper seller earnings calculation
+
+### **🔧 Phase 5: Admin Interface Development**
+- [ ] **Pending Collections Queue:** Admin approval interface
+- [ ] **Seller Management:** Application review and seller status management
+- [ ] **Marketplace Metrics:** Commission tracking and analytics
 
 ---
 
