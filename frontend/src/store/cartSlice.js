@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSelector } from 'reselect';
 
 // Helper function to get initial state from localStorage (similar to CartContext)
 const getInitialCartState = () => {
@@ -278,79 +279,35 @@ export const addCollectionToCart = createAsyncThunk(
       return rejectWithValue('Collection data unavailable. Please refresh the page.');
     }
     
-    // Validate product IDs
-    const invalidProducts = collection.products?.filter(product => typeof product.id === 'number') || [];
-    if (invalidProducts.length > 0) {
-      console.error('Invalid product IDs (numeric):', invalidProducts.map(p => p.id));
-      return rejectWithValue('Product data unavailable. Please refresh the page.');
-    }
-    
     const accessToken = localStorage.getItem('accessToken');
     console.log('Access token exists:', !!accessToken);
     
     if (accessToken) {
-      // For development/demo purposes, if API fails, fall back to localStorage
-      // In production, this would use proper API endpoints
-      console.log('Attempting API cart addition (will fallback to localStorage if API fails)');
-      
       try {
-        // Check if add-to-cart endpoint exists and works
-        if (import.meta.env.VITE_SUPABASE_ADD_TO_CART_URL) {
-          const testResponse = await fetch(import.meta.env.VITE_SUPABASE_ADD_TO_CART_URL, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ 
-              productId: collection.products[0]?.id, 
-              quantity: 0 // Test call
-            }),
-          });
-          
-          if (!testResponse.ok) {
-            throw new Error(`API not available: ${testResponse.status}`);
-          }
-        } else {
-          throw new Error('API URL not configured');
-        }
-      } catch (apiError) {
-        console.log('API not available, falling back to localStorage:', apiError.message);
-        // Fall back to localStorage logic (same as anonymous user)
-        const localCart = getInitialCartState();
-        let newItems = [...localCart.items];
-        console.log('Current cart items:', newItems);
-        
-        // Add each product from the collection
-        const collectionProducts = collection.products || [];
-        console.log('Products to add:', collectionProducts);
-        
-        for (const product of collectionProducts) {
-          console.log('Processing product:', product);
-          const existingItemIndex = newItems.findIndex(item => item.product.id === product.id);
-          if (existingItemIndex > -1) {
-            console.log('Product already exists, updating quantity');
-            newItems[existingItemIndex] = {
-              ...newItems[existingItemIndex],
-              quantity: newItems[existingItemIndex].quantity + quantity,
-              collectionId: collection.id, // Track collection source
-              sellerId: collection.seller?.id // Track seller information
-            };
-          } else {
-            console.log('Adding new product to cart');
-            newItems.push({ 
-              product, 
-              quantity,
-              collectionId: collection.id, // Track collection source
-              collectionName: collection.name, // For display purposes
-              sellerId: collection.seller?.id // Track seller information
-            });
-          }
+        const response = await fetch(import.meta.env.VITE_SUPABASE_ADD_COLLECTION_TO_CART_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ collectionId: collection.id, quantity: quantity }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         
-        console.log('New cart items after adding collection (localStorage fallback):', newItems);
-        localStorage.setItem('cart', JSON.stringify({ items: newItems }));
-        return newItems;
+        const data = await response.json();
+        const finalItems = data.cart?.items || data.items || data || [];
+
+        console.log('Finished adding collection, final cart items:', finalItems);
+        localStorage.setItem('cart', JSON.stringify({ items: finalItems }));
+        return finalItems;
+
+      } catch (error) {
+        console.error('Error adding collection to cart via API:', error);
+        return rejectWithValue(error.message || 'Failed to add collection to cart');
       }
     } else {
       // Anonymous user: Update localStorage directly
@@ -533,19 +490,37 @@ export const { clearLocalCartAndState, addItemOptimistic, revertAddItem, updateQ
 // Export reducer
 export default cartSlice.reducer;
 
-// Selectors (optional but recommended)
-export const selectCartItems = (state) => state.cart.items || [];
-export const selectCartStatus = (state) => state.cart.status;
-export const selectCartError = (state) => state.cart.error;
+// Base selectors
+const selectCartState = (state) => state.cart;
 
-// Example derived data selector (using reselect is better for memoization if needed)
-export const selectCartCount = (state) =>
-  (state.cart.items || []).reduce((count, item) => count + (item.quantity || 0), 0);
+// Memoized selectors using reselect
+export const selectCartItems = createSelector(
+  [selectCartState],
+  (cart) => cart.items || []
+);
 
-export const selectCartTotal = (state) =>
-  (state.cart.items || []).reduce((total, item) => {
+export const selectCartStatus = createSelector(
+  [selectCartState],
+  (cart) => cart.status
+);
+
+export const selectCartError = createSelector(
+  [selectCartState],
+  (cart) => cart.error
+);
+
+// Derived data selectors with proper memoization
+export const selectCartCount = createSelector(
+  [selectCartItems],
+  (items) => items.reduce((count, item) => count + (item.quantity || 0), 0)
+);
+
+export const selectCartTotal = createSelector(
+  [selectCartItems],
+  (items) => items.reduce((total, item) => {
     if (item.product && typeof item.product.price === 'number' && typeof item.quantity === 'number') {
       return total + item.product.price * item.quantity;
     }
     return total;
-  }, 0);
+  }, 0)
+);

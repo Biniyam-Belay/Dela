@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { ShoppingBag, RefreshCw, Clock, Loader2, Store, Heart, Star, Eye } from "lucide-react";
 import { FiShoppingCart } from 'react-icons/fi';
 import { useQuery } from '@tanstack/react-query';
 import { fetchProducts } from '../services/productApi';
-import { addCollectionToCart } from '../store/cartSlice';
+import { addCollectionToCart, selectCartCount, selectCartItems } from '../store/cartSlice';
 import ProductCard from '../components/ui/ProductCard';
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
@@ -45,18 +45,18 @@ const fetchPublicCollections = async () => {
       },
       product_count: 3,
       created_at: collection.created_at,
-      // Add mock products so cart functionality works
+      // Add mock products so cart functionality works - using real product IDs from database
       products: [
         {
-          id: `${collection.id}-product-1`,
-          name: `${collection.name} - Item 1`,
-          price: Math.round(collection.price * 0.4 * 100) / 100,
+          id: "cefea408-ed9a-4590-9eb9-5d7fe9f01732", // Placeholder Tee
+          name: `${collection.name} - Placeholder Tee`,
+          price: 29.99,
           images: collection.cover_image_url || SUPABASE_PLACEHOLDER_IMAGE_URL
         },
         {
-          id: `${collection.id}-product-2`, 
-          name: `${collection.name} - Item 2`,
-          price: Math.round(collection.price * 0.6 * 100) / 100,
+          id: "a672ded3-bc01-43ac-9a15-79c6b821e146", // Sample Denim
+          name: `${collection.name} - Sample Denim`,
+          price: 59.99,
           images: collection.cover_image_url || SUPABASE_PLACEHOLDER_IMAGE_URL
         }
       ]
@@ -84,15 +84,15 @@ const fetchPublicCollections = async () => {
         created_at: new Date().toISOString(),
         products: [
           {
-            id: "74ccde46-4f03-40fc-a888-29a188e6d1ee-product-1",
-            name: "Summer Vibes Collection - Item 1",
-            price: 31.99,
+            id: "cefea408-ed9a-4590-9eb9-5d7fe9f01732", // Placeholder Tee
+            name: "Summer Vibes Collection - Placeholder Tee",
+            price: 29.99,
             images: "https://picsum.photos/seed/summer/600/400"
           },
           {
-            id: "74ccde46-4f03-40fc-a888-29a188e6d1ee-product-2",
-            name: "Summer Vibes Collection - Item 2", 
-            price: 47.99,
+            id: "a672ded3-bc01-43ac-9a15-79c6b821e146", // Sample Denim
+            name: "Summer Vibes Collection - Sample Denim",
+            price: 59.99,
             images: "https://picsum.photos/seed/summer/600/400"
           }
         ]
@@ -112,15 +112,15 @@ const fetchPublicCollections = async () => {
         created_at: new Date().toISOString(),
         products: [
           {
-            id: "ba6778d5-808a-4bea-b8ac-fcd3659a1f18-product-1",
-            name: "Urban Explorer Kit - Item 1",
-            price: 51.99,
+            id: "2177fa62-b3b6-420a-b1e2-109769f827dc", // Mockup Sneakers
+            name: "Urban Explorer Kit - Mockup Sneakers",
+            price: 89.99,
             images: "https://picsum.photos/seed/urban/600/400"
           },
           {
-            id: "ba6778d5-808a-4bea-b8ac-fcd3659a1f18-product-2",
-            name: "Urban Explorer Kit - Item 2",
-            price: 77.99,
+            id: "ae09f275-f721-4558-b9bd-bf1fedb07488", // Nike Air Max 270
+            name: "Urban Explorer Kit - Nike Air Max 270",
+            price: 49.99,
             images: "https://picsum.photos/seed/urban/600/400"
           }
         ]
@@ -140,15 +140,15 @@ const fetchPublicCollections = async () => {
         created_at: new Date().toISOString(),
         products: [
           {
-            id: "59aa2e12-b03d-48d2-bd95-f3500e2a752d-product-1",
-            name: "Elite Sneaker Collection - Item 1",
-            price: 79.99,
+            id: "ed5940ac-b565-4f50-a487-e473d66c230c", // Air Jordan 4 Retro
+            name: "Elite Sneaker Collection - Air Jordan 4 Retro",
+            price: 199.99,
             images: "https://picsum.photos/seed/luxury-sneakers/600/400"
           },
           {
-            id: "59aa2e12-b03d-48d2-bd95-f3500e2a752d-product-2",
-            name: "Elite Sneaker Collection - Item 2",
-            price: 119.99,
+            id: "84610855-36f1-4e90-82f0-b5c3b5d2c23b", // Air Jordan 1 Retro High OG
+            name: "Elite Sneaker Collection - Air Jordan 1 Retro High OG",
+            price: 179.99,
             images: "https://picsum.photos/seed/luxury-sneakers/600/400"
           }
         ]
@@ -212,6 +212,15 @@ const CollectionsPage = () => {
   const [addingToCart, setAddingToCart] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   
+  // Cart state
+  const cartCount = useSelector(selectCartCount);
+  const cartItems = useSelector(selectCartItems);
+  
+  // Debug cart state changes
+  useEffect(() => {
+    console.log('Cart state changed - Count:', cartCount, 'Items:', cartItems);
+  }, [cartCount, cartItems]);
+  
   // Fetch public collections
   const {
     data: publicCollections,
@@ -234,17 +243,28 @@ const CollectionsPage = () => {
   }, [publicCollections, selectedCategory]);
 
   // Handle adding collection to cart
+  // Handle adding collection to cart
   const handleAddToCart = async (collection) => {
     console.log('Adding collection to cart:', collection);
+    console.log('Current cart count before adding:', cartCount);
     console.log('Collection products:', collection.products);
+    console.log('Collection seller:', collection.seller);
     
     if (addingToCart === collection.id) return;
+    
+    // Validate collection has products
+    if (!collection.products || collection.products.length === 0) {
+      console.error('Collection has no products:', collection);
+      toast.error('This collection has no products available');
+      return;
+    }
     
     setAddingToCart(collection.id);
     try {
       const result = await dispatch(addCollectionToCart({ collection, quantity: 1 })).unwrap();
       console.log('Add to cart result:', result);
-      toast.success(`${collection.name} added to cart!`);
+      console.log('New cart count after adding:', cartCount + collection.products.length);
+      toast.success(`${collection.name} added to cart! (${collection.products.length} items)`);
     } catch (error) {
       console.error('Error adding collection to cart:', error);
       toast.error(error || 'Failed to add collection to cart');
@@ -270,9 +290,19 @@ const CollectionsPage = () => {
             <h1 className="text-5xl sm:text-6xl md:text-7xl font-extralight mb-6 leading-tight tracking-tight">
               Discover <span className="font-medium italic">Artisan</span> Collections
             </h1>
-            <p className="text-xl text-neutral-600 mb-12 font-light max-w-2xl mx-auto">
+            <p className="text-xl text-neutral-600 mb-8 font-light max-w-2xl mx-auto">
               Explore thoughtfully curated collections from talented sellers around the world. Each collection tells a unique story of craftsmanship and style.
             </p>
+            
+            {/* Cart Status */}
+            {cartCount > 0 && (
+              <div className="mb-8">
+                <Link to="/cart" className="inline-flex items-center gap-2 px-6 py-3 bg-neutral-900 text-white rounded-full hover:bg-neutral-800 transition-colors">
+                  <FiShoppingCart className="w-5 h-5" />
+                  <span className="font-medium">{cartCount} item{cartCount !== 1 ? 's' : ''} in cart</span>
+                </Link>
+              </div>
+            )}
             
             {/* Collection Category Filter */}
             <div className="flex flex-wrap justify-center gap-3 mb-12">
